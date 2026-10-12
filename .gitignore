@@ -1,0 +1,55 @@
+# ====================
+# FRONT END
+# ====================
+Front-End/logs
+*.log
+Front-End/npm-debug.log*
+Front-End/yarn-debug.log*
+Front-End/yarn-error.log*
+Front-End/pnpm-debug.log*
+Front-End/lerna-debug.log*
+
+Front-End/node_modules/
+Front-End/dist/
+Front-End/dist-ssr/
+*.local
+
+# ====================
+# BACK END
+# ====================
+
+Back-End/target/
+Back-End/.mvn/wrapper/maven-wrapper.jar
+
+### STS ###
+Back-End/.apt_generated
+Back-End/.classpath
+Back-End/.factorypath
+Back-End/.project
+Back-End/.settings
+Back-End/.springBeans
+Back-End/.sts4-cache
+
+### IntelliJ IDEA ###
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+Back-End/nbproject/private/
+Back-End/nbbuild/
+Back-End/dist/
+Back-End/nbdist/
+Back-End/.nb-gradle/
+Back-End/build/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
