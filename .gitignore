@@ -1,17 +1,17 @@
 # ====================
 # FRONT END
 # ====================
-Front-End/logs
+Front-End/edu-meet/logs
 *.log
-Front-End/npm-debug.log*
-Front-End/yarn-debug.log*
-Front-End/yarn-error.log*
-Front-End/pnpm-debug.log*
-Front-End/lerna-debug.log*
+Front-End/edu-meet/npm-debug.log*
+Front-End/edu-meet/yarn-debug.log*
+Front-End/edu-meet/yarn-error.log*
+Front-End/edu-meet/pnpm-debug.log*
+Front-End/edu-meet/lerna-debug.log*
 
-Front-End/node_modules/
-Front-End/dist/
-Front-End/dist-ssr/
+Front-End/edu-meet/node_modules/
+Front-End/edu-meet/dist/
+Front-End/edu-meet/dist-ssr/
 *.local
 
 # ====================
