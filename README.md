@@ -15,3 +15,21 @@
 > 5. Create your own branch inside that branch, ``git checkout -b <last name>``. For ex. ``git checkout -b DE_LUNA``. *Check your branch first with* ``git branch --show-current``. *It should show your group branch, not main*.
 > 
 > 6. Viola! You can now proceed with your tasks!
+
+## Front End Installation Guide
+
+> 1. Change your directory to the front end folder. For ex. ``cd C:/Users/User/Desktop/edu-meet/frontend``. *The last folder must be frontend folder*.
+>
+> 2. Type the code, ``npm install``.
+>
+> 3. Viola! You can now proceed with your tasks!
+
+## Back End Installation Guide
+
+> 1. Download [JAVA 25](https://www.oracle.com/asean/java/technologies/downloads/#jdk25-windows "Installation Link"). *Look for the x64 Installer. If other OS, search for OS appropriate for you. **You should download java if your java is not JAVA 25. To check, simply type ``java -version`` on your command prompt. It should be JAVA 25.x. If not, update your JAVA by simply installing it through the link.***
+>
+> 2. Download the latest version of [PHP](https://www.php.net/downloads.php?os=windows&osvariant=windows-native&version=8.5 "Installation Link"). *PHP 8.5 is a must!*.
+>
+> 3. In installing spring dependencies, simply look for their xml file and paste it to pom.xml. *Take note, check the pom.xml first if there's already dependency installed that you're trying to install.*
+>
+> 4. Viola! You can now proceed with your tasks!
