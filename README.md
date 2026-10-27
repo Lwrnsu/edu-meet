@@ -6,12 +6,12 @@
 
 > 1.  Create a folder in your system. Name it "**edu-meet**".
 >
-> 2. Open that folder using command prompt and type, ``git clone https://github.com/Lwrnsu/edu-meet``.
+> 2. Open that folder using command prompt and type, ``git init``.
 >
-> 3. Create a branch for your team if there's none using ``git checkout -b <name of your team>``. For ex, ``git checkout -b live-conference``. *Check the github repository if there's already a branch created.*
+> 3. After step 2, write ``git clone https://github.com/Lwrnsu/edu-meet``.
 >
-> 4. If you created a branch, use this code ``git remote add origin https://github.com/Lwrnsu/edu-meet``. Then use this code, ``git push -u origin <your branch name>``.
+> 4. Then switch to your group branch name, ``git checkout <group name>``. For ex. ``git checkout group-one``. *Refer to the branches in github repository*.
 >
-> 5. Create a branch for your self inside that branch. For ex, ``git checkout -b DE_LUNA``. 
->
->6. After creating your own branch, use this code ``git push -u origin <your branch name>``.
+> 5. Create your own branch inside that branch, ``git checkout -b <last name>``. For ex. ``git checkout -b DE_LUNA``. *Check your branch first with* ``git branch --show-current``. *It should show your group branch, not main*.
+> 
+> 6. Viola! You can now proceed with your tasks!
