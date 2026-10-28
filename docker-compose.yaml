@@ -1,0 +1,14 @@
+services: 
+  frontend:
+    build: ./frontend/edu-meet/
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/edu-meet/:/app
+      - /app/node_modules
+
+  backend:
+    build: ./backend/edu-meet/
+    ports:
+      - "8080:8080"
+
