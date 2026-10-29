@@ -4,17 +4,15 @@
 
 ## Copying the repository:
 
-> 1.  Create a folder in your system. Name it "**edu-meet**".
+> 1. Open command prompt and write ``git clone https://github.com/Lwrnsu/edu-meet``. *Note: it must be place in a folder you know to prevent misplacing it.*
 >
-> 2. Open that folder using command prompt and type, ``git init``.
+> 2. Create your own branch, ``git checkout -b <last name>``. For ex. ``git checkout -b DE_LUNA``.
 >
-> 3. After step 2, write ``git clone https://github.com/Lwrnsu/edu-meet``.
+> 3. After creating your own branch, check your branch if it's pointed to the branch that you've created using ``git branch --show-current``. *It should show your last name, not main.*
 >
-> 4. Then switch to your group branch name, ``git checkout <group name>``. For ex. ``git checkout group-one``. *Refer to the branches in github repository*.
->
-> 5. Create your own branch inside that branch, ``git checkout -b <last name>``. For ex. ``git checkout -b DE_LUNA``. *Check your branch first with* ``git branch --show-current``. *It should show your group branch, not main*.
-> 
-> 6. Viola! You can now proceed with your tasks!
+> 4. Push your branch using ``git push origin <branch-name>``. For ex. ``git push origin DE_LUNA``. *Take note, you must be a collaborator to the repository. If not, ask your project manager.*
+>    
+> 5. Viola! You can now proceed with your tasks!
 
 ## Front End Installation Guide
 
