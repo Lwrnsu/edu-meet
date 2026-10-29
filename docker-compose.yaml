@@ -21,3 +21,6 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
     depends_on: [frontend, spring]
+
+volumes:
+    caddy_data:
