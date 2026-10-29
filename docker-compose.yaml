@@ -7,8 +7,17 @@ services:
       - ./frontend/edu-meet/:/app
       - /app/node_modules
 
-  backend:
+  spring:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
 
+  proxy:
+    image:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [frontend, spring]
