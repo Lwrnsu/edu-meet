@@ -31,3 +31,15 @@
 > 3. In installing spring dependencies, simply look for their xml file and paste it to pom.xml. *Take note, check the pom.xml first if there's already dependency installed that you're trying to install.*
 >
 > 4. Viola! You can now proceed with your tasks!
+
+## LiveKit credentials
+
+The backend reads its LiveKit credentials from `backend/edu-meet/src/main/resources/application.properties`.
+Set `livekit.api-key` and `livekit.api-secret` there, or provide `LIVEKIT_API_KEY` and
+`LIVEKIT_API_SECRET` environment variables to override the development defaults. Keep real
+credentials out of source control and use environment variables for deployed environments.
+
+The frontend connects to the LiveKit server URL from `VITE_LIVEKIT_URL`. Copy
+`frontend/edu-meet/.env.example` to `frontend/edu-meet/.env`, set the URL from your LiveKit project,
+and restart the Vite dev server. The API key and secret belong only in the backend environment;
+do not expose them as `VITE_` variables.

@@ -3,6 +3,7 @@ package com.block_a.edu_meet.controller;
 import io.livekit.server.AccessToken;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,11 +15,18 @@ import java.util.HashMap;
 @CrossOrigin(origins = "*")
 public class RoomController {
 
+    private final String apiKey;
+    private final String apiSecret;
+
+    public RoomController(
+            @Value("${livekit.api-key}") String apiKey,
+            @Value("${livekit.api-secret}") String apiSecret) {
+        this.apiKey = apiKey;
+        this.apiSecret = apiSecret;
+    }
+
     @PostMapping("/token")
     public ResponseEntity getToken(@RequestBody Map<String, String> params) {
-        String apiKey = "devkey";
-        String apiSecret = "secret";
-
         String roomName = params.get("roomName");
         String participantName = params.get("participantName");
 
