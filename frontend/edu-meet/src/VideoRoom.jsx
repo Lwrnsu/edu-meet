@@ -6,9 +6,11 @@ import {
   RoomAudioRenderer,
   ControlBar,
   useTracks,
+  Chat,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
+import "./meeting.css";
 
 export default function VideoRoom() {
   const [roomName, setRoomName] = useState("");
@@ -116,6 +118,7 @@ export default function VideoRoom() {
   }
 
   // Once token is received, render the video grid & controls
+
   return (
     <LiveKitRoom
       video={true}
@@ -135,9 +138,7 @@ export default function VideoRoom() {
         );
       }}
     >
-      <MyVideoConference />
-      <RoomAudioRenderer />
-      <ControlBar />
+      <MeetingLayout />
     </LiveKitRoom>
   );
 }
@@ -155,5 +156,34 @@ function MyVideoConference() {
     <GridLayout tracks={tracks} style={{ height: "calc(100vh - 80px)" }}>
       <ParticipantTile />
     </GridLayout>
+  );
+}
+
+function MeetingLayout() {
+  const [chatOpen, setChatOpen] = useState(false);
+
+  return (
+    <div className="meeting-layout">
+      <div className="meeting-main">
+        <div className="meeting-grid">
+          <MyVideoConference />
+        </div>
+        <div className="meeting-controls">
+          <ControlBar />
+          <button onClick={() => setChatOpen((open) => !open)}>
+            {chatOpen ? "Close chat" : "Chat"}
+          </button>
+        </div>
+      </div>
+
+      <aside
+        className="meeting-chat-panel"
+        style={{ display: chatOpen ? "flex" : "none" }}
+      >
+        <Chat />
+      </aside>
+
+      <RoomAudioRenderer />
+    </div>
   );
 }
