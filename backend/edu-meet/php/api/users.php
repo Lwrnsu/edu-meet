@@ -11,6 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../controllers/UserController.php';
 require_once __DIR__ . '/../helpers/Response.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+
+AuthMiddleware::requireAuth();
 
 $id = null;
 if (isset($_GET['id']) && $_GET['id'] !== '') {
