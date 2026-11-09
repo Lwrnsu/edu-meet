@@ -14,6 +14,13 @@
         <h1>Welcome Back</h1>
         <p class="subtitle">Sign in to your account to continue</p>
 
+        <?php if (isset($_GET["error"])): ?>
+            <p style="color:#c0392b; font-size:0.82rem; margin-bottom:16px;">Invalid email or password.</p>
+        <?php endif; ?>
+        <?php if (isset($_GET["success"])): ?>
+            <p style="color:#27ae60; font-size:0.82rem; margin-bottom:16px;">Account created! Please sign in.</p>
+        <?php endif; ?>
+
         <form action="login_action.php" method="POST" class="login-form">
             <div class="input-group">
                 <label for="email">Email</label>

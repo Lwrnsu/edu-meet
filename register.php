@@ -1,3 +1,13 @@
+<?php
+$messages = [
+    "name"   => "First and last name are required.",
+    "email"  => "Please enter a valid email.",
+    "short"  => "Password must be at least 8 characters.",
+    "match"  => "Passwords do not match.",
+    "exists" => "That email is already registered.",
+    "server" => "Something went wrong. Try again."
+];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,6 +29,10 @@
         <div class="auth-form-container">
             <h1>Sign Up</h1>
             <p class="subtitle">Create an account to access the app</p>
+
+            <?php if (isset($_GET["error"], $messages[$_GET["error"]])): ?>
+                <p style="color:#c0392b; font-size:0.82rem; margin-bottom:16px;"><?php echo $messages[$_GET["error"]]; ?></p>
+            <?php endif; ?>
 
             <form action="register_action.php" method="POST" class="signup-grid">
                 <div class="input-group">
