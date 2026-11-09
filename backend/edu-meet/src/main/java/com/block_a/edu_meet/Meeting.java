@@ -33,6 +33,7 @@ public class Meeting {
 
 
         public static void main(String[] args){
+            //testcases
         Student jay = new Student("Lwrnsu", "Jay");
         Student stranger = new Student("random", "Bob");
 
