@@ -1,0 +1,26 @@
+
+{
+    "class": "Computer Science",
+    "deck": "PHP OOP",
+    "description": "PHP Object-Oriented Programming Reviewer",
+    "flashcards": [
+        {
+            "question": "What is a class in PHP?",
+            "answer": "A blueprint for creating objects.",
+            "explanation": "A class defines properties and methods.",
+            "difficulty": "easy"
+        },
+        {
+            "question": "What is an object?",
+            "answer": "An instance of a class.",
+            "explanation": "Objects are created using the new keyword.",
+            "difficulty": "easy"
+        },
+        {
+            "question": "What is inheritance?",
+            "answer": "A mechanism that allows a class to inherit properties and methods from another class.",
+            "explanation": "PHP uses the extends keyword for inheritance.",
+            "difficulty": "medium"
+        }
+    ]
+}
