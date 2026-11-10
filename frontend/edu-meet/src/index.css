@@ -16,9 +16,9 @@ body,
 
 body {
   margin: 0;
-  font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+  font-family: 'Poppins', sans-serif;
   color: #12251f;
-  background: #e8f3ee;
+  background: #d9d0de;
   -webkit-font-smoothing: antialiased;
 }
 
