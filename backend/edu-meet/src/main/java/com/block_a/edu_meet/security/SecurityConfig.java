@@ -38,7 +38,7 @@ public class SecurityConfig {
 				.cors(Customizer.withDefaults())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/php-login").permitAll()
 						.requestMatchers(HttpMethod.GET, "/", "/api/health").permitAll()
 						.requestMatchers("/api/**").authenticated()
 						.anyRequest().permitAll())
