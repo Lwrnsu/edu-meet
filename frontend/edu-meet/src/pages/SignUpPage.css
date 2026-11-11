@@ -98,6 +98,10 @@
   gap: 0.85rem 1rem;
 }
 
+.signup__input--wide {
+  grid-column: 1 / -1;
+}
+
 .signup__input {
   width: 100%;
   padding: 0.7rem 0.85rem;

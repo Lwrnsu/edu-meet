@@ -5,7 +5,6 @@ const INITIAL_FORM = {
   schoolName: '',
   location: '',
   email: '',
-  username: '',
   password: '',
   confirmPassword: '',
   acceptedTerms: false,
@@ -38,10 +37,9 @@ export default function SignUpPage({ onSwitchToSignIn }) {
     const schoolName = form.schoolName.trim()
     const location = form.location.trim()
     const email = form.email.trim()
-    const username = form.username.trim()
     const { password, confirmPassword, acceptedTerms } = form
 
-    if (!schoolName || !location || !email || !username || !password || !confirmPassword) {
+    if (!schoolName || !location || !email || !password || !confirmPassword) {
       setError('Please fill in all required fields.')
       return
     }
@@ -98,23 +96,13 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 required
               />
               <input
-                className="signup__input"
+                className="signup__input signup__input--wide"
                 type="email"
                 name="email"
                 placeholder="Gmail"
                 autoComplete="email"
                 value={form.email}
                 onChange={updateField('email')}
-                required
-              />
-              <input
-                className="signup__input"
-                type="text"
-                name="username"
-                placeholder="Username"
-                autoComplete="username"
-                value={form.username}
-                onChange={updateField('username')}
                 required
               />
               <input
