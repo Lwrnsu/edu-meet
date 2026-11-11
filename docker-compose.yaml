@@ -1,0 +1,57 @@
+services: 
+  frontend:
+    build: ./frontend/edu-meet/
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/edu-meet/:/app
+      - /app/node_modules
+
+  spring:
+    build: ./backend/edu-meet/
+    ports:
+      - "8080:8080"
+    depends_on: [postgres, redis]
+
+  php:
+    build: ./php/
+    ports:
+      - "8000:8000"
+    depends_on: [postgres]
+
+  postgres:
+    image: postgres:19rc1-alpine3.24
+    container_name: postgressql
+    ports: 
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: edumeet
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8.10.3-alpine3.23
+    container_name: redis
+    ports: 
+      - "6379:6379"
+    command: redis-server --dir /data --protected-mode no
+    volumes:
+      - redisdata:/data
+
+
+  proxy:
+    image: caddy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [frontend, spring]
+
+volumes:
+    caddy_data:
+    postgres_data:
+    redisdata: 
