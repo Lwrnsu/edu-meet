@@ -1,3 +1,4 @@
+
 package com.block_a.edu_meet.chat;
 
 import java.time.Instant;
@@ -5,17 +6,17 @@ import java.time.Instant;
 public class Message {
 
     private String id;
+    private String conversationId;
     private String senderId;
-    private String receiverId;
     private String text;
     private Instant timestamp;
 
     public Message() {
     }
 
-    public Message(String senderId, String receiverId, String text, Instant timestamp) {
+    public Message(String conversationId, String senderId, String text, Instant timestamp) {
+        this.conversationId = conversationId;
         this.senderId = senderId;
-        this.receiverId = receiverId;
         this.text = text;
         this.timestamp = timestamp;
     }
@@ -23,11 +24,13 @@ public class Message {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
+    public String getConversationId() { return conversationId; }
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
+    }
+
     public String getSenderId() { return senderId; }
     public void setSenderId(String senderId) { this.senderId = senderId; }
-
-    public String getReceiverId() { return receiverId; }
-    public void setReceiverId(String receiverId) { this.receiverId = receiverId; }
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
