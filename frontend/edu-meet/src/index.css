@@ -1,3 +1,91 @@
 /* 
   Supervise by: Sam Gabriel Dayrit (Front End Lead)
 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  color: #12251f;
+  background: #d9d0de;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.home {
+  --ink: #12251f;
+  --ink-soft: #3d5a50;
+  --accent: #0f7a5a;
+  --accent-deep: #0a5c44;
+  --surface: rgba(247, 251, 248, 0.9);
+  --line: rgba(18, 37, 31, 0.14);
+
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 15%, rgba(15, 122, 90, 0.2), transparent 55%),
+    linear-gradient(160deg, #e8f3ee 0%, #d5e6e0 50%, #c5d8e4 100%);
+}
+
+.home__panel {
+  width: min(100%, 28rem);
+  padding: 2rem 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+
+.home__brand {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.home__greeting {
+  margin: 0.75rem 0 0.35rem;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 1.9rem);
+  font-weight: 550;
+  line-height: 1.2;
+}
+
+.home__email {
+  margin: 0 0 1.5rem;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.home__logout {
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.home__logout:hover {
+  background: rgba(15, 122, 90, 0.08);
+  border-color: var(--accent);
+}
