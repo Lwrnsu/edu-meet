@@ -31,6 +31,10 @@ class SchoolService
     {
         $data = $this->validate($payload, true);
 
+        if ($this->repository->emailExists($data['email'])) {
+            throw new ApiException('School email already in use', 409);
+        }
+
         if ($data['slug'] !== null && $this->repository->slugExists($data['slug'])) {
             throw new ApiException('School slug already in use', 409);
         }
@@ -38,6 +42,7 @@ class SchoolService
         $id = $this->repository->create([
             'name' => $data['name'],
             'location' => $data['location'],
+            'email' => $data['email'],
             'slug' => $data['slug'],
             'status' => $data['status'],
         ]);
@@ -54,6 +59,10 @@ class SchoolService
 
         $data = $this->validate($payload, false, $existing);
 
+        if ($this->repository->emailExists($data['email'], $id)) {
+            throw new ApiException('School email already in use', 409);
+        }
+
         if ($data['slug'] !== null && $this->repository->slugExists($data['slug'], $id)) {
             throw new ApiException('School slug already in use', 409);
         }
@@ -61,6 +70,7 @@ class SchoolService
         $this->repository->update($id, [
             'name' => $data['name'],
             'location' => $data['location'],
+            'email' => $data['email'],
             'slug' => $data['slug'],
             'status' => $data['status'],
         ]);
@@ -85,6 +95,9 @@ class SchoolService
         $location = isset($payload['location'])
             ? trim((string) $payload['location'])
             : ($creating ? '' : (string) ($existing['location'] ?? ''));
+        $email = isset($payload['email'])
+            ? strtolower(trim((string) $payload['email']))
+            : ($creating ? '' : strtolower(trim((string) ($existing['email'] ?? ''))));
 
         $slugRaw = array_key_exists('slug', $payload)
             ? $payload['slug']
@@ -101,6 +114,12 @@ class SchoolService
             $errors['location'] = 'Location is required';
         } elseif (strlen($location) > 255) {
             $errors['location'] = 'Location must be at most 255 characters';
+        }
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'A valid email is required';
+        } elseif (strlen($email) > 255) {
+            $errors['email'] = 'Email must be at most 255 characters';
         }
 
         $slug = null;
@@ -127,6 +146,7 @@ class SchoolService
         return [
             'name' => $name,
             'location' => $location,
+            'email' => $email,
             'slug' => $slug,
             'status' => $status,
         ];
@@ -164,6 +184,7 @@ class SchoolService
             'school_id' => (int) $school['school_id'],
             'name' => $school['name'],
             'location' => $school['location'],
+            'email' => $school['email'],
             'slug' => $school['slug'],
             'status' => (int) $school['status'],
             'created_at' => $school['created_at'],

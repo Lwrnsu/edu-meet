@@ -13,7 +13,7 @@ class SchoolRepository
 
     public function findAll(): array
     {
-        $sql = 'SELECT school_id, name, location, slug, status, created_at, updated_at, deleted_at
+        $sql = 'SELECT school_id, name, location, email, slug, status, created_at, updated_at, deleted_at
                 FROM schools
                 WHERE deleted_at IS NULL
                 ORDER BY school_id ASC';
@@ -33,7 +33,7 @@ class SchoolRepository
 
     public function findById(int $id): ?array
     {
-        $sql = 'SELECT school_id, name, location, slug, status, created_at, updated_at, deleted_at
+        $sql = 'SELECT school_id, name, location, email, slug, status, created_at, updated_at, deleted_at
                 FROM schools
                 WHERE school_id = ? AND deleted_at IS NULL
                 LIMIT 1';
@@ -78,10 +78,36 @@ class SchoolRepository
         return $exists;
     }
 
+    public function emailExists(string $email, ?int $excludeId = null): bool
+    {
+        if ($excludeId === null) {
+            $sql = 'SELECT school_id FROM schools WHERE email = ? AND deleted_at IS NULL LIMIT 1';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare emailExists: ' . $this->db->error);
+            }
+            $stmt->bind_param('s', $email);
+        } else {
+            $sql = 'SELECT school_id FROM schools WHERE email = ? AND school_id <> ? AND deleted_at IS NULL LIMIT 1';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare emailExists: ' . $this->db->error);
+            }
+            $stmt->bind_param('si', $email, $excludeId);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result->fetch_assoc() !== null;
+        $stmt->close();
+
+        return $exists;
+    }
+
     public function create(array $data): int
     {
-        $sql = 'INSERT INTO schools (name, location, slug, status)
-                VALUES (?, ?, ?, ?)';
+        $sql = 'INSERT INTO schools (name, location, email, slug, status)
+                VALUES (?, ?, ?, ?, ?)';
 
         $stmt = $this->db->prepare($sql);
         if ($stmt === false) {
@@ -90,10 +116,11 @@ class SchoolRepository
 
         $name = $data['name'];
         $location = $data['location'];
+        $email = $data['email'];
         $slug = $data['slug'];
         $status = (int) $data['status'];
 
-        $stmt->bind_param('sssi', $name, $location, $slug, $status);
+        $stmt->bind_param('ssssi', $name, $location, $email, $slug, $status);
 
         if (!$stmt->execute()) {
             $error = $stmt->error;
@@ -110,7 +137,7 @@ class SchoolRepository
     public function update(int $id, array $data): bool
     {
         $sql = 'UPDATE schools
-                SET name = ?, location = ?, slug = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                SET name = ?, location = ?, email = ?, slug = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE school_id = ? AND deleted_at IS NULL';
 
         $stmt = $this->db->prepare($sql);
@@ -120,9 +147,10 @@ class SchoolRepository
 
         $name = $data['name'];
         $location = $data['location'];
+        $email = $data['email'];
         $slug = $data['slug'];
         $status = (int) $data['status'];
-        $stmt->bind_param('sssii', $name, $location, $slug, $status, $id);
+        $stmt->bind_param('ssssii', $name, $location, $email, $slug, $status, $id);
 
         if (!$stmt->execute()) {
             $error = $stmt->error;
