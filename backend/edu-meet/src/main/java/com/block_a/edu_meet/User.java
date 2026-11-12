@@ -1,4 +1,4 @@
-package com.block_a.edu_meet.model;
+package com.block_a.edu_meet;
 
 public class User {
     private Long id;
