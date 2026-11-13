@@ -40,6 +40,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/php-login").permitAll()
 						.requestMatchers(HttpMethod.GET, "/", "/api/health").permitAll()
+						.requestMatchers("/api/php/**").permitAll()
 						.requestMatchers("/api/**").authenticated()
 						.anyRequest().permitAll())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -51,7 +52,7 @@ public class SecurityConfig {
 	CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOrigins(List.of("http://localhost:5173", "http://edu-meet.app", "https://edu-meet.app"));
-		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
 
