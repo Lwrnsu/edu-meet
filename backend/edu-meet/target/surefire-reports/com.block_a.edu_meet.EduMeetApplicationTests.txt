@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.block_a.edu_meet.EduMeetApplicationTests
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.262 s -- in com.block_a.edu_meet.EduMeetApplicationTests
