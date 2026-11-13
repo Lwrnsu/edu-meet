@@ -1,28 +1,98 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { logoutRequest, refreshSession } from './api/auth'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import LoginPage from './pages/LoginPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import SignUpPage from './pages/SignUpPage'
-import { clearSession, getSession } from './lib/authStorage'
+import {
+  clearSession,
+  getRefreshToken,
+  getSession,
+  isTokenExpired,
+  setSession,
+} from './lib/authStorage'
 
 function App() {
-  const [session, setSessionState] = useState(() => getSession())
+  const [session, setSessionState] = useState(() => {
+    const saved = getSession()
+    if (!saved || isTokenExpired(saved.token)) return null
+    return saved
+  })
+  const [checking, setChecking] = useState(() => {
+    const saved = getSession()
+    return Boolean(getRefreshToken() && (!saved || isTokenExpired(saved.token)))
+  })
   const [authView, setAuthView] = useState('signup')
   const [resetEmail, setResetEmail] = useState('')
 
-  function handleLoginSuccess(data) {
-    setSessionState({ token: data.token, user: data.user })
-  }
+  useEffect(() => {
+    if (!checking) return
+    let cancelled = false
 
-  function handleLogout() {
-    clearSession()
-    setSessionState(null)
-    setAuthView('login')
+    async function restore() {
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        if (!cancelled) setChecking(false)
+        return
+      }
+      try {
+        const data = await refreshSession(refreshToken)
+        if (cancelled) return
+        const nextSession = {
+          token: data.token,
+          refresh_token: data.refresh_token || refreshToken,
+          user: data.user,
+        }
+        setSession(nextSession)
+        setSessionState(nextSession)
+      } catch {
+        if (cancelled) return
+        clearSession()
+        setSessionState(null)
+      } finally {
+        if (!cancelled) setChecking(false)
+      }
+    }
+
+    restore()
+    return () => {
+      cancelled = true
+    }
+  }, [checking])
+
+  function handleLoginSuccess(data) {
+    const nextSession = {
+      token: data.token,
+      refresh_token: data.refresh_token || null,
+      user: data.user,
+    }
+    setSession(nextSession)
+    setSessionState(nextSession)
   }
 
   function handleOtpSent(email) {
     setResetEmail(email)
     setAuthView('reset')
+  }
+
+  async function handleLogout() {
+    const refreshToken = getRefreshToken()
+    if (refreshToken) {
+      await logoutRequest(refreshToken).catch(() => {})
+    }
+    clearSession()
+    setSessionState(null)
+  }
+
+  if (checking) {
+    return (
+      <main className="home">
+        <div className="home__panel">
+          <p className="home__brand">Edu-Meet</p>
+          <p className="home__email">Restoring session...</p>
+        </div>
+      </main>
+    )
   }
 
   if (!session) {

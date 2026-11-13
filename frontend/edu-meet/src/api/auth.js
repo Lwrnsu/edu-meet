@@ -1,19 +1,33 @@
-export async function login(email, password) {
-  const base = import.meta.env.VITE_API_BASE_URL
-  const res = await fetch(`${base}/auth/login.php`, {
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost/edu-meet/backend/edu-meet/php/api'
+
+async function post(path, payload) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   })
 
-  const data = await res.json().catch(() => ({}))
+  const data = await response.json().catch(() => ({}))
 
-  if (!res.ok) {
-    const error = new Error(data.message || 'Login failed')
-    error.status = res.status
-    error.details = data.details ?? null
-    throw error
+  if (!response.ok) {
+    throw new Error(data.message || 'Request failed.')
   }
 
   return data
+}
+
+export function login(email, password) {
+  return post('/auth/login.php', { email, password })
+}
+
+export function refreshSession(refreshToken) {
+  return post('/auth/refresh.php', { refresh_token: refreshToken })
+}
+
+export function logoutRequest(refreshToken) {
+  return post('/auth/logout.php', { refresh_token: refreshToken })
 }
