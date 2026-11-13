@@ -7,11 +7,13 @@ class SchoolMembershipRepository
     private mysqli $db;
 
     private const SELECT_JOIN = 'SELECT sm.membership_id, sm.school_id, s.name AS school_name,
+                sm.department_id, d.name AS department_name, d.slug AS department_slug,
                 sm.user_id, sm.role_id, r.name AS role_name, sm.status,
                 sm.joined_at, sm.created_at, sm.updated_at, sm.deleted_at
                 FROM school_memberships sm
                 INNER JOIN schools s ON s.school_id = sm.school_id AND s.deleted_at IS NULL
-                INNER JOIN roles r ON r.role_id = sm.role_id AND r.deleted_at IS NULL';
+                INNER JOIN roles r ON r.role_id = sm.role_id AND r.deleted_at IS NULL
+                LEFT JOIN departments d ON d.department_id = sm.department_id AND d.deleted_at IS NULL';
 
     public function __construct(?mysqli $db = null)
     {
@@ -81,6 +83,29 @@ class SchoolMembershipRepository
         return $rows;
     }
 
+    public function findByDepartmentId(int $departmentId): array
+    {
+        $sql = self::SELECT_JOIN . ' WHERE sm.department_id = ? AND sm.deleted_at IS NULL ORDER BY sm.membership_id ASC';
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt === false) {
+            throw new RuntimeException('Failed to prepare findByDepartmentId: ' . $this->db->error);
+        }
+
+        $stmt->bind_param('i', $departmentId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+
+        $stmt->close();
+
+        return $rows;
+    }
+
     public function findById(int $id): ?array
     {
         $sql = self::SELECT_JOIN . ' WHERE sm.membership_id = ? AND sm.deleted_at IS NULL LIMIT 1';
@@ -131,8 +156,8 @@ class SchoolMembershipRepository
 
     public function create(array $data): int
     {
-        $sql = 'INSERT INTO school_memberships (school_id, user_id, role_id, status)
-                VALUES (?, ?, ?, ?)';
+        $sql = 'INSERT INTO school_memberships (school_id, department_id, user_id, role_id, status)
+                VALUES (?, ?, ?, ?, ?)';
 
         $stmt = $this->db->prepare($sql);
         if ($stmt === false) {
@@ -140,11 +165,12 @@ class SchoolMembershipRepository
         }
 
         $schoolId = (int) $data['school_id'];
+        $departmentId = $data['department_id'];
         $userId = (int) $data['user_id'];
         $roleId = (int) $data['role_id'];
         $status = (int) $data['status'];
 
-        $stmt->bind_param('iiii', $schoolId, $userId, $roleId, $status);
+        $stmt->bind_param('iiiii', $schoolId, $departmentId, $userId, $roleId, $status);
 
         if (!$stmt->execute()) {
             $error = $stmt->error;
@@ -161,7 +187,7 @@ class SchoolMembershipRepository
     public function update(int $id, array $data): bool
     {
         $sql = 'UPDATE school_memberships
-                SET role_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                SET department_id = ?, role_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE membership_id = ? AND deleted_at IS NULL';
 
         $stmt = $this->db->prepare($sql);
@@ -169,9 +195,10 @@ class SchoolMembershipRepository
             throw new RuntimeException('Failed to prepare update: ' . $this->db->error);
         }
 
+        $departmentId = $data['department_id'];
         $roleId = (int) $data['role_id'];
         $status = (int) $data['status'];
-        $stmt->bind_param('iii', $roleId, $status, $id);
+        $stmt->bind_param('iiii', $departmentId, $roleId, $status, $id);
 
         if (!$stmt->execute()) {
             $error = $stmt->error;

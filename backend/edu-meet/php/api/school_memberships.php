@@ -39,5 +39,13 @@ if (isset($_GET['user_id']) && $_GET['user_id'] !== '') {
     $userId = (int) $_GET['user_id'];
 }
 
+$departmentId = null;
+if (isset($_GET['department_id']) && $_GET['department_id'] !== '') {
+    if (!ctype_digit((string) $_GET['department_id'])) {
+        Response::error('Department id must be a positive integer', 400);
+    }
+    $departmentId = (int) $_GET['department_id'];
+}
+
 $controller = new SchoolMembershipController();
-$controller->handle($_SERVER['REQUEST_METHOD'] ?? 'GET', $id, $schoolId, $userId);
+$controller->handle($_SERVER['REQUEST_METHOD'] ?? 'GET', $id, $schoolId, $userId, $departmentId);

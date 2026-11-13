@@ -13,11 +13,18 @@ class SchoolMembershipController
         $this->service = $service ?? new SchoolMembershipService();
     }
 
-    public function handle(string $method, ?int $id = null, ?int $schoolId = null, ?int $userId = null): void
-    {
+    public function handle(
+        string $method,
+        ?int $id = null,
+        ?int $schoolId = null,
+        ?int $userId = null,
+        ?int $departmentId = null
+    ): void {
         try {
             match (strtoupper($method)) {
-                'GET' => $id === null ? $this->index($schoolId, $userId) : $this->show($id),
+                'GET' => $id === null
+                    ? $this->index($schoolId, $userId, $departmentId)
+                    : $this->show($id),
                 'POST' => $this->store(),
                 'PUT', 'PATCH' => $this->update($id),
                 'DELETE' => $this->destroy($id),
@@ -30,9 +37,9 @@ class SchoolMembershipController
         }
     }
 
-    private function index(?int $schoolId, ?int $userId): void
+    private function index(?int $schoolId, ?int $userId, ?int $departmentId): void
     {
-        Response::json($this->service->getAll($schoolId, $userId));
+        Response::json($this->service->getAll($schoolId, $userId, $departmentId));
     }
 
     private function show(int $id): void
