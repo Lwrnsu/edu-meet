@@ -2,9 +2,13 @@
 package com.block_a.edu_meet.chat;
 
 import java.time.Instant;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
+@Document(collection = "messages")
 public class Message {
 
+    @Id
     private String id;
     private String conversationId;
     private String senderId;
