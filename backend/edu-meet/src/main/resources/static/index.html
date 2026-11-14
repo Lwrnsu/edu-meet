@@ -7,7 +7,9 @@
 <body>
     <h2>Edu-Meet Chat</h2>
 
-    <input id="name" placeholder="Your name">
+    <input id="userId" placeholder="User ID" style="width:260px;">
+    <input id="conversationId" placeholder="Conversation ID" style="width:260px;">
+    <button id="connect">Connect</button>
     <br><br>
     <div id="messages" style="border:1px solid #999; height:300px; overflow-y:auto; padding:8px;"></div>
     <br>
@@ -15,26 +17,43 @@
     <button id="send">Send</button>
 
     <script>
-        const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-        const ws = new WebSocket(protocol + location.host + "/chat");
-
+        let ws = null;
         const messagesDiv = document.getElementById("messages");
-        const nameInput = document.getElementById("name");
         const textInput = document.getElementById("text");
 
-        ws.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
+        function addLine(text) {
             const div = document.createElement("div");
-            div.textContent = msg.sender + ": " + msg.text;
+            div.textContent = text;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        document.getElementById("connect").onclick = async () => {
+            const userId = document.getElementById("userId").value.trim();
+            const conversationId = document.getElementById("conversationId").value.trim();
+            if (!userId || !conversationId) return;
+
+            messagesDiv.textContent = "";
+            const res = await fetch("/api/conversations/" + conversationId + "/messages");
+            const history = await res.json();
+            history.reverse().forEach(m => addLine(m.senderId + ": " + m.text));
+
+            if (ws) ws.close();
+            const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+            ws = new WebSocket(protocol + location.host + "/chat?userId=" + userId);
+            ws.onmessage = (event) => {
+                const m = JSON.parse(event.data);
+                if (m.conversationId === conversationId) {
+                    addLine(m.senderId + ": " + m.text);
+                }
+            };
         };
 
         function sendMessage() {
             const text = textInput.value.trim();
-            if (!text || ws.readyState !== WebSocket.OPEN) return;
-            const sender = nameInput.value.trim() || "Anonymous";
-            ws.send(JSON.stringify({ sender: sender, text: text }));
+            const conversationId = document.getElementById("conversationId").value.trim();
+            if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ conversationId: conversationId, text: text }));
             textInput.value = "";
         }
 
