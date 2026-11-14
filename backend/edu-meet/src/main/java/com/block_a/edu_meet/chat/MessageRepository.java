@@ -12,4 +12,5 @@ public interface MessageRepository extends MongoRepository<Message, String> {
 
     List<Message> findByConversationIdAndTimestampBeforeOrderByTimestampDesc(
             String conversationId, Instant before, Pageable pageable);
+                Message findFirstByConversationIdOrderByTimestampDesc(String conversationId);
 }
