@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -34,4 +37,14 @@ public class ConversationController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         return memberLookup.findMembers(conversation.getParticipantIds());
     }
+
+    @PostMapping
+    public Conversation createConversation(@RequestBody CreateConversationRequest request) {
+        Conversation conversation = new Conversation(
+                request.type(), request.name(), request.participantIds());
+        conversation.setBlockId(request.blockId());
+        conversation.setClassId(request.classId());
+        return conversationRepository.save(conversation);
+    }
+
 }
