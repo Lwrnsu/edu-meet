@@ -17,6 +17,7 @@ import com.block_a.edu_meet.chat.Message;
 import com.block_a.edu_meet.chat.MessageRepository;
 
 import tools.jackson.databind.ObjectMapper;
+import com.block_a.edu_meet.chat.RecentMessageCache;
 
 @Component
 public class ChatHandler extends TextWebSocketHandler {
@@ -24,15 +25,18 @@ public class ChatHandler extends TextWebSocketHandler {
     private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByUser =
             new ConcurrentHashMap<>();
 
-    private final ObjectMapper objectMapper;
+        private final ObjectMapper objectMapper;
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
+    private final RecentMessageCache recentMessageCache;
 
     public ChatHandler(ObjectMapper objectMapper, MessageRepository messageRepository,
-                       ConversationRepository conversationRepository) {
+                       ConversationRepository conversationRepository,
+                       RecentMessageCache recentMessageCache) {
         this.objectMapper = objectMapper;
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;
+        this.recentMessageCache = recentMessageCache;
     }
 
     @Override
@@ -77,6 +81,7 @@ public class ChatHandler extends TextWebSocketHandler {
         incoming.setTimestamp(Instant.now());
         Message saved = messageRepository.save(incoming);
         System.out.println("Saved: " + saved.getId());
+                recentMessageCache.add(saved);
 
         TextMessage out = new TextMessage(objectMapper.writeValueAsString(saved));
         for (String memberId : conversation.getParticipantIds()) {
