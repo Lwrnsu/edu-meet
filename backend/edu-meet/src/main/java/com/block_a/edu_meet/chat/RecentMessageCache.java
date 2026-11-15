@@ -26,18 +26,27 @@ public class RecentMessageCache {
     }
 
     public void add(Message message) {
-        String k = key(message.getConversationId());
-        redis.opsForList().leftPush(k, objectMapper.writeValueAsString(message));
-        redis.opsForList().trim(k, 0, MAX_MESSAGES - 1);
+        try {
+            String k = key(message.getConversationId());
+            redis.opsForList().leftPush(k, objectMapper.writeValueAsString(message));
+            redis.opsForList().trim(k, 0, MAX_MESSAGES - 1);
+        } catch (Exception e) {
+            System.out.println("Redis unavailable, skipping cache write: " + e.getMessage());
+        }
     }
 
     public List<Message> getLatest(String conversationId, int count) {
-        List<String> raw = redis.opsForList().range(key(conversationId), 0, count - 1);
         List<Message> result = new ArrayList<>();
-        if (raw != null) {
-            for (String json : raw) {
-                result.add(objectMapper.readValue(json, Message.class));
+        try {
+            List<String> raw = redis.opsForList().range(key(conversationId), 0, count - 1);
+            if (raw != null) {
+                for (String json : raw) {
+                    result.add(objectMapper.readValue(json, Message.class));
+                }
             }
+        } catch (Exception e) {
+            System.out.println("Redis unavailable, falling back to MongoDB: " + e.getMessage());
+            return new ArrayList<>();
         }
         return result;
     }
