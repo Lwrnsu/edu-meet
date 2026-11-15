@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.chat;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -71,4 +75,64 @@ public class ConversationController {
         conversation.setClassId(request.classId());
         return conversationRepository.save(conversation);
     }
+
+    @PostMapping("/{conversationId}/members")
+    public Conversation addMembers(@PathVariable String conversationId,
+                                   @RequestBody MemberChangeRequest request) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        if (conversation.getType() == ConversationType.PRIVATE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
+        }
+        if (request.userIds() == null || request.userIds().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userIds is required");
+        }
+
+        List<String> members = new ArrayList<>(conversation.getParticipantIds());
+        for (String id : request.userIds()) {
+            if (!members.contains(id)) {
+                members.add(id);
+            }
+        }
+        conversation.setParticipantIds(members);
+        return conversationRepository.save(conversation);
+    }
+
+
+    @DeleteMapping("/{conversationId}/members/{userId}")
+    public Conversation removeMember(@PathVariable String conversationId,
+                                     @PathVariable String userId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        if (conversation.getType() == ConversationType.PRIVATE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
+        }
+
+        List<String> members = new ArrayList<>(conversation.getParticipantIds());
+        members.remove(userId);
+        conversation.setParticipantIds(members);
+        return conversationRepository.save(conversation);
+    }
+
+
+        @PutMapping("/{conversationId}/members")
+    public Conversation replaceMembers(@PathVariable String conversationId,
+                                       @RequestBody MemberChangeRequest request) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        if (conversation.getType() == ConversationType.PRIVATE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
+        }
+        if (request.userIds() == null || request.userIds().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userIds is required");
+        }
+
+        conversation.setParticipantIds(new ArrayList<>(new java.util.LinkedHashSet<>(request.userIds())));
+        return conversationRepository.save(conversation);
+    }
+
+
 }
