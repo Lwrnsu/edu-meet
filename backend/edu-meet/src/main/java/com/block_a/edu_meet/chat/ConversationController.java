@@ -1,6 +1,7 @@
 package com.block_a.edu_meet.chat;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,8 @@ public class ConversationController {
                             last == null ? null : last.getText(),
                             last == null ? null : last.getTimestamp());
                 })
+                .sorted(Comparator.comparing(ConversationSummary::lastMessageTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
