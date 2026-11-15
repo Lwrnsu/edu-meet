@@ -1,9 +1,16 @@
 package com.block_a.edu_meet.chat;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -64,11 +71,13 @@ public class ConversationController {
     public Conversation createConversation(@RequestBody CreateConversationRequest request) {
         if (request.type() == null
                 || request.participantIds() == null
-                || request.participantIds().isEmpty()) {
+                || request.participantIds().isEmpty()
+                || request.participantIds().stream().anyMatch(id -> id == null || id.isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type and participantIds are required");
         }
-        if (request.type() == ConversationType.PRIVATE && request.participantIds().size() != 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats need exactly 2 participants");
+        if (request.type() == ConversationType.PRIVATE
+                && (request.participantIds().size() != 2 || new HashSet<>(request.participantIds()).size() != 2)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats need 2 distinct participants");
         }
         if (request.type() != ConversationType.PRIVATE
                 && (request.name() == null || request.name().isBlank())) {
@@ -104,7 +113,30 @@ public class ConversationController {
                 request.type(), request.name(), request.participantIds());
         conversation.setBlockId(request.blockId());
         conversation.setClassId(request.classId());
-        return conversationRepository.save(conversation);
+        conversation.setId(creationId(request));
+        try {
+            return conversationRepository.insert(conversation);
+        } catch (DuplicateKeyException e) {
+            // Another request created this chat after our lookup. Keep its data intact.
+            return conversationRepository.findById(conversation.getId()).orElseThrow(() -> e);
+        }
+    }
+
+    private String creationId(CreateConversationRequest request) {
+        String key = switch (request.type()) {
+            case PRIVATE -> "PRIVATE:" + request.participantIds().stream().sorted()
+                    .map(id -> id.length() + ":" + id).collect(Collectors.joining());
+            case BLOCK -> request.blockId() == null ? null : "BLOCK:" + request.blockId();
+            case SUBJECT -> request.classId() == null ? null : "SUBJECT:" + request.classId();
+        };
+        if (key == null) return null;
+
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+            return "chat_" + HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     @PostMapping("/{conversationId}/members")
