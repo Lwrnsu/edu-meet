@@ -29,19 +29,22 @@ class AuthMiddleware
             Response::error('Invalid token payload', 401);
         }
 
-        if (self::isRevoked($token)) {
-            Response::error('Session has ended, please log in again', 401);
-        }
+        self::requireActiveSession($token);
 
         return $payload;
     }
 
-    private static function isRevoked(string $token): bool
+    private static function requireActiveSession(string $token): void
     {
         try {
-            return !(new SessionStore())->accessExists($token);
-        } catch (RuntimeException $e) {
-            return false;
+            $active = (new SessionStore())->accessExists($token);
+        } catch (ApiException $e) {
+            Response::error($e->getMessage(), $e->getCode() ?: 503);
+            return;
+        }
+
+        if (!$active) {
+            Response::error('Session has ended, please log in again', 401);
         }
     }
 

@@ -52,12 +52,7 @@ class AuthService
             throw new ApiException('Session expired, please log in again', 401);
         }
 
-        try {
-            $userId = $this->store->findRefresh($refreshToken);
-        } catch (RuntimeException $e) {
-            throw new ApiException('Session service unavailable', 503);
-        }
-
+        $userId = $this->store->findRefresh($refreshToken);
         if ($userId === null) {
             throw new ApiException('Session expired, please log in again', 401);
         }
@@ -97,16 +92,10 @@ class AuthService
     {
         $userId = (int) $user['user_id'];
         $accessToken = $this->createAccessToken($user);
-        $refreshToken = null;
+        $refreshToken = bin2hex(random_bytes(32));
 
-        try {
-            $candidate = bin2hex(random_bytes(32));
-            $this->store->saveRefresh($candidate, $userId);
-            $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
-            $refreshToken = $candidate;
-        } catch (Throwable $e) {
-            $refreshToken = null;
-        }
+        $this->store->saveRefresh($refreshToken, $userId);
+        $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
 
         return $this->sessionResult($accessToken, $refreshToken, $user);
     }

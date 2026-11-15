@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/RedisClient.php';
+require_once __DIR__ . '/ApiException.php';
 
 class SessionStore
 {
@@ -14,7 +15,7 @@ class SessionStore
 
     public function saveRefresh(string $refreshToken, int $userId): void
     {
-        $this->client()->set(
+        $this->write(
             $this->refreshKey($refreshToken),
             json_encode(['user_id' => $userId]),
             (int) $this->config['session_ttl_seconds']
@@ -23,7 +24,7 @@ class SessionStore
 
     public function findRefresh(string $refreshToken): ?int
     {
-        $stored = $this->client()->get($this->refreshKey($refreshToken));
+        $stored = $this->run(fn(RedisClient $redis) => $redis->get($this->refreshKey($refreshToken)));
         if ($stored === null) {
             return null;
         }
@@ -36,22 +37,40 @@ class SessionStore
 
     public function deleteRefresh(string $refreshToken): void
     {
-        $this->client()->del($this->refreshKey($refreshToken));
+        $this->run(fn(RedisClient $redis) => $redis->del($this->refreshKey($refreshToken)));
     }
 
     public function saveAccess(string $accessToken, int $userId, int $ttlSeconds): void
     {
-        $this->client()->set($this->accessKey($accessToken), (string) $userId, $ttlSeconds);
+        $this->write($this->accessKey($accessToken), (string) $userId, $ttlSeconds);
     }
 
     public function accessExists(string $accessToken): bool
     {
-        return $this->client()->get($this->accessKey($accessToken)) !== null;
+        return $this->run(fn(RedisClient $redis) => $redis->get($this->accessKey($accessToken))) !== null;
     }
 
     public function deleteAccess(string $accessToken): void
     {
-        $this->client()->del($this->accessKey($accessToken));
+        $this->run(fn(RedisClient $redis) => $redis->del($this->accessKey($accessToken)));
+    }
+
+    private function write(string $key, string $value, int $ttlSeconds): void
+    {
+        $this->run(function (RedisClient $redis) use ($key, $value, $ttlSeconds) {
+            if (!$redis->set($key, $value, $ttlSeconds)) {
+                throw new RuntimeException('Redis write failed');
+            }
+        });
+    }
+
+    private function run(callable $action)
+    {
+        try {
+            return $action($this->client());
+        } catch (RuntimeException $e) {
+            throw new ApiException('Session service unavailable', 503);
+        }
     }
 
     private function refreshKey(string $token): string
