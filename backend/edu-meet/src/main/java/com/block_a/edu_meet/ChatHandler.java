@@ -68,9 +68,23 @@ public class ChatHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        String userId = (String) session.getAttributes().get("userId");
-        Message incoming = objectMapper.readValue(message.getPayload(), Message.class);
+               String userId = (String) session.getAttributes().get("userId");
+
+        Message incoming;
+        try {
+            incoming = objectMapper.readValue(message.getPayload(), Message.class);
+        } catch (Exception e) {
+            return;
+        }
+
+        if (incoming.getConversationId() == null || incoming.getText() == null
+                || incoming.getText().isBlank() || incoming.getText().length() > 2000) {
+            return;
+        }
+
         incoming.setSenderId(userId);
+        incoming.setId(null);
+                incoming.setId(null);
 
         Conversation conversation = conversationRepository
                 .findById(incoming.getConversationId()).orElse(null);
@@ -88,8 +102,12 @@ public class ChatHandler extends TextWebSocketHandler {
             Set<WebSocketSession> memberSessions = sessionsByUser.get(memberId);
             if (memberSessions == null) continue;
             for (WebSocketSession s : memberSessions) {
-                if (s.isOpen()) {
-                    s.sendMessage(out);
+                                try {
+                    if (s.isOpen()) {
+                        s.sendMessage(out);
+                    }
+                } catch (Exception e) {
+                    System.out.println("Failed to send to a connection: " + e.getMessage());
                 }
             }
         }

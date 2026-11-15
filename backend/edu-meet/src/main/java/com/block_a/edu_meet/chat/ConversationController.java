@@ -50,8 +50,21 @@ public class ConversationController {
         return memberLookup.findMembers(conversation.getParticipantIds());
     }
 
-    @PostMapping
+        @PostMapping
     public Conversation createConversation(@RequestBody CreateConversationRequest request) {
+        if (request.type() == null
+                || request.participantIds() == null
+                || request.participantIds().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type and participantIds are required");
+        }
+        if (request.type() == ConversationType.PRIVATE && request.participantIds().size() != 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats need exactly 2 participants");
+        }
+        if (request.type() != ConversationType.PRIVATE
+                && (request.name() == null || request.name().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "group chats need a name");
+        }
+
         Conversation conversation = new Conversation(
                 request.type(), request.name(), request.participantIds());
         conversation.setBlockId(request.blockId());
