@@ -19,19 +19,31 @@ public class MessageController {
 
     private final MessageRepository messageRepository;
     private final ConversationAccess conversationAccess;
+    private final RecentMessageCache recentMessageCache;
 
     public MessageController(MessageRepository messageRepository,
-                             ConversationAccess conversationAccess) {
+                             ConversationAccess conversationAccess,
+                             RecentMessageCache recentMessageCache) {
         this.messageRepository = messageRepository;
         this.conversationAccess = conversationAccess;
+        this.recentMessageCache = recentMessageCache;
     }
 
     @GetMapping("/{conversationId}/messages")
     public List<Message> getLatestMessages(@PathVariable String conversationId,
                                           @RequestParam String userId) {
         conversationAccess.requireMember(conversationId, userId);
-        return messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
-                conversationId, PageRequest.of(0, PAGE_SIZE));
+        List<String> recentIds = messageRepository.findRecentIds(
+                        conversationId, PageRequest.of(0, RecentMessageCache.MAX_MESSAGES))
+                .stream().map(Message::getId).toList();
+        var cached = recentMessageCache.getLatest(conversationId, recentIds);
+        if (cached.isPresent()) {
+            return cached.get().stream().limit(PAGE_SIZE).toList();
+        }
+        List<Message> recent = messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
+                conversationId, PageRequest.of(0, RecentMessageCache.MAX_MESSAGES));
+        recentMessageCache.putLatest(conversationId, recent);
+        return recent.stream().limit(PAGE_SIZE).toList();
     }
 
     @GetMapping("/{conversationId}/messages/older")

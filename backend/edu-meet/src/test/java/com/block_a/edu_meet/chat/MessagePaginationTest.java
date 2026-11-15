@@ -25,6 +25,8 @@ class MessagePaginationTest {
     private MessageRepository messages;
     @Autowired
     private ConversationRepository conversations;
+    @Autowired
+    private RecentMessageCache cache;
 
     private Conversation conversation;
     private final List<Message> created = new ArrayList<>();
@@ -38,7 +40,10 @@ class MessagePaginationTest {
     @AfterEach
     void cleanUp() {
         messages.deleteAll(created);
-        if (conversation != null) conversations.deleteById(conversation.getId());
+        if (conversation != null) {
+            cache.invalidate(conversation.getId());
+            conversations.deleteById(conversation.getId());
+        }
     }
 
     @ParameterizedTest
@@ -57,6 +62,10 @@ class MessagePaginationTest {
 
         List<Message> page = controller.getLatestMessages(conversation.getId(), "member");
         assertEquals(20, page.size());
+        assertEquals(page.stream().map(Message::getId).toList(),
+                controller.getLatestMessages(conversation.getId(), "member")
+                        .stream().map(Message::getId).toList(),
+                "The warmed cache must keep the same order when timestamps repeat");
         List<Message> received = new ArrayList<>(page);
 
         // New activity after page one must not shift the older-page cursor.

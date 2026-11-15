@@ -3,6 +3,7 @@ package com.block_a.edu_meet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.block_a.edu_meet.chat.Conversation;
 import com.block_a.edu_meet.chat.ConversationRepository;
 import com.block_a.edu_meet.chat.ConversationType;
 import com.block_a.edu_meet.chat.MessageRepository;
+import com.block_a.edu_meet.chat.RecentMessageCache;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatHandlerTest {
@@ -35,6 +37,8 @@ class ChatHandlerTest {
 
     @Autowired
     private MessageRepository messageRepository;
+    @Autowired
+    private RecentMessageCache cache;
 
     private WebSocketSession connect(String userId, BlockingQueue<String> inbox) throws Exception {
         return new StandardWebSocketClient().execute(new TextWebSocketHandler() {
@@ -58,6 +62,8 @@ class ChatHandlerTest {
         WebSocketSession outsider = connect("outsider", outsiderInbox);
 
         try {
+            cache.putLatest(convoId, List.of());
+            assertTrue(cache.getLatest(convoId, List.of()).isPresent());
             // an outsider's message is ignored
             outsider.sendMessage(new TextMessage(
                     "{\"conversationId\":\"" + convoId + "\",\"text\":\"from outsider\"}"));
@@ -68,12 +74,14 @@ class ChatHandlerTest {
                     "{\"conversationId\":\"" + convoId + "\",\"text\":\"from member\"}"));
             String received = member2Inbox.poll(5, TimeUnit.SECONDS);
             assertNotNull(received);
+            assertTrue(cache.getLatest(convoId, List.of()).isEmpty(), "A saved send must invalidate old history");
             assertNull(outsiderInbox.poll(1, TimeUnit.SECONDS));
 
             // only the member's message was stored
             assertEquals(1, messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
                     convoId, org.springframework.data.domain.PageRequest.of(0, 10)).size());
         } finally {
+            cache.invalidate(convoId);
             member1.close();
             member2.close();
             outsider.close();

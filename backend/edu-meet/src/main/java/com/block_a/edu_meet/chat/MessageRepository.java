@@ -11,6 +11,10 @@ public interface MessageRepository extends MongoRepository<Message, String> {
 
     List<Message> findByConversationIdOrderByTimestampDescIdDesc(String conversationId, Pageable pageable);
 
+    @Query(value = "{'conversationId': ?0}", fields = "{'_id': 1}",
+            sort = "{'timestamp': -1, '_id': -1}")
+    List<Message> findRecentIds(String conversationId, Pageable pageable);
+
     @Query(value = "{'conversationId': ?0, '$or': ["
             + "{'timestamp': {'$lt': ?1}}, {'timestamp': ?1, '_id': {'$lt': ?2}}]}",
             sort = "{'timestamp': -1, '_id': -1}")

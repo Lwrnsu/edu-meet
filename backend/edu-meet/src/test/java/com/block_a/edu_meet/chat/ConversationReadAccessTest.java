@@ -27,6 +27,7 @@ class ConversationReadAccessTest {
     private ConversationRepository conversations;
     private MessageRepository messages;
     private MemberLookup members;
+    private RecentMessageCache cache;
     private Conversation conversation;
     private MockMvc mvc;
 
@@ -35,12 +36,13 @@ class ConversationReadAccessTest {
         conversations = mock(ConversationRepository.class);
         messages = mock(MessageRepository.class);
         members = mock(MemberLookup.class);
+        cache = mock(RecentMessageCache.class);
         conversation = new Conversation(ConversationType.BLOCK, "Test block", List.of("member"));
         when(conversations.findById("chat")).thenReturn(Optional.of(conversation));
 
         ConversationAccess access = new ConversationAccess(conversations);
         mvc = MockMvcBuilders.standaloneSetup(
-                new MessageController(messages, access),
+                new MessageController(messages, access, cache),
                 new ConversationController(conversations, members, messages, access)).build();
     }
 
@@ -70,7 +72,7 @@ class ConversationReadAccessTest {
         mvc.perform(get("/api/conversations/chat" + endpoint)
                 .param("userId", "outsider").param("beforeId", "cursor"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(messages, members);
+        verifyNoInteractions(messages, members, cache);
     }
 
     @ParameterizedTest
@@ -79,7 +81,7 @@ class ConversationReadAccessTest {
         mvc.perform(get("/api/conversations/chat" + endpoint)
                 .param("beforeId", "cursor"))
                 .andExpect(status().isBadRequest());
-        verifyNoInteractions(conversations, messages, members);
+        verifyNoInteractions(conversations, messages, members, cache);
     }
 
     @ParameterizedTest
@@ -88,7 +90,7 @@ class ConversationReadAccessTest {
         mvc.perform(get("/api/conversations/chat" + endpoint)
                 .param("userId", " ").param("beforeId", "cursor"))
                 .andExpect(status().isBadRequest());
-        verifyNoInteractions(messages, members);
+        verifyNoInteractions(messages, members, cache);
     }
 
     @ParameterizedTest
@@ -97,7 +99,7 @@ class ConversationReadAccessTest {
         mvc.perform(get("/api/conversations/missing" + endpoint)
                 .param("userId", "member").param("beforeId", "cursor"))
                 .andExpect(status().isNotFound());
-        verifyNoInteractions(messages, members);
+        verifyNoInteractions(messages, members, cache);
     }
 
     @Test
@@ -130,9 +132,9 @@ class ConversationReadAccessTest {
                 .andExpect(status().isOk());
 
         conversation.setParticipantIds(List.of("someone-else"));
-        clearInvocations(messages);
+        clearInvocations(messages, cache);
         mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(messages, members);
+        verifyNoInteractions(messages, members, cache);
     }
 }

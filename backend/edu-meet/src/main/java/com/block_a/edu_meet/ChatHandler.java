@@ -95,7 +95,7 @@ public class ChatHandler extends TextWebSocketHandler {
         incoming.setTimestamp(Instant.now());
         Message saved = messageRepository.save(incoming);
         System.out.println("Saved: " + saved.getId());
-                recentMessageCache.add(saved);
+        recentMessageCache.invalidate(saved.getConversationId());
 
         TextMessage out = new TextMessage(objectMapper.writeValueAsString(saved));
         for (String memberId : conversation.getParticipantIds()) {
