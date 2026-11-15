@@ -24,9 +24,9 @@ class ConversationSidebarTest {
         Conversation newest = conversation("newest");
         when(conversations.findByParticipantIdsContaining("member"))
                 .thenReturn(List.of(empty, older, newest));
-        when(messages.findFirstByConversationIdOrderByTimestampDesc("older"))
+        when(messages.findFirstByConversationIdOrderByTimestampDescIdDesc("older"))
                 .thenReturn(new Message("older", "member", "Yesterday", Instant.parse("2026-11-14T12:00:00Z")));
-        when(messages.findFirstByConversationIdOrderByTimestampDesc("newest"))
+        when(messages.findFirstByConversationIdOrderByTimestampDescIdDesc("newest"))
                 .thenReturn(new Message("newest", "member", "Today", Instant.parse("2026-11-15T12:00:00Z")));
 
         List<ConversationSummary> sidebar = controller.getMyConversations("member");
@@ -38,7 +38,7 @@ class ConversationSidebarTest {
         assertNull(sidebar.getLast().lastMessageTime());
 
         // A new message should move the older conversation to the top on the next request.
-        when(messages.findFirstByConversationIdOrderByTimestampDesc("older"))
+        when(messages.findFirstByConversationIdOrderByTimestampDescIdDesc("older"))
                 .thenReturn(new Message("older", "member", "Just now", Instant.parse("2026-11-15T13:00:00Z")));
         List<ConversationSummary> updated = controller.getMyConversations("member");
         assertEquals(List.of("older", "newest", "empty"),

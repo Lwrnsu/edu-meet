@@ -18,10 +18,10 @@ class MongoIndexTest {
 
     @Test
     void createsConversationAndTimestampIndexOnMessages() {
-        Document expected = new Document("conversationId", 1).append("timestamp", -1);
+        Document expected = new Document("conversationId", 1).append("timestamp", -1).append("_id", -1);
         assertTrue(mongoTemplate.getCollection("messages").listIndexes().into(new ArrayList<>())
                 .stream().anyMatch(index -> expected.equals(index.get("key", Document.class))),
-                "MongoDB should have the conversationId and descending timestamp index");
+                "MongoDB should have the conversationId, descending timestamp and ID index");
     }
 
     @Test

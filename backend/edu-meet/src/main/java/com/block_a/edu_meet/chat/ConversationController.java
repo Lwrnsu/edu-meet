@@ -41,7 +41,7 @@ public class ConversationController {
         return conversationRepository.findByParticipantIdsContaining(userId).stream()
                 .map(c -> {
                     Message last = messageRepository
-                            .findFirstByConversationIdOrderByTimestampDesc(c.getId());
+                            .findFirstByConversationIdOrderByTimestampDescIdDesc(c.getId());
                     return new ConversationSummary(
                             c.getId(), c.getType(), c.getName(), c.getAvatarUrl(),
                             c.getParticipantIds(),

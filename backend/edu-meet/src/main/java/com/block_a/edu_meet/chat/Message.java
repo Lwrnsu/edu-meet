@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "messages")
-@CompoundIndex(name = "conversation_timestamp", def = "{'conversationId': 1, 'timestamp': -1}")
+@CompoundIndex(name = "conversation_timestamp_id", def = "{'conversationId': 1, 'timestamp': -1, '_id': -1}")
 public class Message {
 
     @Id

@@ -41,14 +41,14 @@ class MessageRepositoryTest {
         }
 
         List<Message> latest = messageRepository
-                .findByConversationIdOrderByTimestampDesc(convo, PageRequest.of(0, 3));
+                .findByConversationIdOrderByTimestampDescIdDesc(convo, PageRequest.of(0, 3));
         assertEquals(3, latest.size());
         assertEquals("msg 5", latest.get(0).getText());
 
         Instant oldestOnScreen = latest.get(2).getTimestamp();
         List<Message> older = messageRepository
-                .findByConversationIdAndTimestampBeforeOrderByTimestampDesc(
-                        convo, oldestOnScreen, PageRequest.of(0, 3));
+                .findOlderMessages(
+                        convo, oldestOnScreen, latest.get(2).getId(), PageRequest.of(0, 3));
         assertEquals(2, older.size());
         assertEquals("msg 2", older.get(0).getText());
 

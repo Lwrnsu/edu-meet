@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +26,6 @@ class ConversationReadAccessTest {
 
     private ConversationRepository conversations;
     private MessageRepository messages;
-    private RecentMessageCache cache;
     private MemberLookup members;
     private Conversation conversation;
     private MockMvc mvc;
@@ -36,14 +34,13 @@ class ConversationReadAccessTest {
     void setUp() {
         conversations = mock(ConversationRepository.class);
         messages = mock(MessageRepository.class);
-        cache = mock(RecentMessageCache.class);
         members = mock(MemberLookup.class);
         conversation = new Conversation(ConversationType.BLOCK, "Test block", List.of("member"));
         when(conversations.findById("chat")).thenReturn(Optional.of(conversation));
 
         ConversationAccess access = new ConversationAccess(conversations);
         mvc = MockMvcBuilders.standaloneSetup(
-                new MessageController(messages, cache, access),
+                new MessageController(messages, access),
                 new ConversationController(conversations, members, messages, access)).build();
     }
 
@@ -51,16 +48,17 @@ class ConversationReadAccessTest {
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void membersCanRead(String endpoint) throws Exception {
         Message message = new Message("chat", "member", "Hello", Instant.parse("2026-11-15T00:00:00Z"));
-        when(cache.getLatest("chat", 20)).thenReturn(List.of());
-        when(messages.findByConversationIdOrderByTimestampDesc(eq("chat"), any()))
+        message.setId("cursor");
+        when(messages.findById("cursor")).thenReturn(Optional.of(message));
+        when(messages.findByConversationIdOrderByTimestampDescIdDesc(eq("chat"), any()))
                 .thenReturn(List.of(message));
-        when(messages.findByConversationIdAndTimestampBeforeOrderByTimestampDesc(eq("chat"), any(), any()))
+        when(messages.findOlderMessages(eq("chat"), any(), eq("cursor"), any()))
                 .thenReturn(List.of(message));
         when(members.findMembers(List.of("member")))
                 .thenReturn(List.of(new MemberDto("member", "Test member", "2024-00001", null)));
 
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", "member").param("before", "2026-11-16T00:00:00Z"))
+                .param("userId", "member").param("beforeId", "cursor"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(
                         endpoint.equals("/members") ? "Test member" : "Hello")));
@@ -70,49 +68,71 @@ class ConversationReadAccessTest {
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void outsidersCannotRead(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", "outsider").param("before", "2026-11-16T00:00:00Z"))
+                .param("userId", "outsider").param("beforeId", "cursor"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(cache, messages, members);
+        verifyNoInteractions(messages, members);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void missingUserIdIsRejected(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("before", "2026-11-16T00:00:00Z"))
+                .param("beforeId", "cursor"))
                 .andExpect(status().isBadRequest());
-        verifyNoInteractions(conversations, cache, messages, members);
+        verifyNoInteractions(conversations, messages, members);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void blankUserIdIsRejected(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", " ").param("before", "2026-11-16T00:00:00Z"))
+                .param("userId", " ").param("beforeId", "cursor"))
                 .andExpect(status().isBadRequest());
-        verifyNoInteractions(cache, messages, members);
+        verifyNoInteractions(messages, members);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void missingConversationReturnsNotFound(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/missing" + endpoint)
-                .param("userId", "member").param("before", "2026-11-16T00:00:00Z"))
+                .param("userId", "member").param("beforeId", "cursor"))
                 .andExpect(status().isNotFound());
-        verifyNoInteractions(cache, messages, members);
+        verifyNoInteractions(messages, members);
     }
 
     @Test
-    void removedMemberCannotReadEvenWhenMessagesAreCached() throws Exception {
-        Message message = new Message("chat", "member", "Cached message", Instant.now());
-        when(cache.getLatest("chat", 20)).thenReturn(Collections.nCopies(20, message));
+    void olderMessagesRequireACursor() throws Exception {
+        mvc.perform(get("/api/conversations/chat/messages/older").param("userId", "member"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(messages);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "missing"})
+    void invalidCursorsAreRejected(String beforeId) throws Exception {
+        mvc.perform(get("/api/conversations/chat/messages/older")
+                .param("userId", "member").param("beforeId", beforeId))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cursorFromAnotherChatIsRejected() throws Exception {
+        when(messages.findById("foreign")).thenReturn(Optional.of(
+                new Message("other-chat", "member", "Other chat", Instant.now())));
+        mvc.perform(get("/api/conversations/chat/messages/older")
+                .param("userId", "member").param("beforeId", "foreign"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void removedMemberCannotReadHistory() throws Exception {
         mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
                 .andExpect(status().isOk());
 
         conversation.setParticipantIds(List.of("someone-else"));
-        clearInvocations(cache);
+        clearInvocations(messages);
         mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
                 .andExpect(status().isForbidden());
-        verifyNoInteractions(cache, messages, members);
+        verifyNoInteractions(messages, members);
     }
 }

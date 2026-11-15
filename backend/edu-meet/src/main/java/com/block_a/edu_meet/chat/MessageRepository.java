@@ -5,12 +5,16 @@ import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 public interface MessageRepository extends MongoRepository<Message, String> {
 
-    List<Message> findByConversationIdOrderByTimestampDesc(String conversationId, Pageable pageable);
+    List<Message> findByConversationIdOrderByTimestampDescIdDesc(String conversationId, Pageable pageable);
 
-    List<Message> findByConversationIdAndTimestampBeforeOrderByTimestampDesc(
-            String conversationId, Instant before, Pageable pageable);
-                Message findFirstByConversationIdOrderByTimestampDesc(String conversationId);
+    @Query(value = "{'conversationId': ?0, '$or': ["
+            + "{'timestamp': {'$lt': ?1}}, {'timestamp': ?1, '_id': {'$lt': ?2}}]}",
+            sort = "{'timestamp': -1, '_id': -1}")
+    List<Message> findOlderMessages(String conversationId, Instant before, String beforeId, Pageable pageable);
+
+    Message findFirstByConversationIdOrderByTimestampDescIdDesc(String conversationId);
 }

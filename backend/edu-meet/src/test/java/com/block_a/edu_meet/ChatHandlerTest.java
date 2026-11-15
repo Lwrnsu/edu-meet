@@ -71,13 +71,13 @@ class ChatHandlerTest {
             assertNull(outsiderInbox.poll(1, TimeUnit.SECONDS));
 
             // only the member's message was stored
-            assertEquals(1, messageRepository.findByConversationIdOrderByTimestampDesc(
+            assertEquals(1, messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
                     convoId, org.springframework.data.domain.PageRequest.of(0, 10)).size());
         } finally {
             member1.close();
             member2.close();
             outsider.close();
-            messageRepository.deleteAll(messageRepository.findByConversationIdOrderByTimestampDesc(
+            messageRepository.deleteAll(messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
                     convoId, org.springframework.data.domain.PageRequest.of(0, 50)));
             conversationRepository.deleteById(convoId);
         }
