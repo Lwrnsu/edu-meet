@@ -69,6 +69,31 @@ public class ConversationController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "group chats need a name");
         }
 
+
+        // return the existing chat instead of creating a duplicate
+        if (request.type() == ConversationType.PRIVATE) {
+            String first = request.participantIds().get(0);
+            String second = request.participantIds().get(1);
+            for (Conversation existing : conversationRepository
+                    .findByTypeAndParticipantIdsContaining(ConversationType.PRIVATE, first)) {
+                if (existing.getParticipantIds().contains(second)) {
+                    return existing;
+                }
+            }
+        } else if (request.type() == ConversationType.BLOCK && request.blockId() != null) {
+            Conversation existing = conversationRepository
+                    .findFirstByTypeAndBlockId(ConversationType.BLOCK, request.blockId());
+            if (existing != null) {
+                return existing;
+            }
+        } else if (request.type() == ConversationType.SUBJECT && request.classId() != null) {
+            Conversation existing = conversationRepository
+                    .findFirstByTypeAndClassId(ConversationType.SUBJECT, request.classId());
+            if (existing != null) {
+                return existing;
+            }
+        }
+
         Conversation conversation = new Conversation(
                 request.type(), request.name(), request.participantIds());
         conversation.setBlockId(request.blockId());
