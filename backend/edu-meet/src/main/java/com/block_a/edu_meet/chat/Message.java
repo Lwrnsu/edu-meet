@@ -3,9 +3,11 @@ package com.block_a.edu_meet.chat;
 
 import java.time.Instant;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "messages")
+@CompoundIndex(name = "conversation_timestamp", def = "{'conversationId': 1, 'timestamp': -1}")
 public class Message {
 
     @Id

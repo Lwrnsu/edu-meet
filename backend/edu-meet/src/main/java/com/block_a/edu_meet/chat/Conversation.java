@@ -3,6 +3,7 @@ package com.block_a.edu_meet.chat;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "conversations")
@@ -12,6 +13,7 @@ public class Conversation {
     private String id;
     private ConversationType type;
     private String name;
+    @Indexed
     private List<String> participantIds;
     private String avatarUrl;
     private String blockId;
