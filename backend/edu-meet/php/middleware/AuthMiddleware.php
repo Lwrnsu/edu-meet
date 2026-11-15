@@ -3,20 +3,24 @@
 require_once __DIR__ . '/../helpers/JwtHelper.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
+require_once __DIR__ . '/../helpers/CookieHelper.php';
+require_once __DIR__ . '/../helpers/SessionStore.php';
 
 class AuthMiddleware
 {
     public static function requireAuth(): array
     {
-        $header = self::getAuthorizationHeader();
-        if ($header === null || !preg_match('/^Bearer\s+(\S+)$/i', $header, $matches)) {
-            Response::error('Missing or invalid Authorization header', 401);
+        $cookies = require __DIR__ . '/../config/cookies.php';
+        $token = CookieHelper::get($cookies['access_name']) ?? self::getBearerToken();
+
+        if ($token === null) {
+            Response::error('Missing authentication token', 401);
         }
 
         $config = require __DIR__ . '/../config/jwt.php';
 
         try {
-            $payload = JwtHelper::decode($matches[1], $config['secret']);
+            $payload = JwtHelper::decode($token, $config['secret']);
         } catch (Throwable $e) {
             Response::error('Invalid or expired token', 401);
         }
@@ -25,7 +29,30 @@ class AuthMiddleware
             Response::error('Invalid token payload', 401);
         }
 
+        if (self::isRevoked($token)) {
+            Response::error('Session has ended, please log in again', 401);
+        }
+
         return $payload;
+    }
+
+    private static function isRevoked(string $token): bool
+    {
+        try {
+            return !(new SessionStore())->accessExists($token);
+        } catch (RuntimeException $e) {
+            return false;
+        }
+    }
+
+    private static function getBearerToken(): ?string
+    {
+        $header = self::getAuthorizationHeader();
+        if ($header !== null && preg_match('/^Bearer\s+(\S+)$/i', $header, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private static function getAuthorizationHeader(): ?string

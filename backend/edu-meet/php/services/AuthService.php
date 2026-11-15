@@ -3,20 +3,19 @@
 require_once __DIR__ . '/../repositories/UserRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/JwtHelper.php';
-require_once __DIR__ . '/../helpers/RedisClient.php';
+require_once __DIR__ . '/../helpers/SessionStore.php';
 
 class AuthService
 {
     private UserRepository $repository;
+    private SessionStore $store;
     private array $jwtConfig;
-    private array $redisConfig;
-    private ?RedisClient $redis = null;
 
-    public function __construct(?UserRepository $repository = null)
+    public function __construct(?UserRepository $repository = null, ?SessionStore $store = null)
     {
         $this->repository = $repository ?? new UserRepository();
+        $this->store = $store ?? new SessionStore();
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
-        $this->redisConfig = require __DIR__ . '/../config/redis.php';
     }
 
     public function login(array $payload): array
@@ -44,64 +43,90 @@ class AuthService
             throw new ApiException('User account is inactive', 403);
         }
 
-        return $this->buildSession($user, $this->createRefreshToken((int) $user['user_id']));
+        return $this->startSession($user);
     }
 
-    public function refresh(array $payload): array
+    public function refresh(?string $refreshToken, ?string $oldAccessToken): array
     {
-        $refreshToken = isset($payload['refresh_token']) ? (string) $payload['refresh_token'] : '';
-        if ($refreshToken === '') {
-            throw new ApiException('Validation failed', 422, ['refresh_token' => 'Refresh token is required']);
-        }
-
-        $redis = $this->redis();
-        $key = $this->sessionKey($refreshToken);
-        $stored = $redis->get($key);
-        if ($stored === null) {
+        if ($refreshToken === null) {
             throw new ApiException('Session expired, please log in again', 401);
-        }
-
-        $data = json_decode($stored, true);
-        $userId = is_array($data) ? (int) ($data['user_id'] ?? 0) : 0;
-        $user = $userId > 0 ? $this->repository->findById($userId) : null;
-
-        if ($user === null || (int) $user['status'] !== 1) {
-            $redis->del($key);
-            throw new ApiException('Session expired, please log in again', 401);
-        }
-
-        $redis->set($key, $stored, (int) $this->redisConfig['session_ttl_seconds']);
-
-        return $this->buildSession($user, $refreshToken);
-    }
-
-    public function logout(array $payload): void
-    {
-        $refreshToken = isset($payload['refresh_token']) ? (string) $payload['refresh_token'] : '';
-        if ($refreshToken === '') {
-            return;
         }
 
         try {
-            $this->redis()->del($this->sessionKey($refreshToken));
+            $userId = $this->store->findRefresh($refreshToken);
+        } catch (RuntimeException $e) {
+            throw new ApiException('Session service unavailable', 503);
+        }
+
+        if ($userId === null) {
+            throw new ApiException('Session expired, please log in again', 401);
+        }
+
+        $user = $this->repository->findById($userId);
+        if ($user === null || (int) $user['status'] !== 1) {
+            $this->store->deleteRefresh($refreshToken);
+            throw new ApiException('Session expired, please log in again', 401);
+        }
+
+        $accessToken = $this->createAccessToken($user);
+        $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
+        $this->store->saveRefresh($refreshToken, $userId);
+
+        if ($oldAccessToken !== null) {
+            $this->store->deleteAccess($oldAccessToken);
+        }
+
+        return $this->sessionResult($accessToken, $refreshToken, $user);
+    }
+
+    public function logout(?string $refreshToken, ?string $accessToken): void
+    {
+        try {
+            if ($refreshToken !== null) {
+                $this->store->deleteRefresh($refreshToken);
+            }
+            if ($accessToken !== null) {
+                $this->store->deleteAccess($accessToken);
+            }
         } catch (Throwable $e) {
             return;
         }
     }
 
-    private function buildSession(array $user, ?string $refreshToken): array
+    private function startSession(array $user): array
+    {
+        $userId = (int) $user['user_id'];
+        $accessToken = $this->createAccessToken($user);
+        $refreshToken = null;
+
+        try {
+            $candidate = bin2hex(random_bytes(32));
+            $this->store->saveRefresh($candidate, $userId);
+            $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
+            $refreshToken = $candidate;
+        } catch (Throwable $e) {
+            $refreshToken = null;
+        }
+
+        return $this->sessionResult($accessToken, $refreshToken, $user);
+    }
+
+    private function createAccessToken(array $user): string
     {
         $now = time();
-        $token = JwtHelper::encode([
+
+        return JwtHelper::encode([
             'sub' => (int) $user['user_id'],
             'email' => $user['email'],
             'iat' => $now,
             'exp' => $now + (int) $this->jwtConfig['expiration_seconds'],
         ], $this->jwtConfig['secret']);
+    }
 
+    private function sessionResult(string $accessToken, ?string $refreshToken, array $user): array
+    {
         return [
-            'token' => $token,
-            'token_type' => 'Bearer',
+            'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
             'user' => [
                 'user_id' => (int) $user['user_id'],
@@ -113,35 +138,5 @@ class AuthService
                 'updated_at' => $user['updated_at'],
             ],
         ];
-    }
-
-    private function createRefreshToken(int $userId): ?string
-    {
-        try {
-            $refreshToken = bin2hex(random_bytes(32));
-            $this->redis()->set(
-                $this->sessionKey($refreshToken),
-                json_encode(['user_id' => $userId]),
-                (int) $this->redisConfig['session_ttl_seconds']
-            );
-
-            return $refreshToken;
-        } catch (Throwable $e) {
-            return null;
-        }
-    }
-
-    private function sessionKey(string $refreshToken): string
-    {
-        return 'session:' . hash('sha256', $refreshToken);
-    }
-
-    private function redis(): RedisClient
-    {
-        if ($this->redis === null) {
-            $this->redis = new RedisClient($this->redisConfig['host'], (int) $this->redisConfig['port']);
-        }
-
-        return $this->redis;
     }
 }

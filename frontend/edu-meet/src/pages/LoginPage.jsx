@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { login } from '../api/auth'
-import { setSession } from '../lib/authStorage'
 import './LoginPage.css'
 
 const REMEMBER_EMAIL_KEY = 'edu_meet_remember_email'
@@ -34,7 +33,6 @@ export default function LoginPage({ onSuccess, onSwitchToSignUp, onForgotPasswor
       } else {
         localStorage.removeItem(REMEMBER_EMAIL_KEY)
       }
-      setSession({ token: data.token, user: data.user })
       onSuccess?.(data)
     } catch (err) {
       setError(err.message || 'Login failed')

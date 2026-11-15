@@ -1,73 +1,37 @@
 import { useEffect, useState } from 'react'
-import { logoutRequest, refreshSession } from './api/auth'
+import { logoutRequest, restoreSession } from './api/auth'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import LoginPage from './pages/LoginPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import SignUpPage from './pages/SignUpPage'
-import {
-  clearSession,
-  getRefreshToken,
-  getSession,
-  isTokenExpired,
-  setSession,
-} from './lib/authStorage'
 
 function App() {
-  const [session, setSessionState] = useState(() => {
-    const saved = getSession()
-    if (!saved || isTokenExpired(saved.token)) return null
-    return saved
-  })
-  const [checking, setChecking] = useState(() => {
-    const saved = getSession()
-    return Boolean(getRefreshToken() && (!saved || isTokenExpired(saved.token)))
-  })
+  const [user, setUser] = useState(null)
+  const [checking, setChecking] = useState(true)
   const [authView, setAuthView] = useState('signup')
   const [resetEmail, setResetEmail] = useState('')
 
   useEffect(() => {
-    if (!checking) return
     let cancelled = false
 
-    async function restore() {
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) {
+    restoreSession()
+      .then((data) => {
+        if (!cancelled) setUser(data.user)
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null)
+      })
+      .finally(() => {
         if (!cancelled) setChecking(false)
-        return
-      }
-      try {
-        const data = await refreshSession(refreshToken)
-        if (cancelled) return
-        const nextSession = {
-          token: data.token,
-          refresh_token: data.refresh_token || refreshToken,
-          user: data.user,
-        }
-        setSession(nextSession)
-        setSessionState(nextSession)
-      } catch {
-        if (cancelled) return
-        clearSession()
-        setSessionState(null)
-      } finally {
-        if (!cancelled) setChecking(false)
-      }
-    }
+      })
 
-    restore()
     return () => {
       cancelled = true
     }
-  }, [checking])
+  }, [])
 
   function handleLoginSuccess(data) {
-    const nextSession = {
-      token: data.token,
-      refresh_token: data.refresh_token || null,
-      user: data.user,
-    }
-    setSession(nextSession)
-    setSessionState(nextSession)
+    setUser(data.user)
   }
 
   function handleOtpSent(email) {
@@ -76,12 +40,8 @@ function App() {
   }
 
   async function handleLogout() {
-    const refreshToken = getRefreshToken()
-    if (refreshToken) {
-      await logoutRequest(refreshToken).catch(() => {})
-    }
-    clearSession()
-    setSessionState(null)
+    await logoutRequest().catch(() => {})
+    setUser(null)
   }
 
   if (checking) {
@@ -95,7 +55,7 @@ function App() {
     )
   }
 
-  if (!session) {
+  if (!user) {
     if (authView === 'login') {
       return (
         <LoginPage
@@ -128,14 +88,14 @@ function App() {
     return <SignUpPage onSwitchToSignIn={() => setAuthView('login')} />
   }
 
-  const name = session.user?.first_name || session.user?.email || 'there'
+  const name = user.first_name || user.email || 'there'
 
   return (
     <main className="home">
       <div className="home__panel">
         <p className="home__brand">Edu-Meet</p>
         <h1 className="home__greeting">Welcome back, {name}.</h1>
-        <p className="home__email">{session.user?.email}</p>
+        <p className="home__email">{user.email}</p>
         <button className="home__logout" type="button" onClick={handleLogout}>
           Log out
         </button>
