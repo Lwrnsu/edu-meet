@@ -23,13 +23,16 @@ public class ConversationController {
     private final ConversationRepository conversationRepository;
     private final MemberLookup memberLookup;
     private final MessageRepository messageRepository;
+    private final ConversationAccess conversationAccess;
 
     public ConversationController(ConversationRepository conversationRepository,
                                   MemberLookup memberLookup,
-                                  MessageRepository messageRepository) {
+                                  MessageRepository messageRepository,
+                                  ConversationAccess conversationAccess) {
         this.conversationRepository = conversationRepository;
         this.memberLookup = memberLookup;
         this.messageRepository = messageRepository;
+        this.conversationAccess = conversationAccess;
     }
 
     @GetMapping
@@ -48,9 +51,9 @@ public class ConversationController {
     }
 
     @GetMapping("/{conversationId}/members")
-    public List<MemberDto> getMembers(@PathVariable String conversationId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public List<MemberDto> getMembers(@PathVariable String conversationId,
+                                      @RequestParam String userId) {
+        Conversation conversation = conversationAccess.requireMember(conversationId, userId);
         return memberLookup.findMembers(conversation.getParticipantIds());
     }
 

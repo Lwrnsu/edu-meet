@@ -18,15 +18,20 @@ public class MessageController {
 
     private final MessageRepository messageRepository;
     private final RecentMessageCache recentMessageCache;
+    private final ConversationAccess conversationAccess;
 
     public MessageController(MessageRepository messageRepository,
-                             RecentMessageCache recentMessageCache) {
+                             RecentMessageCache recentMessageCache,
+                             ConversationAccess conversationAccess) {
         this.messageRepository = messageRepository;
         this.recentMessageCache = recentMessageCache;
+        this.conversationAccess = conversationAccess;
     }
 
     @GetMapping("/{conversationId}/messages")
-    public List<Message> getLatestMessages(@PathVariable String conversationId) {
+    public List<Message> getLatestMessages(@PathVariable String conversationId,
+                                          @RequestParam String userId) {
+        conversationAccess.requireMember(conversationId, userId);
         List<Message> cached = recentMessageCache.getLatest(conversationId, PAGE_SIZE);
         if (cached.size() == PAGE_SIZE) {
             return cached;
@@ -38,7 +43,9 @@ public class MessageController {
     @GetMapping("/{conversationId}/messages/older")
     public List<Message> getOlderMessages(
             @PathVariable String conversationId,
+            @RequestParam String userId,
             @RequestParam Instant before) {
+        conversationAccess.requireMember(conversationId, userId);
         return messageRepository.findByConversationIdAndTimestampBeforeOrderByTimestampDesc(
                 conversationId, before, PageRequest.of(0, PAGE_SIZE));
     }

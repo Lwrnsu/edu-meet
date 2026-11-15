@@ -34,13 +34,21 @@
             if (!userId || !conversationId) return;
 
             messagesDiv.textContent = "";
-            const res = await fetch("/api/conversations/" + conversationId + "/messages");
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            const res = await fetch("/api/conversations/" + encodeURIComponent(conversationId)
+                + "/messages?userId=" + encodeURIComponent(userId));
+            if (!res.ok) {
+                addLine("Could not load this chat (HTTP " + res.status + "). Check the user and conversation IDs.");
+                return;
+            }
             const history = await res.json();
             history.reverse().forEach(m => addLine(m.senderId + ": " + m.text));
 
-            if (ws) ws.close();
             const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-            ws = new WebSocket(protocol + location.host + "/chat?userId=" + userId);
+            ws = new WebSocket(protocol + location.host + "/chat?userId=" + encodeURIComponent(userId));
             ws.onmessage = (event) => {
                 const m = JSON.parse(event.data);
                 if (m.conversationId === conversationId) {
