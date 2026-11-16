@@ -39,7 +39,9 @@ class UserService
             'email' => $data['email'],
             'password_hash' => password_hash($data['password'], PASSWORD_DEFAULT),
             'first_name' => $data['first_name'],
+            'middle_name' => $data['middle_name'],
             'last_name' => $data['last_name'],
+            'suffix' => $data['suffix'],
             'status' => $data['status'],
         ]);
 
@@ -62,7 +64,9 @@ class UserService
         $update = [
             'email' => $data['email'],
             'first_name' => $data['first_name'],
+            'middle_name' => $data['middle_name'],
             'last_name' => $data['last_name'],
+            'suffix' => $data['suffix'],
             'status' => $data['status'],
         ];
 
@@ -86,11 +90,34 @@ class UserService
     {
         $errors = [];
 
-        $email = isset($payload['email']) ? strtolower(trim((string) $payload['email'])) : '';
-        $firstName = isset($payload['first_name']) ? trim((string) $payload['first_name']) : '';
-        $lastName = isset($payload['last_name']) ? trim((string) $payload['last_name']) : '';
+        $email = isset($payload['email'])
+            ? strtolower(trim((string) $payload['email']))
+            : ($creating ? '' : (string) ($existing['email'] ?? ''));
+        $firstName = isset($payload['first_name'])
+            ? trim((string) $payload['first_name'])
+            : ($creating ? '' : (string) ($existing['first_name'] ?? ''));
+        $lastName = isset($payload['last_name'])
+            ? trim((string) $payload['last_name'])
+            : ($creating ? '' : (string) ($existing['last_name'] ?? ''));
         $password = isset($payload['password']) ? (string) $payload['password'] : null;
         $statusRaw = $payload['status'] ?? ($creating ? 1 : ($existing['status'] ?? 1));
+
+        $middleName = $this->parseOptionalName(
+            $payload,
+            'middle_name',
+            $creating,
+            $existing,
+            100,
+            $errors
+        );
+        $suffix = $this->parseOptionalName(
+            $payload,
+            'suffix',
+            $creating,
+            $existing,
+            20,
+            $errors
+        );
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors['email'] = 'A valid email is required';
@@ -134,10 +161,46 @@ class UserService
         return [
             'email' => $email,
             'first_name' => $firstName,
+            'middle_name' => $middleName,
             'last_name' => $lastName,
+            'suffix' => $suffix,
             'password' => $password,
             'status' => $status,
         ];
+    }
+
+    private function parseOptionalName(
+        array $payload,
+        string $field,
+        bool $creating,
+        ?array $existing,
+        int $maxLength,
+        array &$errors
+    ): ?string {
+        if (array_key_exists($field, $payload)) {
+            if ($payload[$field] === null) {
+                return null;
+            }
+            $value = trim((string) $payload[$field]);
+            if ($value === '') {
+                return null;
+            }
+            if (strlen($value) > $maxLength) {
+                $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . " must be at most {$maxLength} characters";
+            }
+            return $value;
+        }
+
+        if ($creating) {
+            return null;
+        }
+
+        $existingValue = $existing[$field] ?? null;
+        if ($existingValue === null || $existingValue === '') {
+            return null;
+        }
+
+        return (string) $existingValue;
     }
 
     private function parseStatus(mixed $status): int
@@ -172,7 +235,9 @@ class UserService
             'user_id' => (int) $user['user_id'],
             'email' => $user['email'],
             'first_name' => $user['first_name'],
+            'middle_name' => $user['middle_name'] ?? null,
             'last_name' => $user['last_name'],
+            'suffix' => $user['suffix'] ?? null,
             'status' => (int) $user['status'],
             'created_at' => $user['created_at'],
             'updated_at' => $user['updated_at'],

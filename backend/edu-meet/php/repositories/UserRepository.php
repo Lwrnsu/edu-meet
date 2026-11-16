@@ -13,7 +13,7 @@ class UserRepository
 
     public function findAll(): array
     {
-        $sql = 'SELECT user_id, email, first_name, last_name, status, created_at, updated_at, deleted_at
+        $sql = 'SELECT user_id, email, first_name, middle_name, last_name, suffix, status, created_at, updated_at, deleted_at
                 FROM users
                 WHERE deleted_at IS NULL
                 ORDER BY user_id ASC';
@@ -33,7 +33,7 @@ class UserRepository
 
     public function findById(int $id): ?array
     {
-        $sql = 'SELECT user_id, email, password_hash, first_name, last_name, status, created_at, updated_at, deleted_at
+        $sql = 'SELECT user_id, email, password_hash, first_name, middle_name, last_name, suffix, status, created_at, updated_at, deleted_at
                 FROM users
                 WHERE user_id = ? AND deleted_at IS NULL
                 LIMIT 1';
@@ -54,7 +54,7 @@ class UserRepository
 
     public function findByEmail(string $email): ?array
     {
-        $sql = 'SELECT user_id, email, password_hash, first_name, last_name, status, created_at, updated_at, deleted_at
+        $sql = 'SELECT user_id, email, password_hash, first_name, middle_name, last_name, suffix, status, created_at, updated_at, deleted_at
                 FROM users
                 WHERE email = ? AND deleted_at IS NULL
                 LIMIT 1';
@@ -101,8 +101,8 @@ class UserRepository
 
     public function create(array $data): int
     {
-        $sql = 'INSERT INTO users (email, password_hash, first_name, last_name, status)
-                VALUES (?, ?, ?, ?, ?)';
+        $sql = 'INSERT INTO users (email, password_hash, first_name, middle_name, last_name, suffix, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)';
 
         $stmt = $this->db->prepare($sql);
         if ($stmt === false) {
@@ -112,10 +112,12 @@ class UserRepository
         $email = $data['email'];
         $passwordHash = $data['password_hash'];
         $firstName = $data['first_name'];
+        $middleName = $data['middle_name'];
         $lastName = $data['last_name'];
+        $suffix = $data['suffix'];
         $status = (int) $data['status'];
 
-        $stmt->bind_param('ssssi', $email, $passwordHash, $firstName, $lastName, $status);
+        $stmt->bind_param('ssssssi', $email, $passwordHash, $firstName, $middleName, $lastName, $suffix, $status);
 
         if (!$stmt->execute()) {
             $error = $stmt->error;
@@ -133,7 +135,7 @@ class UserRepository
     {
         if (isset($data['password_hash'])) {
             $sql = 'UPDATE users
-                    SET email = ?, password_hash = ?, first_name = ?, last_name = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    SET email = ?, password_hash = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND deleted_at IS NULL';
             $stmt = $this->db->prepare($sql);
             if ($stmt === false) {
@@ -142,12 +144,14 @@ class UserRepository
             $email = $data['email'];
             $passwordHash = $data['password_hash'];
             $firstName = $data['first_name'];
+            $middleName = $data['middle_name'];
             $lastName = $data['last_name'];
+            $suffix = $data['suffix'];
             $status = (int) $data['status'];
-            $stmt->bind_param('ssssii', $email, $passwordHash, $firstName, $lastName, $status, $id);
+            $stmt->bind_param('ssssssii', $email, $passwordHash, $firstName, $middleName, $lastName, $suffix, $status, $id);
         } else {
             $sql = 'UPDATE users
-                    SET email = ?, first_name = ?, last_name = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    SET email = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND deleted_at IS NULL';
             $stmt = $this->db->prepare($sql);
             if ($stmt === false) {
@@ -155,9 +159,11 @@ class UserRepository
             }
             $email = $data['email'];
             $firstName = $data['first_name'];
+            $middleName = $data['middle_name'];
             $lastName = $data['last_name'];
+            $suffix = $data['suffix'];
             $status = (int) $data['status'];
-            $stmt->bind_param('sssii', $email, $firstName, $lastName, $status, $id);
+            $stmt->bind_param('sssssii', $email, $firstName, $middleName, $lastName, $suffix, $status, $id);
         }
 
         if (!$stmt->execute()) {
