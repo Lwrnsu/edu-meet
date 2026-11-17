@@ -4,13 +4,16 @@ import com.block_a.edu_meet.exception.ApiException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +24,9 @@ import org.springframework.web.client.RestClientException;
 
 @Component
 public class PhpLoginClient {
+
+	private static final String ACCESS_COOKIE = "edu_meet_token";
+	private static final String REFRESH_COOKIE = "edu_meet_refresh";
 
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
@@ -86,6 +92,50 @@ public class PhpLoginClient {
 				throw new ApiException("PHP login service returned an unreadable response", HttpStatus.BAD_GATEWAY);
 			}
 		}
-		return ResponseEntity.status(response.getStatusCode()).body(body);
+
+		ObjectNode objectBody;
+		if (body instanceof ObjectNode node) {
+			objectBody = node;
+		} else {
+			objectBody = objectMapper.createObjectNode();
+			objectBody.set("data", body);
+		}
+
+		putCookieToken(objectBody, response, ACCESS_COOKIE, "access_token");
+		putCookieToken(objectBody, response, REFRESH_COOKIE, "refresh_token");
+
+		return ResponseEntity.status(response.getStatusCode()).body(objectBody);
+	}
+
+	private void putCookieToken(
+			ObjectNode body,
+			RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response,
+			String cookieName,
+			String fieldName) {
+		JsonNode existing = body.get(fieldName);
+		if (existing != null && existing.isTextual() && !existing.asText().isBlank()) {
+			return;
+		}
+		String value = extractCookieValue(response.getHeaders().get(HttpHeaders.SET_COOKIE), cookieName);
+		if (value != null && !value.isBlank()) {
+			body.put(fieldName, value);
+		}
+	}
+
+	static String extractCookieValue(List<String> setCookieHeaders, String cookieName) {
+		if (setCookieHeaders == null || setCookieHeaders.isEmpty()) {
+			return null;
+		}
+		String prefix = cookieName + "=";
+		for (String header : setCookieHeaders) {
+			if (header == null || header.isBlank()) {
+				continue;
+			}
+			String firstSegment = header.split(";", 2)[0].trim();
+			if (firstSegment.regionMatches(true, 0, prefix, 0, prefix.length())) {
+				return firstSegment.substring(prefix.length());
+			}
+		}
+		return null;
 	}
 }

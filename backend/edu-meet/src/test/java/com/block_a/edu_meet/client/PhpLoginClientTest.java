@@ -13,6 +13,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -94,6 +95,40 @@ class PhpLoginClientTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody().get("access_token").asText()).isEqualTo("php-token");
+		server.verify();
+	}
+
+	@Test
+	void systemAdminLoginMapsPhpCookiesIntoBody() {
+		server.expect(requestTo(SYSTEM_ADMIN_LOGIN_URL))
+				.andRespond(withSuccess(
+								"{\"user\":{\"user_id\":6,\"email\":\"admin@example.com\"}}",
+								MediaType.APPLICATION_JSON)
+						.header(HttpHeaders.SET_COOKIE, "edu_meet_token=access-from-cookie; Path=/; HttpOnly")
+						.header(HttpHeaders.SET_COOKIE, "edu_meet_refresh=refresh-from-cookie; Path=/; HttpOnly"));
+
+		ResponseEntity<JsonNode> response = client.systemAdminLogin("admin@example.com", "secret");
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody().get("user").get("user_id").asInt()).isEqualTo(6);
+		assertThat(response.getBody().get("access_token").asText()).isEqualTo("access-from-cookie");
+		assertThat(response.getBody().get("refresh_token").asText()).isEqualTo("refresh-from-cookie");
+		server.verify();
+	}
+
+	@Test
+	void systemAdminLoginKeepsBodyTokensOverCookies() {
+		server.expect(requestTo(SYSTEM_ADMIN_LOGIN_URL))
+				.andRespond(withSuccess(
+								"{\"access_token\":\"body-access\",\"refresh_token\":\"body-refresh\",\"user\":{\"user_id\":1}}",
+								MediaType.APPLICATION_JSON)
+						.header(HttpHeaders.SET_COOKIE, "edu_meet_token=cookie-access; Path=/")
+						.header(HttpHeaders.SET_COOKIE, "edu_meet_refresh=cookie-refresh; Path=/"));
+
+		ResponseEntity<JsonNode> response = client.systemAdminLogin("admin@example.com", "secret");
+
+		assertThat(response.getBody().get("access_token").asText()).isEqualTo("body-access");
+		assertThat(response.getBody().get("refresh_token").asText()).isEqualTo("body-refresh");
 		server.verify();
 	}
 

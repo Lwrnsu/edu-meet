@@ -35,8 +35,8 @@ class AuthController
         $this->handlePost(function (array $payload) {
             try {
                 return $this->withCookies($this->service->refresh(
-                    CookieHelper::get($this->cookies['refresh_name']),
-                    CookieHelper::get($this->cookies['access_name'])
+                    $this->resolveRefreshToken($payload),
+                    $this->resolveAccessToken($payload)
                 ));
             } catch (ApiException $e) {
                 if ($e->getCode() === 401) {
@@ -51,13 +51,54 @@ class AuthController
     {
         $this->handlePost(function (array $payload) {
             $this->service->logout(
-                CookieHelper::get($this->cookies['refresh_name']),
-                CookieHelper::get($this->cookies['access_name'])
+                $this->resolveRefreshToken($payload),
+                $this->resolveAccessToken($payload)
             );
             $this->clearCookies();
 
             return ['message' => 'Logged out'];
         });
+    }
+
+    private function resolveRefreshToken(array $payload): ?string
+    {
+        $fromCookie = CookieHelper::get($this->cookies['refresh_name']);
+        if ($fromCookie !== null) {
+            return $fromCookie;
+        }
+
+        $fromBody = $payload['refresh_token'] ?? null;
+
+        return is_string($fromBody) && $fromBody !== '' ? $fromBody : null;
+    }
+
+    private function resolveAccessToken(array $payload): ?string
+    {
+        $fromCookie = CookieHelper::get($this->cookies['access_name']);
+        if ($fromCookie !== null) {
+            return $fromCookie;
+        }
+
+        $fromBody = $payload['access_token'] ?? null;
+        if (is_string($fromBody) && $fromBody !== '') {
+            return $fromBody;
+        }
+
+        return $this->getBearerToken();
+    }
+
+    private function getBearerToken(): ?string
+    {
+        $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null;
+        if (!is_string($header) || $header === '') {
+            return null;
+        }
+
+        if (preg_match('/^Bearer\s+(\S+)$/i', $header, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
     }
 
     private function withCookies(array $session): array
@@ -76,7 +117,12 @@ class AuthController
             );
         }
 
-        return ['user' => $session['user']];
+        // Include tokens in JSON so Java proxy / token-based admin clients can persist the session.
+        return [
+            'user' => $session['user'],
+            'access_token' => $session['access_token'],
+            'refresh_token' => $session['refresh_token'],
+        ];
     }
 
     private function clearCookies(): void
