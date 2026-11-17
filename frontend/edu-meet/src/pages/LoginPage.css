@@ -47,6 +47,10 @@
   overflow: hidden;
 }
 
+.login--admin .login__card {
+  grid-template-columns: minmax(0, 1.7fr) minmax(12rem, 0.9fr);
+}
+
 .login__welcome {
   display: grid;
   place-items: center;
