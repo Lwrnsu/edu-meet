@@ -23,6 +23,8 @@ import org.springframework.web.client.RestClient;
 class PhpLoginClientTest {
 
 	private static final String LOGIN_URL = "http://localhost/edu-meet/backend/edu-meet/php/api/auth/login.php";
+	private static final String SYSTEM_ADMIN_LOGIN_URL =
+			"http://localhost/edu-meet/backend/edu-meet/php/api/auth/system_admin_login.php";
 
 	private MockRestServiceServer server;
 	private PhpLoginClient client;
@@ -31,7 +33,7 @@ class PhpLoginClientTest {
 	void setUp() {
 		RestClient.Builder builder = RestClient.builder();
 		server = MockRestServiceServer.bindTo(builder).build();
-		client = new PhpLoginClient(builder.build(), new ObjectMapper(), LOGIN_URL);
+		client = new PhpLoginClient(builder.build(), new ObjectMapper(), LOGIN_URL, SYSTEM_ADMIN_LOGIN_URL);
 	}
 
 	@Test
@@ -76,6 +78,36 @@ class PhpLoginClientTest {
 				.hasMessage("PHP login service returned an unreadable response")
 				.extracting(ex -> ((ApiException) ex).getStatus())
 				.isEqualTo(HttpStatus.BAD_GATEWAY);
+		server.verify();
+	}
+
+	@Test
+	void systemAdminLoginPostsToAdminUrl() {
+		server.expect(requestTo(SYSTEM_ADMIN_LOGIN_URL))
+				.andExpect(method(HttpMethod.POST))
+				.andExpect(content().json("{\"email\":\"admin@example.com\",\"password\":\"secret\"}"))
+				.andRespond(withSuccess(
+						"{\"access_token\":\"php-token\",\"user\":{\"user_id\":1,\"email\":\"admin@example.com\"}}",
+						MediaType.APPLICATION_JSON));
+
+		ResponseEntity<JsonNode> response = client.systemAdminLogin("admin@example.com", "secret");
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody().get("access_token").asText()).isEqualTo("php-token");
+		server.verify();
+	}
+
+	@Test
+	void systemAdminLoginPassesThroughForbidden() {
+		server.expect(requestTo(SYSTEM_ADMIN_LOGIN_URL))
+				.andRespond(withStatus(HttpStatus.FORBIDDEN)
+						.contentType(MediaType.APPLICATION_JSON)
+						.body("{\"status\":403,\"message\":\"Not authorized as system admin\"}"));
+
+		ResponseEntity<JsonNode> response = client.systemAdminLogin("user@example.com", "secret");
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+		assertThat(response.getBody().get("message").asText()).isEqualTo("Not authorized as system admin");
 		server.verify();
 	}
 }

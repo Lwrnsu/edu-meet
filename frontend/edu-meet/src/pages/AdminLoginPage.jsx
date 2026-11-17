@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { login } from '../api/auth'
+import { systemAdminLogin } from '../api/auth'
 import './LoginPage.css'
 
 const REMEMBER_EMAIL_KEY = 'edu_meet_admin_remember_email'
@@ -27,7 +27,7 @@ export default function AdminLoginPage({ onSuccess, onForgotPassword, onSwitchTo
 
     setLoading(true)
     try {
-      const data = await login(trimmedEmail, password)
+      const data = await systemAdminLogin(trimmedEmail, password)
       if (rememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, trimmedEmail)
       } else {

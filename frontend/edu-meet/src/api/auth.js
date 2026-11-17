@@ -25,6 +25,10 @@ export function login(email, password) {
   return post('/auth/login.php', { email, password })
 }
 
+export function systemAdminLogin(email, password) {
+  return post('/auth/system_admin_login.php', { email, password })
+}
+
 export function restoreSession() {
   return post('/auth/refresh.php')
 }

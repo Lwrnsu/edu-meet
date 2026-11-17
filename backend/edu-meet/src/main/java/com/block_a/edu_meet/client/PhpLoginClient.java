@@ -25,31 +25,44 @@ public class PhpLoginClient {
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
 	private final String loginUrl;
+	private final String systemAdminLoginUrl;
 
 	@Autowired
-	public PhpLoginClient(@Value("${app.php.login-url}") String loginUrl) {
+	public PhpLoginClient(
+			@Value("${app.php.login-url}") String loginUrl,
+			@Value("${app.php.system-admin-login-url}") String systemAdminLoginUrl) {
 		HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
 		requestFactory.setReadTimeout(Duration.ofSeconds(10));
 		this.restClient = RestClient.builder().requestFactory(requestFactory).build();
 		this.objectMapper = new ObjectMapper();
 		this.loginUrl = loginUrl;
+		this.systemAdminLoginUrl = systemAdminLoginUrl;
 	}
 
-	PhpLoginClient(RestClient restClient, ObjectMapper objectMapper, String loginUrl) {
+	PhpLoginClient(RestClient restClient, ObjectMapper objectMapper, String loginUrl, String systemAdminLoginUrl) {
 		this.restClient = restClient;
 		this.objectMapper = objectMapper;
 		this.loginUrl = loginUrl;
+		this.systemAdminLoginUrl = systemAdminLoginUrl;
 	}
 
 	public ResponseEntity<JsonNode> login(String email, String password) {
+		return postLogin(loginUrl, email, password);
+	}
+
+	public ResponseEntity<JsonNode> systemAdminLogin(String email, String password) {
+		return postLogin(systemAdminLoginUrl, email, password);
+	}
+
+	private ResponseEntity<JsonNode> postLogin(String url, String email, String password) {
 		Map<String, String> payload = new LinkedHashMap<>();
 		payload.put("email", email == null ? "" : email);
 		payload.put("password", password == null ? "" : password);
 
 		try {
 			return restClient.post()
-					.uri(loginUrl)
+					.uri(url)
 					.contentType(MediaType.APPLICATION_JSON)
 					.body(payload)
 					.exchange((request, response) -> toResponse(response));

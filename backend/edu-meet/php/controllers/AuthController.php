@@ -25,6 +25,11 @@ class AuthController
         $this->handlePost(fn(array $payload) => $this->withCookies($this->service->login($payload)));
     }
 
+    public function systemAdminLogin(): void
+    {
+        $this->handlePost(fn(array $payload) => $this->withCookies($this->service->loginSystemAdmin($payload)));
+    }
+
     public function refresh(): void
     {
         $this->handlePost(function (array $payload) {

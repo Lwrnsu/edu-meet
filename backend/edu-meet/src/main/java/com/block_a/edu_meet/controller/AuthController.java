@@ -33,4 +33,9 @@ public class AuthController {
 	public ResponseEntity<JsonNode> loginWithPhp(@RequestBody LoginRequest request) {
 		return phpLoginClient.login(request.getEmail(), request.getPassword());
 	}
+
+	@PostMapping("/php-system-admin-login")
+	public ResponseEntity<JsonNode> systemAdminLoginWithPhp(@RequestBody LoginRequest request) {
+		return phpLoginClient.systemAdminLogin(request.getEmail(), request.getPassword());
+	}
 }

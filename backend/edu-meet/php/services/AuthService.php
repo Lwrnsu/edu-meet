@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../repositories/UserRepository.php';
+require_once __DIR__ . '/../repositories/UserRoleRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/JwtHelper.php';
 require_once __DIR__ . '/../helpers/SessionStore.php';
@@ -8,17 +9,44 @@ require_once __DIR__ . '/../helpers/SessionStore.php';
 class AuthService
 {
     private UserRepository $repository;
+    private UserRoleRepository $userRoleRepository;
     private SessionStore $store;
     private array $jwtConfig;
 
-    public function __construct(?UserRepository $repository = null, ?SessionStore $store = null)
-    {
+    public function __construct(
+        ?UserRepository $repository = null,
+        ?SessionStore $store = null,
+        ?UserRoleRepository $userRoleRepository = null
+    ) {
         $this->repository = $repository ?? new UserRepository();
+        $this->userRoleRepository = $userRoleRepository ?? new UserRoleRepository();
         $this->store = $store ?? new SessionStore();
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
     }
 
     public function login(array $payload): array
+    {
+        $user = $this->authenticateCredentials($payload);
+
+        if ($this->hasSystemAdminRole((int) $user['user_id'])) {
+            throw new ApiException('System admin accounts must use the system admin login', 403);
+        }
+
+        return $this->startSession($user);
+    }
+
+    public function loginSystemAdmin(array $payload): array
+    {
+        $user = $this->authenticateCredentials($payload);
+
+        if (!$this->hasSystemAdminRole((int) $user['user_id'])) {
+            throw new ApiException('Not authorized as system admin', 403);
+        }
+
+        return $this->startSession($user);
+    }
+
+    private function authenticateCredentials(array $payload): array
     {
         $email = isset($payload['email']) ? strtolower(trim((string) $payload['email'])) : '';
         $password = isset($payload['password']) ? (string) $payload['password'] : '';
@@ -43,7 +71,20 @@ class AuthService
             throw new ApiException('User account is inactive', 403);
         }
 
-        return $this->startSession($user);
+        return $user;
+    }
+
+    private function hasSystemAdminRole(int $userId): bool
+    {
+        foreach ($this->userRoleRepository->findByUserId($userId) as $row) {
+            $normalized = strtolower(preg_replace('/[\s_-]+/', '', (string) ($row['role_name'] ?? '')));
+            // Accept DB name "SystemAdmin" and snake_case "system_admin"
+            if ($normalized === 'systemadmin') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function refresh(?string $refreshToken, ?string $oldAccessToken): array
