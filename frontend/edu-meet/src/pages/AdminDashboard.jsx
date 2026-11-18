@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ManageSchoolsSection from './ManageSchoolsSection'
 import './AdminDashboard.css'
 
 const SCHOOL_REQUESTS = [
@@ -31,6 +32,15 @@ function IconKey() {
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="8" cy="10" r="3.2" />
       <path d="M10.5 10H20v2.2h-2V15h-2.2v-2.8H12" />
+    </svg>
+  )
+}
+
+function IconLock() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 018 0v3" />
     </svg>
   )
 }
@@ -69,7 +79,13 @@ export default function AdminDashboard({ onLogout }) {
   const [section, setSection] = useState('dashboard')
 
   const pageTitle =
-    section === 'schools' ? 'Manage Schools' : section === 'admins' ? 'Manage Admins' : 'Dashboard'
+    section === 'schools'
+      ? 'Manage Schools'
+      : section === 'admins'
+        ? 'Manage Admins'
+        : section === 'security'
+          ? 'Security'
+          : 'Dashboard'
 
   return (
     <div className="admin-dash">
@@ -85,37 +101,38 @@ export default function AdminDashboard({ onLogout }) {
         </div>
 
         <nav className="admin-dash__nav" aria-label="System admin">
-          <div className="admin-dash__nav-group">
-            <p className="admin-dash__nav-label">Dashboard</p>
-            <button
-              type="button"
-              className={`admin-dash__nav-item${section === 'dashboard' ? ' is-active' : ''}`}
-              onClick={() => setSection('dashboard')}
-            >
-              <IconGrid />
-              Dashboard
-            </button>
-          </div>
-
-          <div className="admin-dash__nav-group">
-            <p className="admin-dash__nav-label">Management</p>
-            <button
-              type="button"
-              className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'schools' ? ' is-active' : ''}`}
-              onClick={() => setSection('schools')}
-            >
-              <IconSchool />
-              Manage Schools
-            </button>
-            <button
-              type="button"
-              className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'admins' ? ' is-active' : ''}`}
-              onClick={() => setSection('admins')}
-            >
-              <IconKey />
-              Manage Admins
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`admin-dash__nav-item${section === 'dashboard' ? ' is-active' : ''}`}
+            onClick={() => setSection('dashboard')}
+          >
+            <IconGrid />
+            Dashboard
+          </button>
+          <button
+            type="button"
+            className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'schools' ? ' is-active' : ''}`}
+            onClick={() => setSection('schools')}
+          >
+            <IconSchool />
+            Manage Schools
+          </button>
+          <button
+            type="button"
+            className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'admins' ? ' is-active' : ''}`}
+            onClick={() => setSection('admins')}
+          >
+            <IconKey />
+            Manage Admins
+          </button>
+          <button
+            type="button"
+            className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'security' ? ' is-active' : ''}`}
+            onClick={() => setSection('security')}
+          >
+            <IconLock />
+            Security
+          </button>
         </nav>
 
         <button type="button" className="admin-dash__logout" onClick={() => onLogout?.()}>
@@ -199,6 +216,8 @@ export default function AdminDashboard({ onLogout }) {
               </div>
             </section>
           </>
+        ) : section === 'schools' ? (
+          <ManageSchoolsSection />
         ) : (
           <div className="admin-dash__empty">
             <h2 className="admin-dash__empty-title">{pageTitle}</h2>
