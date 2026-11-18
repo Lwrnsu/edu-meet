@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import ManageAdminsSection from './ManageAdminsSection'
 import ManageSchoolsSection from './ManageSchoolsSection'
 import './AdminDashboard.css'
 
@@ -77,6 +78,7 @@ function IconUser() {
 
 export default function AdminDashboard({ onLogout }) {
   const [section, setSection] = useState('dashboard')
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const pageTitle =
     section === 'schools'
@@ -86,6 +88,28 @@ export default function AdminDashboard({ onLogout }) {
         : section === 'security'
           ? 'Security'
           : 'Dashboard'
+
+  function closeLogoutConfirm() {
+    setLogoutConfirmOpen(false)
+  }
+
+  function confirmLogout() {
+    setLogoutConfirmOpen(false)
+    onLogout?.()
+  }
+
+  useEffect(() => {
+    if (!logoutConfirmOpen) return undefined
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        closeLogoutConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [logoutConfirmOpen])
 
   return (
     <div className="admin-dash">
@@ -135,7 +159,7 @@ export default function AdminDashboard({ onLogout }) {
           </button>
         </nav>
 
-        <button type="button" className="admin-dash__logout" onClick={() => onLogout?.()}>
+        <button type="button" className="admin-dash__logout" onClick={() => setLogoutConfirmOpen(true)}>
           <IconLogout />
           Logout
         </button>
@@ -218,6 +242,8 @@ export default function AdminDashboard({ onLogout }) {
           </>
         ) : section === 'schools' ? (
           <ManageSchoolsSection />
+        ) : section === 'admins' ? (
+          <ManageAdminsSection />
         ) : (
           <div className="admin-dash__empty">
             <h2 className="admin-dash__empty-title">{pageTitle}</h2>
@@ -225,6 +251,47 @@ export default function AdminDashboard({ onLogout }) {
           </div>
         )}
       </main>
+
+      {logoutConfirmOpen ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeLogoutConfirm()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+          >
+            <h3 id="logout-confirm-title" className="admin-schools-modal__title">
+              Are you sure you want to logout?
+            </h3>
+
+            <div className="admin-schools-modal__divider" />
+            <div className="admin-schools-modal__spacer" aria-hidden="true" />
+
+            <div className="admin-schools-modal__actions">
+              <button
+                type="button"
+                className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                onClick={confirmLogout}
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                onClick={closeLogoutConfirm}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

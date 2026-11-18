@@ -1,10 +1,45 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-const SAMPLE_SCHOOLS = [
-  { id: 1, name: 'Gordon College', status: 'approved' },
-  { id: 2, name: 'Columban College', status: 'approved' },
-  { id: 3, name: 'St. Joseph College', status: 'pending' },
+const INITIAL_SCHOOLS = [
+  {
+    id: 1,
+    name: 'Gordon College',
+    address: 'East Tapinac, Olongapo City, 2200 Zambales',
+    email: 'info@gordoncollege.edu.ph',
+    status: 'approved',
+    totalUsers: 7443,
+    departments: 11,
+  },
+  {
+    id: 2,
+    name: 'Columban College',
+    address: 'Barretto, Olongapo City, 2200 Zambales',
+    email: 'info@columban.edu.ph',
+    status: 'approved',
+    totalUsers: 5120,
+    departments: 8,
+  },
+  {
+    id: 3,
+    name: 'St. Joseph College',
+    address: 'East Bajac-Bajac, Olongapo City, 2200 Zambales',
+    email: 'sjcocollegedepartment@gmail.com',
+    status: 'pending',
+    totalUsers: 0,
+    departments: 0,
+  },
 ]
+
+const EMPTY_FORM = {
+  name: '',
+  address: '',
+  email: '',
+}
+
+const EMPTY_EDIT_FORM = {
+  name: '',
+  address: '',
+}
 
 function IconSchool() {
   return (
@@ -29,6 +64,27 @@ function IconCheck() {
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="12" cy="12" r="8" />
       <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+    </svg>
+  )
+}
+
+function IconUsers() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 18c.8-2.6 2.9-4 5.5-4s4.7 1.4 5.5 4" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M14.2 18c.4-1.7 1.6-2.9 3.4-3.3" />
+    </svg>
+  )
+}
+
+function IconBuilding() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M4 20V6l8-3 8 3v14" />
+      <path d="M9 20v-6h6v6" />
+      <path d="M9 10h.01M15 10h.01M9 14h.01M15 14h.01" />
     </svg>
   )
 }
@@ -79,18 +135,224 @@ function IconTrash() {
   )
 }
 
+function IconClose() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  )
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function formatCount(value) {
+  return Number(value || 0).toLocaleString('en-US')
+}
+
 export default function ManageSchoolsSection() {
+  const [schools, setSchools] = useState(INITIAL_SCHOOLS)
   const [query, setQuery] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [viewSchool, setViewSchool] = useState(null)
+  const [editSchool, setEditSchool] = useState(null)
+  const [reviewSchool, setReviewSchool] = useState(null)
+  const [deleteSchool, setDeleteSchool] = useState(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM)
+  const [error, setError] = useState('')
+  const [editError, setEditError] = useState('')
 
   const filteredSchools = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return SAMPLE_SCHOOLS
-    return SAMPLE_SCHOOLS.filter((school) => school.name.toLowerCase().includes(q))
-  }, [query])
+    if (!q) return schools
+    return schools.filter((school) => school.name.toLowerCase().includes(q))
+  }, [query, schools])
 
-  const total = SAMPLE_SCHOOLS.length
-  const pending = SAMPLE_SCHOOLS.filter((s) => s.status === 'pending').length
-  const approved = SAMPLE_SCHOOLS.filter((s) => s.status === 'approved').length
+  const total = schools.length
+  const pending = schools.filter((s) => s.status === 'pending').length
+  const approved = schools.filter((s) => s.status === 'approved').length
+
+  function closeModal() {
+    setModalOpen(false)
+    setForm(EMPTY_FORM)
+    setError('')
+  }
+
+  function closeViewModal() {
+    setViewSchool(null)
+  }
+
+  function closeEditModal() {
+    setEditSchool(null)
+    setEditForm(EMPTY_EDIT_FORM)
+    setEditError('')
+  }
+
+  function closeReviewModal() {
+    setReviewSchool(null)
+  }
+
+  function closeDeleteModal() {
+    setDeleteSchool(null)
+  }
+
+  function openModal() {
+    setForm(EMPTY_FORM)
+    setError('')
+    setViewSchool(null)
+    setEditSchool(null)
+    setReviewSchool(null)
+    setDeleteSchool(null)
+    setModalOpen(true)
+  }
+
+  function openViewModal(school) {
+    setModalOpen(false)
+    setEditSchool(null)
+    setReviewSchool(null)
+    setDeleteSchool(null)
+    setViewSchool(school)
+  }
+
+  function openEditModal(school) {
+    setModalOpen(false)
+    setViewSchool(null)
+    setReviewSchool(null)
+    setDeleteSchool(null)
+    setEditError('')
+    setEditForm({
+      name: school.name || '',
+      address: school.address || '',
+    })
+    setEditSchool(school)
+  }
+
+  function openReviewModal(school) {
+    setModalOpen(false)
+    setViewSchool(null)
+    setEditSchool(null)
+    setDeleteSchool(null)
+    setReviewSchool(school)
+  }
+
+  function openDeleteModal(school) {
+    setModalOpen(false)
+    setViewSchool(null)
+    setEditSchool(null)
+    setReviewSchool(null)
+    setDeleteSchool(school)
+  }
+
+  function updateField(field) {
+    return (event) => {
+      setForm((prev) => ({ ...prev, [field]: event.target.value }))
+      if (error) setError('')
+    }
+  }
+
+  function updateEditField(field) {
+    return (event) => {
+      setEditForm((prev) => ({ ...prev, [field]: event.target.value }))
+      if (editError) setEditError('')
+    }
+  }
+
+  function handleCreate(event) {
+    event.preventDefault()
+
+    const name = form.name.trim()
+    const address = form.address.trim()
+    const email = form.email.trim().toLowerCase()
+
+    if (!name || !address || !email) {
+      setError('School name, address, and email are required.')
+      return
+    }
+    if (!isValidEmail(email)) {
+      setError('Enter a valid school email.')
+      return
+    }
+
+    setSchools((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        name,
+        address,
+        email,
+        status: 'approved',
+        totalUsers: 0,
+        departments: 0,
+      },
+    ])
+    closeModal()
+  }
+
+  function handleEditSave(event) {
+    event.preventDefault()
+
+    if (!editSchool) return
+
+    const name = editForm.name.trim()
+    const address = editForm.address.trim()
+
+    if (!name || !address) {
+      setEditError('School name and address are required.')
+      return
+    }
+
+    setSchools((prev) =>
+      prev.map((school) =>
+        school.id === editSchool.id
+          ? { ...school, name, address }
+          : school
+      )
+    )
+    closeEditModal()
+  }
+
+  function handleApproveReview() {
+    if (!reviewSchool) return
+    setSchools((prev) =>
+      prev.map((school) =>
+        school.id === reviewSchool.id
+          ? { ...school, status: 'approved' }
+          : school
+      )
+    )
+    closeReviewModal()
+  }
+
+  function handleRejectReview() {
+    if (!reviewSchool) return
+    setSchools((prev) => prev.filter((school) => school.id !== reviewSchool.id))
+    closeReviewModal()
+  }
+
+  function handleConfirmDelete() {
+    if (!deleteSchool) return
+    setSchools((prev) => prev.filter((school) => school.id !== deleteSchool.id))
+    closeDeleteModal()
+  }
+
+  useEffect(() => {
+    if (!modalOpen && !viewSchool && !editSchool && !reviewSchool && !deleteSchool) return undefined
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        if (deleteSchool) closeDeleteModal()
+        else if (reviewSchool) closeReviewModal()
+        else if (editSchool) closeEditModal()
+        else if (viewSchool) closeViewModal()
+        else closeModal()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [modalOpen, viewSchool, editSchool, reviewSchool, deleteSchool])
 
   return (
     <section className="admin-schools" aria-label="School management">
@@ -139,7 +401,7 @@ export default function ManageSchoolsSection() {
           />
         </label>
 
-        <button type="button" className="admin-schools__add">
+        <button type="button" className="admin-schools__add" onClick={openModal}>
           <IconPlus />
           Add School
         </button>
@@ -161,18 +423,37 @@ export default function ManageSchoolsSection() {
               </span>
               <span className="admin-schools__actions">
                 {school.status === 'pending' ? (
-                  <button type="button" className="admin-schools__review">
+                  <button
+                    type="button"
+                    className="admin-schools__review"
+                    onClick={() => openReviewModal(school)}
+                  >
                     Review
                   </button>
                 ) : (
                   <>
-                    <button type="button" className="admin-schools__icon-btn" aria-label={`More actions for ${school.name}`}>
+                    <button
+                      type="button"
+                      className="admin-schools__icon-btn"
+                      aria-label={`View ${school.name}`}
+                      onClick={() => openViewModal(school)}
+                    >
                       <IconMore />
                     </button>
-                    <button type="button" className="admin-schools__icon-btn" aria-label={`Edit ${school.name}`}>
+                    <button
+                      type="button"
+                      className="admin-schools__icon-btn"
+                      aria-label={`Edit ${school.name}`}
+                      onClick={() => openEditModal(school)}
+                    >
                       <IconEdit />
                     </button>
-                    <button type="button" className="admin-schools__icon-btn" aria-label={`Delete ${school.name}`}>
+                    <button
+                      type="button"
+                      className="admin-schools__icon-btn"
+                      aria-label={`Delete ${school.name}`}
+                      onClick={() => openDeleteModal(school)}
+                    >
                       <IconTrash />
                     </button>
                   </>
@@ -186,6 +467,309 @@ export default function ManageSchoolsSection() {
           ) : null}
         </ul>
       </div>
+
+      {modalOpen ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeModal()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-school-title"
+          >
+            <h3 id="add-school-title" className="admin-schools-modal__title">
+              Add New School
+            </h3>
+
+            <form className="admin-schools-modal__form" onSubmit={handleCreate}>
+              <input
+                className="admin-schools-modal__input"
+                type="text"
+                value={form.name}
+                onChange={updateField('name')}
+                placeholder="School Name"
+                aria-label="School Name"
+                autoFocus
+              />
+              <input
+                className="admin-schools-modal__input"
+                type="text"
+                value={form.address}
+                onChange={updateField('address')}
+                placeholder="School Address"
+                aria-label="School Address"
+              />
+              <input
+                className="admin-schools-modal__input"
+                type="email"
+                value={form.email}
+                onChange={updateField('email')}
+                placeholder="School Email"
+                aria-label="School Email"
+              />
+
+              {error ? <p className="admin-schools-modal__error">{error}</p> : null}
+
+              <div className="admin-schools-modal__divider" />
+
+              <div className="admin-schools-modal__actions">
+                <button type="submit" className="admin-schools-modal__btn">
+                  Create School
+                </button>
+                <button type="button" className="admin-schools-modal__btn" onClick={closeModal}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {viewSchool ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeViewModal()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel admin-schools-modal__panel--view"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="view-school-title"
+          >
+            <h3 id="view-school-title" className="admin-schools-modal__title">
+              View School
+            </h3>
+
+            <div className="admin-schools-modal__form">
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={viewSchool.name}
+                readOnly
+                aria-label="School Name"
+              />
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={viewSchool.address || '—'}
+                readOnly
+                aria-label="School Address"
+              />
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={viewSchool.email || '—'}
+                readOnly
+                aria-label="School Email"
+              />
+
+              <div className="admin-schools-modal__divider" />
+
+              <div className="admin-schools-modal__stats" aria-label="School overview">
+                <article className="admin-schools-modal__stat">
+                  <span className="admin-schools-modal__stat-icon">
+                    <IconUsers />
+                  </span>
+                  <p className="admin-schools-modal__stat-value">{formatCount(viewSchool.totalUsers)}</p>
+                  <p className="admin-schools-modal__stat-label">Total Users</p>
+                </article>
+                <article className="admin-schools-modal__stat">
+                  <span className="admin-schools-modal__stat-icon">
+                    <IconBuilding />
+                  </span>
+                  <p className="admin-schools-modal__stat-value">{formatCount(viewSchool.departments)}</p>
+                  <p className="admin-schools-modal__stat-label">Departments</p>
+                </article>
+              </div>
+
+              <div className="admin-schools-modal__actions">
+                <button type="button" className="admin-schools-modal__btn" onClick={closeViewModal}>
+                  Return
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editSchool ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeEditModal()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-school-title"
+          >
+            <h3 id="edit-school-title" className="admin-schools-modal__title">
+              Edit School
+            </h3>
+
+            <form className="admin-schools-modal__form" onSubmit={handleEditSave}>
+              <input
+                className="admin-schools-modal__input"
+                type="text"
+                value={editForm.name}
+                onChange={updateEditField('name')}
+                placeholder="School Name"
+                aria-label="School Name"
+                autoFocus
+              />
+              <input
+                className="admin-schools-modal__input"
+                type="text"
+                value={editForm.address}
+                onChange={updateEditField('address')}
+                placeholder="School Address"
+                aria-label="School Address"
+              />
+
+              {editError ? <p className="admin-schools-modal__error">{editError}</p> : null}
+
+              <div className="admin-schools-modal__divider" />
+
+              <div className="admin-schools-modal__actions">
+                <button type="submit" className="admin-schools-modal__btn">
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                  onClick={closeEditModal}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {reviewSchool ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeReviewModal()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="review-school-title"
+          >
+            <button
+              type="button"
+              className="admin-schools-modal__close"
+              aria-label="Close"
+              onClick={closeReviewModal}
+            >
+              <IconClose />
+            </button>
+            <h3 id="review-school-title" className="admin-schools-modal__title">
+              School Registration Details
+            </h3>
+
+            <div className="admin-schools-modal__form">
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={reviewSchool.name}
+                readOnly
+                aria-label="School Name"
+              />
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={reviewSchool.address || '—'}
+                readOnly
+                aria-label="School Address"
+              />
+              <input
+                className="admin-schools-modal__input admin-schools-modal__input--readonly"
+                type="text"
+                value={reviewSchool.email || '—'}
+                readOnly
+                aria-label="School Email"
+              />
+
+              <div className="admin-schools-modal__divider" />
+
+              <div className="admin-schools-modal__actions">
+                <button
+                  type="button"
+                  className="admin-schools-modal__btn admin-schools-modal__btn--approve"
+                  onClick={handleApproveReview}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                  onClick={handleRejectReview}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteSchool ? (
+        <div
+          className="admin-schools-modal"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeDeleteModal()
+          }}
+        >
+          <div
+            className="admin-schools-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-school-title"
+          >
+            <h3 id="delete-school-title" className="admin-schools-modal__title">
+              Delete School
+            </h3>
+
+            <div className="admin-schools-modal__divider" />
+            <div className="admin-schools-modal__spacer" aria-hidden="true" />
+
+            <div className="admin-schools-modal__actions">
+              <button
+                type="button"
+                className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                onClick={handleConfirmDelete}
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                onClick={closeDeleteModal}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
