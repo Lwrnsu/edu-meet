@@ -2,9 +2,13 @@ import { useState } from 'react'
 import './SignUpPage.css'
 
 const INITIAL_FORM = {
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  suffix: '',
+  email: '',
   schoolName: '',
   location: '',
-  email: '',
   password: '',
   confirmPassword: '',
   acceptedTerms: false,
@@ -34,12 +38,14 @@ export default function SignUpPage({ onSwitchToSignIn }) {
     setError('')
     setInfo('')
 
+    const firstName = form.firstName.trim()
+    const lastName = form.lastName.trim()
     const schoolName = form.schoolName.trim()
     const location = form.location.trim()
     const email = form.email.trim()
     const { password, confirmPassword, acceptedTerms } = form
 
-    if (!schoolName || !location || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !schoolName || !location || !email || !password || !confirmPassword) {
       setError('Please fill in all required fields.')
       return
     }
@@ -80,6 +86,54 @@ export default function SignUpPage({ onSwitchToSignIn }) {
               <input
                 className="signup__input"
                 type="text"
+                name="firstName"
+                placeholder="First Name"
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={updateField('firstName')}
+                required
+              />
+              <input
+                className="signup__input"
+                type="text"
+                name="lastName"
+                placeholder="Last Name"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={updateField('lastName')}
+                required
+              />
+              <input
+                className="signup__input"
+                type="text"
+                name="middleName"
+                placeholder="Middle Name"
+                autoComplete="additional-name"
+                value={form.middleName}
+                onChange={updateField('middleName')}
+              />
+              <input
+                className="signup__input"
+                type="text"
+                name="suffix"
+                placeholder="Suffix"
+                autoComplete="honorific-suffix"
+                value={form.suffix}
+                onChange={updateField('suffix')}
+              />
+              <input
+                className="signup__input"
+                type="email"
+                name="email"
+                placeholder="Gmail"
+                autoComplete="email"
+                value={form.email}
+                onChange={updateField('email')}
+                required
+              />
+              <input
+                className="signup__input"
+                type="text"
                 name="schoolName"
                 placeholder="School Name"
                 value={form.schoolName}
@@ -87,22 +141,12 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 required
               />
               <input
-                className="signup__input"
+                className="signup__input signup__input--wide"
                 type="text"
                 name="location"
                 placeholder="Location"
                 value={form.location}
                 onChange={updateField('location')}
-                required
-              />
-              <input
-                className="signup__input signup__input--wide"
-                type="email"
-                name="email"
-                placeholder="Gmail"
-                autoComplete="email"
-                value={form.email}
-                onChange={updateField('email')}
                 required
               />
               <input
