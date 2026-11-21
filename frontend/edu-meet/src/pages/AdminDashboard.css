@@ -971,6 +971,187 @@
   font-weight: 500;
 }
 
+.admin-security {
+  display: grid;
+  place-items: center;
+  min-height: min(32rem, calc(100vh - 8rem));
+  padding: 1rem 0 2rem;
+}
+
+.admin-security__panel {
+  display: grid;
+  gap: 1rem;
+  width: min(40rem, 100%);
+}
+
+.admin-security__identity {
+  margin: 0;
+  color: var(--stroke);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.admin-security__title {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.admin-security__subtitle {
+  margin: 0;
+  color: var(--stroke);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.admin-security__form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.admin-security__field {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--stroke);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-security__field input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.admin-security__field input:focus {
+  outline: 2px solid rgba(156, 131, 246, 0.35);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.admin-security__message {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.admin-security__message--error {
+  color: #c2410c;
+}
+
+.admin-security__message--info {
+  color: var(--approved);
+}
+
+.admin-security__submit {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-security__submit:hover {
+  filter: brightness(0.96);
+}
+
+.admin-security__submit--secondary {
+  background: #b8a7f5;
+}
+
+.admin-security__submit--secondary:hover {
+  filter: brightness(0.97);
+}
+
+.admin-security__password-wrap {
+  position: relative;
+  display: grid;
+}
+
+.admin-security__password-wrap input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 2.75rem 0.65rem 0.85rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.admin-security__password-wrap input:focus {
+  outline: 2px solid rgba(156, 131, 246, 0.35);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.admin-security__eye {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--stroke);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.admin-security__eye:hover {
+  color: var(--accent);
+  background: rgba(156, 131, 246, 0.12);
+}
+
+.admin-security__resend {
+  margin: 0;
+  color: var(--stroke);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.admin-security__resend-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-security__resend-link:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .admin-dash {
     grid-template-columns: 1fr;

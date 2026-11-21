@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ManageAdminsSection from './ManageAdminsSection'
 import ManageSchoolsSection from './ManageSchoolsSection'
+import SecuritySection from './SecuritySection'
 import './AdminDashboard.css'
 
 const SCHOOL_REQUESTS = [
@@ -76,7 +77,7 @@ function IconUser() {
   )
 }
 
-export default function AdminDashboard({ onLogout }) {
+export default function AdminDashboard({ user, onLogout }) {
   const [section, setSection] = useState('dashboard')
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
@@ -244,6 +245,8 @@ export default function AdminDashboard({ onLogout }) {
           <ManageSchoolsSection />
         ) : section === 'admins' ? (
           <ManageAdminsSection />
+        ) : section === 'security' ? (
+          <SecuritySection user={user} />
         ) : (
           <div className="admin-dash__empty">
             <h2 className="admin-dash__empty-title">{pageTitle}</h2>
