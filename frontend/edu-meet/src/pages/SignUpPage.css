@@ -190,12 +190,20 @@
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.signup__submit:hover {
+.signup__submit:hover:not(:disabled) {
   opacity: 0.92;
 }
 
-.signup__submit:active {
+.signup__submit:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+.signup__submit:disabled,
+.signup__input:disabled,
+.signup__terms input:disabled,
+.signup__link:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .signup__footer {

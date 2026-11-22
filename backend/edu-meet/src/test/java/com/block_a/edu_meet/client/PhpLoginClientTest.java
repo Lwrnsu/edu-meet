@@ -26,6 +26,7 @@ class PhpLoginClientTest {
 	private static final String LOGIN_URL = "http://localhost/edu-meet/backend/edu-meet/php/api/auth/login.php";
 	private static final String SYSTEM_ADMIN_LOGIN_URL =
 			"http://localhost/edu-meet/backend/edu-meet/php/api/auth/system_admin_login.php";
+	private static final String SIGNUP_URL = "http://localhost/edu-meet/backend/edu-meet/php/api/auth/signup.php";
 
 	private MockRestServiceServer server;
 	private PhpLoginClient client;
@@ -34,7 +35,7 @@ class PhpLoginClientTest {
 	void setUp() {
 		RestClient.Builder builder = RestClient.builder();
 		server = MockRestServiceServer.bindTo(builder).build();
-		client = new PhpLoginClient(builder.build(), new ObjectMapper(), LOGIN_URL, SYSTEM_ADMIN_LOGIN_URL);
+		client = new PhpLoginClient(builder.build(), new ObjectMapper(), LOGIN_URL, SYSTEM_ADMIN_LOGIN_URL, SIGNUP_URL);
 	}
 
 	@Test

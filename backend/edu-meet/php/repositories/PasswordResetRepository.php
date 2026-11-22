@@ -77,6 +77,28 @@ class PasswordResetRepository
         return $row;
     }
 
+    public function findLatestUnusedByUserId(int $userId): ?array
+    {
+        $sql = 'SELECT reset_id, user_id, token_hash, expires_at, is_used, created_at
+                FROM password_resets
+                WHERE user_id = ? AND is_used = 0 AND expires_at > NOW()
+                ORDER BY reset_id DESC
+                LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt === false) {
+            throw new RuntimeException('Failed to prepare findLatestUnusedByUserId: ' . $this->db->error);
+        }
+
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc() ?: null;
+        $stmt->close();
+
+        return $row;
+    }
+
     public function create(array $data): int
     {
         $sql = 'INSERT INTO password_resets (user_id, token_hash, expires_at, is_used)

@@ -156,21 +156,30 @@ class SchoolMembershipRepository
 
     public function create(array $data): int
     {
-        $sql = 'INSERT INTO school_memberships (school_id, department_id, user_id, role_id, status)
-                VALUES (?, ?, ?, ?, ?)';
-
-        $stmt = $this->db->prepare($sql);
-        if ($stmt === false) {
-            throw new RuntimeException('Failed to prepare create: ' . $this->db->error);
-        }
-
         $schoolId = (int) $data['school_id'];
         $departmentId = $data['department_id'];
         $userId = (int) $data['user_id'];
         $roleId = (int) $data['role_id'];
         $status = (int) $data['status'];
 
-        $stmt->bind_param('iiiii', $schoolId, $departmentId, $userId, $roleId, $status);
+        if ($departmentId === null) {
+            $sql = 'INSERT INTO school_memberships (school_id, department_id, user_id, role_id, status)
+                    VALUES (?, NULL, ?, ?, ?)';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare create: ' . $this->db->error);
+            }
+            $stmt->bind_param('iiii', $schoolId, $userId, $roleId, $status);
+        } else {
+            $sql = 'INSERT INTO school_memberships (school_id, department_id, user_id, role_id, status)
+                    VALUES (?, ?, ?, ?, ?)';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare create: ' . $this->db->error);
+            }
+            $departmentId = (int) $departmentId;
+            $stmt->bind_param('iiiii', $schoolId, $departmentId, $userId, $roleId, $status);
+        }
 
         if (!$stmt->execute()) {
             $error = $stmt->error;

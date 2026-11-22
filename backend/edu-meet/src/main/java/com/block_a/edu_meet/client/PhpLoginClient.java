@@ -32,11 +32,13 @@ public class PhpLoginClient {
 	private final ObjectMapper objectMapper;
 	private final String loginUrl;
 	private final String systemAdminLoginUrl;
+	private final String signupUrl;
 
 	@Autowired
 	public PhpLoginClient(
 			@Value("${app.php.login-url}") String loginUrl,
-			@Value("${app.php.system-admin-login-url}") String systemAdminLoginUrl) {
+			@Value("${app.php.system-admin-login-url}") String systemAdminLoginUrl,
+			@Value("${app.php.signup-url}") String signupUrl) {
 		HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
 		requestFactory.setReadTimeout(Duration.ofSeconds(10));
@@ -44,13 +46,20 @@ public class PhpLoginClient {
 		this.objectMapper = new ObjectMapper();
 		this.loginUrl = loginUrl;
 		this.systemAdminLoginUrl = systemAdminLoginUrl;
+		this.signupUrl = signupUrl;
 	}
 
-	PhpLoginClient(RestClient restClient, ObjectMapper objectMapper, String loginUrl, String systemAdminLoginUrl) {
+	PhpLoginClient(
+			RestClient restClient,
+			ObjectMapper objectMapper,
+			String loginUrl,
+			String systemAdminLoginUrl,
+			String signupUrl) {
 		this.restClient = restClient;
 		this.objectMapper = objectMapper;
 		this.loginUrl = loginUrl;
 		this.systemAdminLoginUrl = systemAdminLoginUrl;
+		this.signupUrl = signupUrl;
 	}
 
 	public ResponseEntity<JsonNode> login(String email, String password) {
@@ -59,6 +68,20 @@ public class PhpLoginClient {
 
 	public ResponseEntity<JsonNode> systemAdminLogin(String email, String password) {
 		return postLogin(systemAdminLoginUrl, email, password);
+	}
+
+	public ResponseEntity<JsonNode> signup(Map<String, Object> payload) {
+		try {
+			return restClient.post()
+					.uri(signupUrl)
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(payload == null ? Map.of() : payload)
+					.exchange((request, response) -> toSignupResponse(response));
+		} catch (ApiException ex) {
+			throw ex;
+		} catch (RestClientException ex) {
+			throw new ApiException("PHP signup service is unavailable", HttpStatus.BAD_GATEWAY);
+		}
 	}
 
 	private ResponseEntity<JsonNode> postLogin(String url, String email, String password) {
@@ -77,6 +100,23 @@ public class PhpLoginClient {
 		} catch (RestClientException ex) {
 			throw new ApiException("PHP login service is unavailable", HttpStatus.BAD_GATEWAY);
 		}
+	}
+
+	private ResponseEntity<JsonNode> toSignupResponse(
+			RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response) throws IOException {
+		byte[] bytes = response.getBody().readAllBytes();
+		JsonNode body;
+		if (bytes.length == 0) {
+			body = objectMapper.createObjectNode();
+		} else {
+			try {
+				body = objectMapper.readTree(bytes);
+			} catch (JacksonException ex) {
+				throw new ApiException("PHP signup service returned an unreadable response", HttpStatus.BAD_GATEWAY);
+			}
+		}
+
+		return ResponseEntity.status(response.getStatusCode()).body(body);
 	}
 
 	private ResponseEntity<JsonNode> toResponse(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response)

@@ -2,13 +2,13 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'http://localhost/edu-meet/backend/edu-meet/php/api'
 
-const JAVA_API_BASE_URL =
+export const JAVA_API_BASE_URL =
   import.meta.env.VITE_JAVA_API_BASE_URL || 'http://localhost:8080'
 
 const ADMIN_ACCESS_KEY = 'edu_meet_admin_access_token'
 const ADMIN_REFRESH_KEY = 'edu_meet_admin_refresh_token'
 
-function getAdminTokens() {
+export function getAdminTokens() {
   const accessToken = sessionStorage.getItem(ADMIN_ACCESS_KEY)
   const refreshToken = sessionStorage.getItem(ADMIN_REFRESH_KEY)
   if (!accessToken && !refreshToken) {
@@ -17,7 +17,7 @@ function getAdminTokens() {
   return { accessToken, refreshToken }
 }
 
-function storeAdminTokens(data = {}) {
+export function storeAdminTokens(data = {}) {
   if (data.access_token) {
     sessionStorage.setItem(ADMIN_ACCESS_KEY, data.access_token)
   }
@@ -26,7 +26,7 @@ function storeAdminTokens(data = {}) {
   }
 }
 
-function clearAdminTokens() {
+export function clearAdminTokens() {
   sessionStorage.removeItem(ADMIN_ACCESS_KEY)
   sessionStorage.removeItem(ADMIN_REFRESH_KEY)
 }
@@ -78,6 +78,25 @@ export async function systemAdminLogin(email, password) {
   storeAdminTokens(data)
   return data
 }
+
+export async function signup(payload) {
+  const response = await fetch(`${JAVA_API_BASE_URL}/api/auth/php-signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Request failed.')
+  }
+
+  return data
+}
+
 
 export async function restoreSession() {
   const adminTokens = getAdminTokens()

@@ -10,27 +10,52 @@
   --approved: #27c77d;
   --teal: #2ec4b6;
   --white: #ffffff;
+  --sidebar-collapsed: 4.25rem;
+  --sidebar-expanded: 16.5rem;
 
   display: grid;
-  grid-template-columns: 16.5rem minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr);
   min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
   font-family: 'Poppins', sans-serif;
+  transition: grid-template-columns 0.22s ease;
+}
+
+.admin-dash:has(.admin-dash__sidebar:hover),
+.admin-dash:has(.admin-dash__sidebar:focus-within) {
+  grid-template-columns: var(--sidebar-expanded) minmax(0, 1fr);
 }
 
 .admin-dash__sidebar {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.1rem 0.85rem 1rem;
+  padding: 1.1rem 0.55rem 1rem;
   background: var(--sidebar);
   border-right: 1px solid var(--stroke);
+  overflow: hidden;
+  transition: padding 0.22s ease;
+}
+
+.admin-dash__sidebar:hover,
+.admin-dash__sidebar:focus-within {
+  padding: 1.1rem 0.85rem 1rem;
 }
 
 .admin-dash__brand {
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0.25rem 0;
+  min-height: 2.4rem;
+  transition: gap 0.22s ease, justify-content 0.22s ease, padding 0.22s ease;
+}
+
+.admin-dash__sidebar:hover .admin-dash__brand,
+.admin-dash__sidebar:focus-within .admin-dash__brand {
+  justify-content: flex-start;
   gap: 0.65rem;
   padding: 0.25rem 0.35rem;
 }
@@ -38,6 +63,7 @@
 .admin-dash__brand-mark {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 2rem;
   height: 2rem;
   border-radius: 0.45rem;
@@ -48,6 +74,18 @@
 .admin-dash__brand-text {
   display: grid;
   gap: 0.05rem;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.22s ease, opacity 0.18s ease;
+}
+
+.admin-dash__sidebar:hover .admin-dash__brand-text,
+.admin-dash__sidebar:focus-within .admin-dash__brand-text {
+  max-width: 12rem;
+  opacity: 1;
 }
 
 .admin-dash__brand-title,
@@ -72,16 +110,22 @@
   gap: 1rem;
   flex: 1;
   align-content: start;
+  justify-items: center;
+}
+
+.admin-dash__sidebar:hover .admin-dash__nav,
+.admin-dash__sidebar:focus-within .admin-dash__nav {
+  justify-items: stretch;
 }
 
 .admin-dash__nav-item {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.55rem;
-  width: 100%;
-  min-height: 2rem;
-  padding: 0.45rem 0.65rem;
+  justify-content: center;
+  gap: 0;
+  width: 2.55rem;
+  min-height: 2.55rem;
+  padding: 0.45rem;
   border: 1px solid transparent;
   border-radius: 0.55rem;
   background: transparent;
@@ -90,7 +134,42 @@
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    width 0.22s ease,
+    gap 0.22s ease,
+    padding 0.22s ease,
+    justify-content 0.22s ease;
+}
+
+.admin-dash__sidebar:hover .admin-dash__nav-item,
+.admin-dash__sidebar:focus-within .admin-dash__nav-item {
+  justify-content: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.admin-dash__nav-item svg {
+  flex-shrink: 0;
+}
+
+.admin-dash__nav-label {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.22s ease, opacity 0.18s ease;
+}
+
+.admin-dash__sidebar:hover .admin-dash__nav-label,
+.admin-dash__sidebar:focus-within .admin-dash__nav-label {
+  max-width: 12rem;
+  opacity: 1;
 }
 
 .admin-dash__nav-item:hover {
@@ -116,12 +195,13 @@
 .admin-dash__logout {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.55rem;
-  width: 100%;
-  min-height: 2rem;
+  justify-content: center;
+  gap: 0;
+  width: 2.55rem;
+  min-height: 2.55rem;
   margin-top: auto;
-  padding: 0.45rem 0.65rem;
+  margin-inline: auto;
+  padding: 0.45rem;
   border: 1px solid var(--stroke);
   border-radius: 0.55rem;
   background: var(--white);
@@ -130,10 +210,73 @@
   font-weight: 600;
   text-align: left;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    width 0.22s ease,
+    gap 0.22s ease,
+    padding 0.22s ease,
+    margin-inline 0.22s ease,
+    justify-content 0.22s ease;
+}
+
+.admin-dash__sidebar:hover .admin-dash__logout,
+.admin-dash__sidebar:focus-within .admin-dash__logout {
+  justify-content: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 2rem;
+  margin-inline: 0;
+  padding: 0.45rem 0.65rem;
 }
 
 .admin-dash__logout:hover {
   background: #f8f8f8;
+}
+
+/* Pointer over main forces collapsed rail (overrides sidebar :focus-within). */
+.admin-dash:has(.admin-dash__main:hover) {
+  grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr);
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__sidebar {
+  padding: 1.1rem 0.55rem 1rem;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__brand {
+  justify-content: center;
+  gap: 0;
+  padding: 0.25rem 0;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__brand-text {
+  max-width: 0;
+  opacity: 0;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__nav {
+  justify-items: center;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__nav-item {
+  justify-content: center;
+  gap: 0;
+  width: 2.55rem;
+  min-height: 2.55rem;
+  padding: 0.45rem;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__nav-label {
+  max-width: 0;
+  opacity: 0;
+}
+
+.admin-dash:has(.admin-dash__main:hover) .admin-dash__logout {
+  justify-content: center;
+  gap: 0;
+  width: 2.55rem;
+  min-height: 2.55rem;
+  margin-inline: auto;
+  padding: 0.45rem;
 }
 
 .admin-dash__main {
@@ -196,6 +339,20 @@
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 600;
   line-height: 1.2;
+}
+
+.admin-dash__api-error {
+  margin: 0 0 0.85rem;
+  color: #c2410c;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-dash__api-status {
+  margin: 0 0 0.85rem;
+  color: var(--stroke);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .admin-dash__stats {
@@ -1153,13 +1310,69 @@
 }
 
 @media (max-width: 900px) {
-  .admin-dash {
+  .admin-dash,
+  .admin-dash:has(.admin-dash__sidebar:hover),
+  .admin-dash:has(.admin-dash__sidebar:focus-within),
+  .admin-dash:has(.admin-dash__main:hover) {
     grid-template-columns: 1fr;
   }
 
-  .admin-dash__sidebar {
+  .admin-dash__sidebar,
+  .admin-dash__sidebar:hover,
+  .admin-dash__sidebar:focus-within,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__sidebar {
     border-right: none;
     border-bottom: 1px solid var(--stroke);
+    padding: 1.1rem 0.85rem 1rem;
+    overflow: visible;
+  }
+
+  .admin-dash__brand,
+  .admin-dash__sidebar:hover .admin-dash__brand,
+  .admin-dash__sidebar:focus-within .admin-dash__brand,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__brand {
+    justify-content: flex-start;
+    gap: 0.65rem;
+    padding: 0.25rem 0.35rem;
+  }
+
+  .admin-dash__brand-text,
+  .admin-dash__sidebar:hover .admin-dash__brand-text,
+  .admin-dash__sidebar:focus-within .admin-dash__brand-text,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__brand-text {
+    max-width: none;
+    opacity: 1;
+  }
+
+  .admin-dash__nav,
+  .admin-dash__sidebar:hover .admin-dash__nav,
+  .admin-dash__sidebar:focus-within .admin-dash__nav,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__nav {
+    justify-items: stretch;
+  }
+
+  .admin-dash__nav-item,
+  .admin-dash__sidebar:hover .admin-dash__nav-item,
+  .admin-dash__sidebar:focus-within .admin-dash__nav-item,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__nav-item,
+  .admin-dash__logout,
+  .admin-dash__sidebar:hover .admin-dash__logout,
+  .admin-dash__sidebar:focus-within .admin-dash__logout,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__logout {
+    justify-content: flex-start;
+    gap: 0.55rem;
+    width: 100%;
+    min-height: 2rem;
+    margin-inline: 0;
+    padding: 0.45rem 0.65rem;
+  }
+
+  .admin-dash__nav-label,
+  .admin-dash__sidebar:hover .admin-dash__nav-label,
+  .admin-dash__sidebar:focus-within .admin-dash__nav-label,
+  .admin-dash:has(.admin-dash__main:hover) .admin-dash__nav-label {
+    max-width: none;
+    opacity: 1;
   }
 
   .admin-dash__stats {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { signup } from '../api/auth'
 import './SignUpPage.css'
 
 const INITIAL_FORM = {
@@ -18,6 +19,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
   const [form, setForm] = useState(INITIAL_FORM)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   function updateField(field) {
     return (event) => {
@@ -33,13 +35,15 @@ export default function SignUpPage({ onSwitchToSignIn }) {
     event.preventDefault()
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     setError('')
     setInfo('')
 
     const firstName = form.firstName.trim()
     const lastName = form.lastName.trim()
+    const middleName = form.middleName.trim()
+    const suffix = form.suffix.trim()
     const schoolName = form.schoolName.trim()
     const location = form.location.trim()
     const email = form.email.trim()
@@ -55,6 +59,11 @@ export default function SignUpPage({ onSwitchToSignIn }) {
       return
     }
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.')
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match.')
       return
@@ -65,7 +74,28 @@ export default function SignUpPage({ onSwitchToSignIn }) {
       return
     }
 
-    setInfo('Account creation is coming soon.')
+    setSubmitting(true)
+    try {
+      const data = await signup({
+        first_name: firstName,
+        last_name: lastName,
+        middle_name: middleName || null,
+        suffix: suffix || null,
+        email,
+        password,
+        confirm_password: confirmPassword,
+        school_name: schoolName,
+        location,
+        accepted_terms: true,
+      })
+
+      setInfo(data.message || 'Signup submitted. Your account is pending system admin approval.')
+      setForm(INITIAL_FORM)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signup failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -92,6 +122,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.firstName}
                 onChange={updateField('firstName')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -102,6 +133,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.lastName}
                 onChange={updateField('lastName')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -111,6 +143,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 autoComplete="additional-name"
                 value={form.middleName}
                 onChange={updateField('middleName')}
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -120,6 +153,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 autoComplete="honorific-suffix"
                 value={form.suffix}
                 onChange={updateField('suffix')}
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -130,6 +164,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.email}
                 onChange={updateField('email')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -139,6 +174,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.schoolName}
                 onChange={updateField('schoolName')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input signup__input--wide"
@@ -148,6 +184,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.location}
                 onChange={updateField('location')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -158,6 +195,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.password}
                 onChange={updateField('password')}
                 required
+                disabled={submitting}
               />
               <input
                 className="signup__input"
@@ -168,6 +206,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 value={form.confirmPassword}
                 onChange={updateField('confirmPassword')}
                 required
+                disabled={submitting}
               />
             </div>
 
@@ -176,6 +215,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
                 type="checkbox"
                 checked={form.acceptedTerms}
                 onChange={handleTermsChange}
+                disabled={submitting}
               />
               <span>
                 I&apos;ve read and agree with{' '}
@@ -201,8 +241,8 @@ export default function SignUpPage({ onSwitchToSignIn }) {
               </p>
             ) : null}
 
-            <button className="signup__submit" type="submit">
-              SIGN UP
+            <button className="signup__submit" type="submit" disabled={submitting}>
+              {submitting ? 'SIGNING UP…' : 'SIGN UP'}
             </button>
           </form>
 
@@ -212,6 +252,7 @@ export default function SignUpPage({ onSwitchToSignIn }) {
               type="button"
               className="signup__link"
               onClick={() => onSwitchToSignIn?.()}
+              disabled={submitting}
             >
               Sign In
             </button>

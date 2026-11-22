@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../services/AuthService.php';
+require_once __DIR__ . '/../services/SignupService.php';
+require_once __DIR__ . '/../services/PasswordChangeService.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/CookieHelper.php';
@@ -8,13 +10,20 @@ require_once __DIR__ . '/../helpers/CookieHelper.php';
 class AuthController
 {
     private AuthService $service;
+    private SignupService $signupService;
+    private PasswordChangeService $passwordChangeService;
     private array $cookies;
     private array $jwtConfig;
     private array $redisConfig;
 
-    public function __construct(?AuthService $service = null)
-    {
+    public function __construct(
+        ?AuthService $service = null,
+        ?SignupService $signupService = null,
+        ?PasswordChangeService $passwordChangeService = null
+    ) {
         $this->service = $service ?? new AuthService();
+        $this->signupService = $signupService ?? new SignupService();
+        $this->passwordChangeService = $passwordChangeService ?? new PasswordChangeService();
         $this->cookies = require __DIR__ . '/../config/cookies.php';
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
         $this->redisConfig = require __DIR__ . '/../config/redis.php';
@@ -28,6 +37,32 @@ class AuthController
     public function systemAdminLogin(): void
     {
         $this->handlePost(fn(array $payload) => $this->withCookies($this->service->loginSystemAdmin($payload)));
+    }
+
+    public function signup(): void
+    {
+        $this->handlePost(fn(array $payload) => $this->signupService->register($payload), 201);
+    }
+
+    public function requestPasswordOtp(array $claims): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->requestOtp($claims, $payload)
+        );
+    }
+
+    public function verifyPasswordOtp(array $claims): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->verifyOtp($claims, $payload)
+        );
+    }
+
+    public function changePassword(array $claims): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->changePassword($claims, $payload)
+        );
     }
 
     public function refresh(): void
@@ -131,7 +166,7 @@ class AuthController
         CookieHelper::clear($this->cookies['refresh_name']);
     }
 
-    private function handlePost(callable $action): void
+    private function handlePost(callable $action, int $successStatus = 200): void
     {
         try {
             if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -139,7 +174,7 @@ class AuthController
             }
 
             $payload = $this->readJsonBody();
-            Response::json($action($payload));
+            Response::json($action($payload), $successStatus);
         } catch (ApiException $e) {
             Response::error($e->getMessage(), $e->getCode() ?: 400, $e->getDetails());
         } catch (Throwable $e) {

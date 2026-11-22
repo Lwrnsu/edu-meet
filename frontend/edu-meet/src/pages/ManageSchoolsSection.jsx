@@ -1,34 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-
-const INITIAL_SCHOOLS = [
-  {
-    id: 1,
-    name: 'Gordon College',
-    address: 'East Tapinac, Olongapo City, 2200 Zambales',
-    email: 'info@gordoncollege.edu.ph',
-    status: 'approved',
-    totalUsers: 7443,
-    departments: 11,
-  },
-  {
-    id: 2,
-    name: 'Columban College',
-    address: 'Barretto, Olongapo City, 2200 Zambales',
-    email: 'info@columban.edu.ph',
-    status: 'approved',
-    totalUsers: 5120,
-    departments: 8,
-  },
-  {
-    id: 3,
-    name: 'St. Joseph College',
-    address: 'East Bajac-Bajac, Olongapo City, 2200 Zambales',
-    email: 'sjcocollegedepartment@gmail.com',
-    status: 'pending',
-    totalUsers: 0,
-    departments: 0,
-  },
-]
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { mapSchoolFromApi } from '../api/schools'
+import {
+  approveSchoolRequest,
+  createApprovedSchool,
+  loadSchoolsForAdmin,
+  rejectSchoolRequest,
+  removeSchool,
+  updateSchoolDetails,
+} from '../api/schoolsAdmin'
 
 const EMPTY_FORM = {
   name: '',
@@ -152,7 +131,10 @@ function formatCount(value) {
 }
 
 export default function ManageSchoolsSection() {
-  const [schools, setSchools] = useState(INITIAL_SCHOOLS)
+  const [schools, setSchools] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState('')
+  const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [viewSchool, setViewSchool] = useState(null)
@@ -163,6 +145,23 @@ export default function ManageSchoolsSection() {
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM)
   const [error, setError] = useState('')
   const [editError, setEditError] = useState('')
+
+  const refreshSchools = useCallback(async () => {
+    setLoading(true)
+    setListError('')
+    try {
+      const rows = await loadSchoolsForAdmin()
+      setSchools(rows)
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to load schools.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshSchools()
+  }, [refreshSchools])
 
   const filteredSchools = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -259,7 +258,7 @@ export default function ManageSchoolsSection() {
     }
   }
 
-  function handleCreate(event) {
+  async function handleCreate(event) {
     event.preventDefault()
 
     const name = form.name.trim()
@@ -275,22 +274,20 @@ export default function ManageSchoolsSection() {
       return
     }
 
-    setSchools((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name,
-        address,
-        email,
-        status: 'approved',
-        totalUsers: 0,
-        departments: 0,
-      },
-    ])
-    closeModal()
+    setBusy(true)
+    setError('')
+    try {
+      const created = await createApprovedSchool({ name, address, email })
+      setSchools((prev) => [...prev, created])
+      closeModal()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create school.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleEditSave(event) {
+  async function handleEditSave(event) {
     event.preventDefault()
 
     if (!editSchool) return
@@ -303,38 +300,72 @@ export default function ManageSchoolsSection() {
       return
     }
 
-    setSchools((prev) =>
-      prev.map((school) =>
-        school.id === editSchool.id
-          ? { ...school, name, address }
-          : school
+    setBusy(true)
+    setEditError('')
+    try {
+      const updated = await updateSchoolDetails(editSchool.id, { name, address })
+      const mapped = mapSchoolFromApi(updated, {
+        totalUsers: editSchool.totalUsers,
+        departments: editSchool.departments,
+      })
+      setSchools((prev) =>
+        prev.map((school) => (school.id === editSchool.id ? mapped : school))
       )
-    )
-    closeEditModal()
+      closeEditModal()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update school.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleApproveReview() {
+  async function handleApproveReview() {
     if (!reviewSchool) return
-    setSchools((prev) =>
-      prev.map((school) =>
-        school.id === reviewSchool.id
-          ? { ...school, status: 'approved' }
-          : school
+    setBusy(true)
+    try {
+      await approveSchoolRequest(reviewSchool.id)
+      setSchools((prev) =>
+        prev.map((school) =>
+          school.id === reviewSchool.id ? { ...school, status: 'approved' } : school
+        )
       )
-    )
-    closeReviewModal()
+      closeReviewModal()
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to approve school.')
+      closeReviewModal()
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleRejectReview() {
+  async function handleRejectReview() {
     if (!reviewSchool) return
-    setSchools((prev) => prev.filter((school) => school.id !== reviewSchool.id))
-    closeReviewModal()
+    setBusy(true)
+    try {
+      await rejectSchoolRequest(reviewSchool.id)
+      setSchools((prev) => prev.filter((school) => school.id !== reviewSchool.id))
+      closeReviewModal()
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to reject school.')
+      closeReviewModal()
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteSchool) return
-    setSchools((prev) => prev.filter((school) => school.id !== deleteSchool.id))
-    closeDeleteModal()
+    setBusy(true)
+    try {
+      await removeSchool(deleteSchool.id)
+      setSchools((prev) => prev.filter((school) => school.id !== deleteSchool.id))
+      closeDeleteModal()
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to delete school.')
+      closeDeleteModal()
+    } finally {
+      setBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -361,6 +392,12 @@ export default function ManageSchoolsSection() {
         <p className="admin-schools__subtitle">
           View, manage, and approve schools registered on Edu-Meet.
         </p>
+        {listError ? (
+          <p className="admin-dash__api-error" role="alert">
+            {listError}
+          </p>
+        ) : null}
+        {loading ? <p className="admin-dash__api-status">Loading schools…</p> : null}
       </div>
 
       <div className="admin-schools__stats" aria-label="School stats">
@@ -462,8 +499,10 @@ export default function ManageSchoolsSection() {
             </li>
           ))}
 
-          {filteredSchools.length === 0 ? (
-            <li className="admin-schools__empty-row">No schools match your search.</li>
+          {!loading && filteredSchools.length === 0 ? (
+            <li className="admin-schools__empty-row">
+              {query.trim() ? 'No schools match your search.' : 'No schools found.'}
+            </li>
           ) : null}
         </ul>
       </div>

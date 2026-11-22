@@ -1,28 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-
-const INITIAL_ADMINS = [
-  {
-    id: 1,
-    name: 'Charles Cerico',
-    email: 'cericothegoat@gmail.com',
-    role: 'College Admin',
-    school: 'Gordon College',
-  },
-  {
-    id: 2,
-    name: 'France Pulgan',
-    email: 'pulganthegoat@gmail.com',
-    role: 'College Admin',
-    school: 'Columban College',
-  },
-  {
-    id: 3,
-    name: 'Lorenz Cerico',
-    email: 'lorenzcerico@gmail.com',
-    role: 'System Admin',
-    school: '—',
-  },
-]
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  createAdminAccount,
+  loadAdminsForAdmin,
+  removeAdminAccount,
+  updateAdminAccount,
+} from '../api/adminsAdmin'
 
 const EMPTY_FORM = {
   name: '',
@@ -97,7 +79,11 @@ function isSystemAdmin(role) {
 }
 
 export default function ManageAdminsSection() {
-  const [admins, setAdmins] = useState(INITIAL_ADMINS)
+  const [admins, setAdmins] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState('')
+  const [info, setInfo] = useState('')
+  const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editAdmin, setEditAdmin] = useState(null)
@@ -106,6 +92,23 @@ export default function ManageAdminsSection() {
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM)
   const [error, setError] = useState('')
   const [editError, setEditError] = useState('')
+
+  const refreshAdmins = useCallback(async () => {
+    setLoading(true)
+    setListError('')
+    try {
+      const data = await loadAdminsForAdmin()
+      setAdmins(data.admins)
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to load admins.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshAdmins()
+  }, [refreshAdmins])
 
   const filteredAdmins = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -173,7 +176,7 @@ export default function ManageAdminsSection() {
     }
   }
 
-  function handleCreate(event) {
+  async function handleCreate(event) {
     event.preventDefault()
 
     const name = form.name.trim()
@@ -198,20 +201,22 @@ export default function ManageAdminsSection() {
       }
     }
 
-    setAdmins((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name,
-        email,
-        role,
-        school,
-      },
-    ])
-    closeModal()
+    setBusy(true)
+    setError('')
+    setInfo('')
+    try {
+      const result = await createAdminAccount({ name, email, role, school })
+      setAdmins((prev) => [...prev, result.admin])
+      setInfo(`Admin created. Temporary password: ${result.temporaryPassword}`)
+      closeModal()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create admin.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleEditSave(event) {
+  async function handleEditSave(event) {
     event.preventDefault()
 
     if (!editAdmin) return
@@ -233,20 +238,34 @@ export default function ManageAdminsSection() {
       }
     }
 
-    setAdmins((prev) =>
-      prev.map((admin) =>
-        admin.id === editAdmin.id
-          ? { ...admin, name, role, school }
-          : admin
+    setBusy(true)
+    setEditError('')
+    try {
+      const updated = await updateAdminAccount(editAdmin, { name, role, school })
+      setAdmins((prev) =>
+        prev.map((admin) => (admin.id === editAdmin.id ? { ...admin, ...updated } : admin))
       )
-    )
-    closeEditModal()
+      closeEditModal()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update admin.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteAdmin) return
-    setAdmins((prev) => prev.filter((admin) => admin.id !== deleteAdmin.id))
-    closeDeleteModal()
+    setBusy(true)
+    try {
+      await removeAdminAccount(deleteAdmin.id)
+      setAdmins((prev) => prev.filter((admin) => admin.id !== deleteAdmin.id))
+      closeDeleteModal()
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to delete admin.')
+      closeDeleteModal()
+    } finally {
+      setBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -271,6 +290,17 @@ export default function ManageAdminsSection() {
         <p className="admin-admins__subtitle">
           Manage and monitor administrator accounts across registered schools
         </p>
+        {listError ? (
+          <p className="admin-dash__api-error" role="alert">
+            {listError}
+          </p>
+        ) : null}
+        {info ? (
+          <p className="admin-dash__api-status" role="status">
+            {info}
+          </p>
+        ) : null}
+        {loading ? <p className="admin-dash__api-status">Loading admins…</p> : null}
       </div>
 
       <div className="admin-admins__stats" aria-label="Admin stats">

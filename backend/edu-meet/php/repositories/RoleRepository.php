@@ -52,6 +52,27 @@ class RoleRepository
         return $role;
     }
 
+    public function findByName(string $name): ?array
+    {
+        $sql = 'SELECT role_id, name, description, status, created_at, updated_at, deleted_at
+                FROM roles
+                WHERE name = ? AND deleted_at IS NULL
+                LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt === false) {
+            throw new RuntimeException('Failed to prepare findByName: ' . $this->db->error);
+        }
+
+        $stmt->bind_param('s', $name);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $role = $result->fetch_assoc() ?: null;
+        $stmt->close();
+
+        return $role;
+    }
+
     public function nameExists(string $name, ?int $excludeId = null): bool
     {
         if ($excludeId === null) {

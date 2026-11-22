@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
+import { loadSchoolsForAdmin } from '../api/schoolsAdmin'
+import { listUsers } from '../api/users'
 import ManageAdminsSection from './ManageAdminsSection'
 import ManageSchoolsSection from './ManageSchoolsSection'
 import SecuritySection from './SecuritySection'
 import './AdminDashboard.css'
-
-const SCHOOL_REQUESTS = [
-  { id: 1, name: 'Columban College', status: 'pending' },
-  { id: 2, name: 'Gordon College', status: 'approved' },
-]
 
 function IconGrid() {
   return (
@@ -80,6 +77,11 @@ function IconUser() {
 export default function AdminDashboard({ user, onLogout }) {
   const [section, setSection] = useState('dashboard')
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [overviewLoading, setOverviewLoading] = useState(true)
+  const [overviewError, setOverviewError] = useState('')
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [registeredSchools, setRegisteredSchools] = useState(0)
+  const [schoolRequests, setSchoolRequests] = useState([])
 
   const pageTitle =
     section === 'schools'
@@ -112,6 +114,41 @@ export default function AdminDashboard({ user, onLogout }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [logoutConfirmOpen])
 
+  useEffect(() => {
+    if (section !== 'dashboard') return undefined
+
+    let cancelled = false
+
+    async function loadOverview() {
+      setOverviewLoading(true)
+      setOverviewError('')
+      try {
+        const [schools, users] = await Promise.all([loadSchoolsForAdmin(), listUsers()])
+        if (cancelled) return
+        setTotalUsers((users || []).length)
+        setRegisteredSchools((schools || []).filter((school) => school.status === 'approved').length)
+        setSchoolRequests(
+          (schools || []).slice(0, 8).map((school) => ({
+            id: school.id,
+            name: school.name,
+            status: school.status,
+          }))
+        )
+      } catch (err) {
+        if (!cancelled) {
+          setOverviewError(err instanceof Error ? err.message : 'Failed to load dashboard.')
+        }
+      } finally {
+        if (!cancelled) setOverviewLoading(false)
+      }
+    }
+
+    loadOverview()
+    return () => {
+      cancelled = true
+    }
+  }, [section])
+
   return (
     <div className="admin-dash">
       <aside className="admin-dash__sidebar">
@@ -130,39 +167,48 @@ export default function AdminDashboard({ user, onLogout }) {
             type="button"
             className={`admin-dash__nav-item${section === 'dashboard' ? ' is-active' : ''}`}
             onClick={() => setSection('dashboard')}
+            aria-label="Dashboard"
           >
             <IconGrid />
-            Dashboard
+            <span className="admin-dash__nav-label">Dashboard</span>
           </button>
           <button
             type="button"
             className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'schools' ? ' is-active' : ''}`}
             onClick={() => setSection('schools')}
+            aria-label="Manage Schools"
           >
             <IconSchool />
-            Manage Schools
+            <span className="admin-dash__nav-label">Manage Schools</span>
           </button>
           <button
             type="button"
             className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'admins' ? ' is-active' : ''}`}
             onClick={() => setSection('admins')}
+            aria-label="Manage Admins"
           >
             <IconKey />
-            Manage Admins
+            <span className="admin-dash__nav-label">Manage Admins</span>
           </button>
           <button
             type="button"
             className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'security' ? ' is-active' : ''}`}
             onClick={() => setSection('security')}
+            aria-label="Security"
           >
             <IconLock />
-            Security
+            <span className="admin-dash__nav-label">Security</span>
           </button>
         </nav>
 
-        <button type="button" className="admin-dash__logout" onClick={() => setLogoutConfirmOpen(true)}>
+        <button
+          type="button"
+          className="admin-dash__logout"
+          onClick={() => setLogoutConfirmOpen(true)}
+          aria-label="Logout"
+        >
           <IconLogout />
-          Logout
+          <span className="admin-dash__nav-label">Logout</span>
         </button>
       </aside>
 
@@ -183,6 +229,12 @@ export default function AdminDashboard({ user, onLogout }) {
         {section === 'dashboard' ? (
           <>
             <h2 className="admin-dash__welcome">Welcome back, System Administrator!</h2>
+            {overviewError ? (
+              <p className="admin-dash__api-error" role="alert">
+                {overviewError}
+              </p>
+            ) : null}
+            {overviewLoading ? <p className="admin-dash__api-status">Loading overview…</p> : null}
 
             <section className="admin-dash__stats" aria-label="Overview stats">
               <article className="admin-dash__stat admin-dash__stat--users">
@@ -190,7 +242,7 @@ export default function AdminDashboard({ user, onLogout }) {
                   <IconUsers />
                 </span>
                 <div>
-                  <p className="admin-dash__stat-value">12,345</p>
+                  <p className="admin-dash__stat-value">{totalUsers.toLocaleString('en-US')}</p>
                   <p className="admin-dash__stat-label">Total Users</p>
                   <p className="admin-dash__stat-meta">Across all registered schools</p>
                 </div>
@@ -201,7 +253,7 @@ export default function AdminDashboard({ user, onLogout }) {
                   <IconSchool />
                 </span>
                 <div>
-                  <p className="admin-dash__stat-value">5</p>
+                  <p className="admin-dash__stat-value">{registeredSchools.toLocaleString('en-US')}</p>
                   <p className="admin-dash__stat-label">Registered Schools</p>
                   <p className="admin-dash__stat-meta">Approved schools on the platform</p>
                 </div>
@@ -215,7 +267,7 @@ export default function AdminDashboard({ user, onLogout }) {
               </div>
 
               <ul className="admin-dash__request-list">
-                {SCHOOL_REQUESTS.map((request) => (
+                {schoolRequests.map((request) => (
                   <li key={request.id} className="admin-dash__request-item">
                     <div>
                       <p className="admin-dash__request-name">{request.name}</p>
@@ -228,6 +280,14 @@ export default function AdminDashboard({ user, onLogout }) {
                     </span>
                   </li>
                 ))}
+                {!overviewLoading && schoolRequests.length === 0 ? (
+                  <li className="admin-dash__request-item">
+                    <div>
+                      <p className="admin-dash__request-name">No school requests yet</p>
+                      <p className="admin-dash__request-meta">New signups will appear here</p>
+                    </div>
+                  </li>
+                ) : null}
               </ul>
 
               <div className="admin-dash__panel-foot">

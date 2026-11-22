@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import {
+  changePassword,
+  requestPasswordOtp,
+  verifyPasswordOtp,
+} from '../api/passwordSecurity'
 
 const EMPTY_PASSWORDS = {
   current: '',
@@ -51,10 +56,12 @@ export default function SecuritySection({ user }) {
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState(() => user?.email || '')
   const [otp, setOtp] = useState('')
+  const [verifiedOtp, setVerifiedOtp] = useState('')
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS)
   const [visibility, setVisibility] = useState(EMPTY_VISIBILITY)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   function clearMessages() {
     setError('')
@@ -66,7 +73,13 @@ export default function SecuritySection({ user }) {
     setVisibility(EMPTY_VISIBILITY)
   }
 
-  function handleEmailSubmit(event) {
+  async function sendOtp(trimmedEmail) {
+    const data = await requestPasswordOtp({ email: trimmedEmail })
+    const otpHint = data.otp ? ` Dev OTP: ${data.otp}` : ''
+    setInfo((data.message || 'OTP sent.') + otpHint)
+  }
+
+  async function handleEmailSubmit(event) {
     event.preventDefault()
     clearMessages()
 
@@ -80,28 +93,54 @@ export default function SecuritySection({ user }) {
       return
     }
 
-    setOtp('')
-    resetPasswordFields()
-    setStep('otp')
+    setSubmitting(true)
+    try {
+      await sendOtp(trimmedEmail)
+      setOtp('')
+      setVerifiedOtp('')
+      resetPasswordFields()
+      setStep('otp')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request OTP.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleOtpSubmit(event) {
+  async function handleOtpSubmit(event) {
     event.preventDefault()
     clearMessages()
 
-    if (!/^\d{6}$/.test(otp.trim())) {
+    const code = otp.trim()
+    if (!/^\d{6}$/.test(code)) {
       setError('Please enter a valid 6-digit code.')
       return
     }
 
-    resetPasswordFields()
-    setStep('password')
+    setSubmitting(true)
+    try {
+      await verifyPasswordOtp({ email: email.trim(), otp: code })
+      setVerifiedOtp(code)
+      resetPasswordFields()
+      setStep('password')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'OTP verification failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleResendOtp() {
+  async function handleResendOtp() {
     clearMessages()
     setOtp('')
-    setInfo('If this email is registered, a new OTP will be sent shortly.')
+    setSubmitting(true)
+    try {
+      await sendOtp(email.trim())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function updatePassword(field) {
@@ -115,7 +154,7 @@ export default function SecuritySection({ user }) {
     setVisibility((prev) => ({ ...prev, [field]: !prev[field] }))
   }
 
-  function handlePasswordSubmit(event) {
+  async function handlePasswordSubmit(event) {
     event.preventDefault()
     clearMessages()
 
@@ -141,13 +180,37 @@ export default function SecuritySection({ user }) {
       setError('New password and confirmation do not match.')
       return
     }
+    if (!/^\d{6}$/.test(verifiedOtp)) {
+      setError('OTP verification is required before changing password.')
+      setStep('otp')
+      return
+    }
 
-    setInfo('Password updated successfully. (API wiring coming later.)')
+    setSubmitting(true)
+    try {
+      const data = await changePassword({
+        email: email.trim(),
+        otp: verifiedOtp,
+        current_password: current,
+        new_password: next,
+        confirm_password: confirm,
+      })
+      setInfo(data.message || 'Password updated successfully.')
+      resetPasswordFields()
+      setOtp('')
+      setVerifiedOtp('')
+      setStep('email')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleCancelPassword() {
     clearMessages()
     setOtp('')
+    setVerifiedOtp('')
     resetPasswordFields()
     setStep('email')
   }
@@ -188,8 +251,8 @@ export default function SecuritySection({ user }) {
                 </p>
               ) : null}
 
-              <button type="submit" className="admin-security__submit">
-                Continue
+              <button type="submit" className="admin-security__submit" disabled={submitting}>
+                {submitting ? 'Sending…' : 'Continue'}
               </button>
             </form>
           </>
@@ -232,13 +295,18 @@ export default function SecuritySection({ user }) {
                 </p>
               ) : null}
 
-              <button type="submit" className="admin-security__submit">
-                Verify and Proceed
+              <button type="submit" className="admin-security__submit" disabled={submitting}>
+                {submitting ? 'Verifying…' : 'Verify and Proceed'}
               </button>
 
               <p className="admin-security__resend">
                 Didn’t receive the code?{' '}
-                <button type="button" className="admin-security__resend-link" onClick={handleResendOtp}>
+                <button
+                  type="button"
+                  className="admin-security__resend-link"
+                  onClick={handleResendOtp}
+                  disabled={submitting}
+                >
                   Resend OTP
                 </button>
               </p>
@@ -332,13 +400,14 @@ export default function SecuritySection({ user }) {
                 </p>
               ) : null}
 
-              <button type="submit" className="admin-security__submit">
-                Change Password
+              <button type="submit" className="admin-security__submit" disabled={submitting}>
+                {submitting ? 'Saving…' : 'Change Password'}
               </button>
               <button
                 type="button"
                 className="admin-security__submit admin-security__submit--secondary"
                 onClick={handleCancelPassword}
+                disabled={submitting}
               >
                 Cancel
               </button>

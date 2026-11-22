@@ -42,7 +42,11 @@ public class SecurityConfig {
 								HttpMethod.POST,
 								"/api/auth/login",
 								"/api/auth/php-login",
-								"/api/auth/php-system-admin-login")
+								"/api/auth/php-system-admin-login",
+								"/api/auth/php-signup",
+								"/api/auth/php-request-password-otp",
+								"/api/auth/php-verify-password-otp",
+								"/api/auth/php-change-password")
 						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/", "/api/health").permitAll()
 						.requestMatchers("/api/php/**").permitAll()
