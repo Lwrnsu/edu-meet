@@ -813,6 +813,13 @@
   border-color: var(--accent);
 }
 
+.admin-schools-modal__input:disabled {
+  cursor: not-allowed;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.04);
+  opacity: 0.7;
+}
+
 .admin-schools-modal__error {
   margin: 0;
   color: #c2410c;

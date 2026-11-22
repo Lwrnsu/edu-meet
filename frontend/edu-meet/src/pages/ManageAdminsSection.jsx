@@ -78,8 +78,53 @@ function isSystemAdmin(role) {
   return String(role).toLowerCase().replace(/[\s_-]+/g, '') === 'systemadmin'
 }
 
+function roleKey(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+}
+
+function dbRoleNameForLabel(label, roles) {
+  const active = (roles || []).filter((role) => Number(role.status) === 1)
+  if (isSystemAdmin(label)) {
+    return active.find((role) => isSystemAdmin(role.name))?.name || ''
+  }
+  if (isCollegeAdmin(label) || roleKey(label) === 'schooladmin') {
+    return (
+      active.find((role) => roleKey(role.name) === 'schooladmin')?.name ||
+      active.find((role) => isCollegeAdmin(role.name))?.name ||
+      ''
+    )
+  }
+  return active.find((role) => role.name === label)?.name || ''
+}
+
+function adminRoleOptions(roles) {
+  const active = (roles || []).filter((role) => Number(role.status) === 1)
+  const system = active.find((role) => isSystemAdmin(role.name))
+  const college =
+    active.find((role) => roleKey(role.name) === 'schooladmin') ||
+    active.find((role) => isCollegeAdmin(role.name))
+
+  return [
+    system ? { ...system, label: 'SystemAdmin' } : null,
+    college ? { ...college, label: 'CollegeAdmin' } : null,
+  ].filter(Boolean)
+}
+
+function schoolChoices(schools, currentSchool) {
+  const approved = (schools || []).filter((school) => Number(school.status) === 1)
+  const current = String(currentSchool || '').trim()
+  if (current && current !== '—' && !approved.some((school) => school.name === current)) {
+    return [...approved, { school_id: `current-${current}`, name: current }]
+  }
+  return approved
+}
+
 export default function ManageAdminsSection() {
   const [admins, setAdmins] = useState([])
+  const [schools, setSchools] = useState([])
+  const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState('')
   const [info, setInfo] = useState('')
@@ -99,6 +144,8 @@ export default function ManageAdminsSection() {
     try {
       const data = await loadAdminsForAdmin()
       setAdmins(data.admins)
+      setSchools(data.schools || [])
+      setRoles(data.roles || [])
     } catch (err) {
       setListError(err instanceof Error ? err.message : 'Failed to load admins.')
     } finally {
@@ -148,10 +195,11 @@ export default function ManageAdminsSection() {
     setModalOpen(false)
     setDeleteAdmin(null)
     setEditError('')
+    const school = admin.school === '—' ? '' : admin.school || ''
     setEditForm({
       name: admin.name || '',
-      role: admin.role || '',
-      school: admin.school === '—' ? '' : admin.school || '',
+      role: dbRoleNameForLabel(admin.role, roles),
+      school: isSystemAdmin(admin.role) ? '' : school,
     })
     setEditAdmin(admin)
   }
@@ -164,14 +212,24 @@ export default function ManageAdminsSection() {
 
   function updateField(field) {
     return (event) => {
-      setForm((prev) => ({ ...prev, [field]: event.target.value }))
+      const value = event.target.value
+      setForm((prev) => {
+        const next = { ...prev, [field]: value }
+        if (field === 'role' && isSystemAdmin(value)) next.school = ''
+        return next
+      })
       if (error) setError('')
     }
   }
 
   function updateEditField(field) {
     return (event) => {
-      setEditForm((prev) => ({ ...prev, [field]: event.target.value }))
+      const value = event.target.value
+      setEditForm((prev) => {
+        const next = { ...prev, [field]: value }
+        if (field === 'role' && isSystemAdmin(value)) next.school = ''
+        return next
+      })
       if (editError) setEditError('')
     }
   }
@@ -426,22 +484,33 @@ export default function ManageAdminsSection() {
                 placeholder="Email"
                 aria-label="Email"
               />
-              <input
+              <select
                 className="admin-schools-modal__input"
-                type="text"
                 value={form.role}
                 onChange={updateField('role')}
-                placeholder="Role"
                 aria-label="Role"
-              />
-              <input
+              >
+                <option value="">Select role</option>
+                {adminRoleOptions(roles).map((role) => (
+                  <option key={role.role_id} value={role.name}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+              <select
                 className="admin-schools-modal__input"
-                type="text"
                 value={form.school}
                 onChange={updateField('school')}
-                placeholder="Assigned School"
                 aria-label="Assigned School"
-              />
+                disabled={isSystemAdmin(form.role)}
+              >
+                <option value="">Select school</option>
+                {schoolChoices(schools, form.school).map((school) => (
+                  <option key={school.school_id} value={school.name}>
+                    {school.name}
+                  </option>
+                ))}
+              </select>
 
               {error ? <p className="admin-schools-modal__error">{error}</p> : null}
 
@@ -488,22 +557,33 @@ export default function ManageAdminsSection() {
                 aria-label="Admin Name"
                 autoFocus
               />
-              <input
+              <select
                 className="admin-schools-modal__input"
-                type="text"
                 value={editForm.role}
                 onChange={updateEditField('role')}
-                placeholder="Role"
                 aria-label="Role"
-              />
-              <input
+              >
+                <option value="">Select role</option>
+                {adminRoleOptions(roles).map((role) => (
+                  <option key={role.role_id} value={role.name}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+              <select
                 className="admin-schools-modal__input"
-                type="text"
                 value={editForm.school}
                 onChange={updateEditField('school')}
-                placeholder="Assigned School"
                 aria-label="Assigned School"
-              />
+                disabled={isSystemAdmin(editForm.role)}
+              >
+                <option value="">Select school</option>
+                {schoolChoices(schools, editForm.school).map((school) => (
+                  <option key={school.school_id} value={school.name}>
+                    {school.name}
+                  </option>
+                ))}
+              </select>
 
               {editError ? <p className="admin-schools-modal__error">{editError}</p> : null}
 
