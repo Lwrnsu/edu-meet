@@ -128,6 +128,35 @@ class PasswordResetRepository
         return $id;
     }
 
+    public function createExpiring(int $userId, string $tokenHash, int $ttlMinutes = 10): array
+    {
+        $sql = 'INSERT INTO password_resets (user_id, token_hash, expires_at, is_used)
+                VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), 0)';
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt === false) {
+            throw new RuntimeException('Failed to prepare createExpiring: ' . $this->db->error);
+        }
+
+        $stmt->bind_param('isi', $userId, $tokenHash, $ttlMinutes);
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            throw new RuntimeException('Failed to create password reset: ' . $error);
+        }
+
+        $id = (int) $stmt->insert_id;
+        $stmt->close();
+
+        $row = $this->findById($id);
+        if ($row === null) {
+            throw new RuntimeException('Failed to load created password reset');
+        }
+
+        return $row;
+    }
+
     public function update(int $id, array $data): bool
     {
         $sql = 'UPDATE password_resets

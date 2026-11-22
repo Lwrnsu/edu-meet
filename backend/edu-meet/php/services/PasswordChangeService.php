@@ -26,19 +26,17 @@ class PasswordChangeService
         $user = $this->resolveAuthorizedUser($claims, $payload['email'] ?? null);
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = (new DateTimeImmutable('+10 minutes'))->format('Y-m-d H:i:s');
 
-        $this->resets->create([
-            'user_id' => (int) $user['user_id'],
-            'token_hash' => password_hash($otp, PASSWORD_DEFAULT),
-            'expires_at' => $expiresAt,
-            'is_used' => 0,
-        ]);
+        $reset = $this->resets->createExpiring(
+            (int) $user['user_id'],
+            password_hash($otp, PASSWORD_DEFAULT),
+            10
+        );
 
         return [
             'message' => 'OTP generated. Use the code to continue (email delivery coming later).',
             'otp' => $otp,
-            'expires_at' => $expiresAt,
+            'expires_at' => $reset['expires_at'],
         ];
     }
 

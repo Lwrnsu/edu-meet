@@ -23,6 +23,10 @@ class Database
 
         self::$connection->set_charset('utf8mb4');
 
+        if (!self::$connection->query("SET time_zone = '+08:00'")) {
+            throw new RuntimeException('Failed to set database time zone: ' . self::$connection->error);
+        }
+
         return self::$connection;
     }
 }
