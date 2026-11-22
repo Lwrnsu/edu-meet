@@ -12,6 +12,14 @@ export function createUserRole(payload) {
   return adminFetch('/api/php/user-roles', { method: 'POST', body: payload })
 }
 
+export function updateUserRole(id, payload) {
+  return adminFetch('/api/php/user-roles', {
+    method: 'PATCH',
+    query: { id },
+    body: payload,
+  })
+}
+
 export function deleteUserRole(id) {
   return adminFetch('/api/php/user-roles', {
     method: 'DELETE',

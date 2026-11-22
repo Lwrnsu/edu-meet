@@ -6,6 +6,7 @@ import {
   listRoles,
   listUserRoles,
   normalizeRoleKey,
+  updateUserRole,
 } from './roles'
 import { listSchools } from './schools'
 import { createUser, deleteUser, listUsers, patchUser } from './users'
@@ -48,6 +49,54 @@ function uiRoleLabel(roleName) {
   return roleName
 }
 
+function isAdminRoleName(roleName) {
+  return isSystemAdminRole(roleName) || isSchoolAdminRole(roleName)
+}
+
+function adminRoleId(roles, role) {
+  if (isSystemAdminRole(role)) {
+    const roleId = findRoleIdByName(roles, 'SystemAdmin')
+    if (!roleId) throw new Error('SystemAdmin role is not configured.')
+    return roleId
+  }
+
+  if (!isSchoolAdminRole(role)) {
+    throw new Error('Role must be System Admin or College Admin.')
+  }
+
+  const roleId = findRoleIdByName(roles, 'SchoolAdmin') || findRoleIdByName(roles, 'CollegeAdmin')
+  if (!roleId) throw new Error('SchoolAdmin role is not configured.')
+  return roleId
+}
+
+async function upsertAdminUserRole(userId, roleId, existingRows) {
+  const rows = existingRows || []
+  const match = rows.find((row) => Number(row.role_id) === Number(roleId))
+  const adminRows = rows.filter((row) => isAdminRoleName(row.role_name))
+
+  if (match) {
+    for (const row of adminRows) {
+      if (Number(row.user_role_id) !== Number(match.user_role_id)) {
+        await deleteUserRole(row.user_role_id)
+      }
+    }
+    return match
+  }
+
+  const adminRow = adminRows[0]
+  if (adminRow) {
+    const updated = await updateUserRole(adminRow.user_role_id, { role_id: roleId })
+    for (const row of adminRows) {
+      if (Number(row.user_role_id) !== Number(adminRow.user_role_id)) {
+        await deleteUserRole(row.user_role_id)
+      }
+    }
+    return updated
+  }
+
+  return createUserRole({ user_id: userId, role_id: roleId })
+}
+
 export async function loadAdminsForAdmin() {
   const [users, userRoles, memberships, schools, roles] = await Promise.all([
     listUsers(),
@@ -71,18 +120,30 @@ export async function loadAdminsForAdmin() {
 
   ;(userRoles || []).forEach((row) => {
     const roleName = row.role_name || roleNameById[Number(row.role_id)] || ''
-    if (!isSystemAdminRole(roleName)) return
+    const systemAdmin = isSystemAdminRole(roleName)
+    const collegeAdmin = isSchoolAdminRole(roleName)
+    if (!systemAdmin && !collegeAdmin) return
     const user = (users || []).find((item) => Number(item.user_id) === Number(row.user_id))
     if (!user) return
-    adminsByUserId.set(Number(user.user_id), {
-      id: Number(user.user_id),
+    const userId = Number(user.user_id)
+    if (!systemAdmin && adminsByUserId.has(userId) && isSystemAdminRole(adminsByUserId.get(userId).role)) {
+      return
+    }
+    const membership = collegeAdmin
+      ? (memberships || []).find((item) => {
+          const membershipRole = item.role_name || roleNameById[Number(item.role_id)] || ''
+          return Number(item.user_id) === userId && isSchoolAdminRole(membershipRole)
+        })
+      : null
+    adminsByUserId.set(userId, {
+      id: userId,
       name: displayName(user),
       email: user.email,
-      role: 'System Admin',
-      school: '—',
+      role: systemAdmin ? 'System Admin' : 'College Admin',
+      school: systemAdmin ? '—' : schoolNameById[Number(membership?.school_id)] || '—',
       userRoleId: Number(row.user_role_id),
-      membershipId: null,
-      schoolId: null,
+      membershipId: membership ? Number(membership.membership_id) : null,
+      schoolId: membership ? Number(membership.school_id) : null,
     })
   })
 
@@ -90,9 +151,7 @@ export async function loadAdminsForAdmin() {
     const roleName = row.role_name || roleNameById[Number(row.role_id)] || ''
     if (!isSchoolAdminRole(roleName)) return
     const userId = Number(row.user_id)
-    if (adminsByUserId.has(userId) && isSystemAdminRole(adminsByUserId.get(userId).role)) {
-      return
-    }
+    if (adminsByUserId.has(userId)) return
     const user = (users || []).find((item) => Number(item.user_id) === userId)
     if (!user) return
     adminsByUserId.set(userId, {
@@ -129,10 +188,10 @@ export async function createAdminAccount({ name, email, role, school }) {
   })
 
   try {
+    const roleId = adminRoleId(roles, role)
+
     if (isSystemAdminRole(role)) {
-      const roleId = findRoleIdByName(roles, 'SystemAdmin')
-      if (!roleId) throw new Error('SystemAdmin role is not configured.')
-      await createUserRole({ user_id: user.user_id, role_id: roleId })
+      await upsertAdminUserRole(user.user_id, roleId, [])
       return {
         admin: {
           id: Number(user.user_id),
@@ -145,13 +204,6 @@ export async function createAdminAccount({ name, email, role, school }) {
       }
     }
 
-    if (!isSchoolAdminRole(role) && normalizeRoleKey(role) !== 'collegeadmin') {
-      throw new Error('Role must be System Admin or College Admin.')
-    }
-
-    const roleId = findRoleIdByName(roles, 'SchoolAdmin')
-    if (!roleId) throw new Error('SchoolAdmin role is not configured.')
-
     const matchedSchool = (schools || []).find(
       (item) => String(item.name).toLowerCase() === String(school).trim().toLowerCase()
     )
@@ -159,6 +211,7 @@ export async function createAdminAccount({ name, email, role, school }) {
       throw new Error('Assigned school was not found. Use an exact school name.')
     }
 
+    await upsertAdminUserRole(user.user_id, roleId, [])
     await createMembership({
       school_id: matchedSchool.school_id,
       user_id: user.user_id,
@@ -192,21 +245,21 @@ export async function updateAdminAccount(admin, { name, role, school }) {
   const schools = await listSchools()
   const userRoles = await listUserRoles({ user_id: admin.id })
   const memberships = await listMemberships({ user_id: admin.id })
+  const roleId = adminRoleId(roles, role)
+  const matchedSchool = isSystemAdminRole(role)
+    ? null
+    : (schools || []).find(
+        (item) => String(item.name).toLowerCase() === String(school).trim().toLowerCase()
+      )
+  if (!isSystemAdminRole(role) && !matchedSchool) {
+    throw new Error('Assigned school was not found. Use an exact school name.')
+  }
 
   await patchUser(admin.id, {
     first_name: firstName,
     last_name: lastName,
   })
-
-  const systemRoleId = findRoleIdByName(roles, 'SystemAdmin')
-  const schoolRoleId = findRoleIdByName(roles, 'SchoolAdmin')
-
-  for (const row of userRoles || []) {
-    const roleName = row.role_name || ''
-    if (isSystemAdminRole(roleName)) {
-      await deleteUserRole(row.user_role_id)
-    }
-  }
+  await upsertAdminUserRole(admin.id, roleId, userRoles)
 
   for (const row of memberships || []) {
     const roleName = row.role_name || ''
@@ -216,8 +269,6 @@ export async function updateAdminAccount(admin, { name, role, school }) {
   }
 
   if (isSystemAdminRole(role)) {
-    if (!systemRoleId) throw new Error('SystemAdmin role is not configured.')
-    await createUserRole({ user_id: admin.id, role_id: systemRoleId })
     return {
       id: admin.id,
       name,
@@ -227,18 +278,10 @@ export async function updateAdminAccount(admin, { name, role, school }) {
     }
   }
 
-  if (!schoolRoleId) throw new Error('SchoolAdmin role is not configured.')
-  const matchedSchool = (schools || []).find(
-    (item) => String(item.name).toLowerCase() === String(school).trim().toLowerCase()
-  )
-  if (!matchedSchool) {
-    throw new Error('Assigned school was not found. Use an exact school name.')
-  }
-
   await createMembership({
     school_id: matchedSchool.school_id,
     user_id: admin.id,
-    role_id: schoolRoleId,
+    role_id: roleId,
     status: 1,
   })
 
