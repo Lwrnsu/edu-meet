@@ -14,7 +14,7 @@ import com.block_a.edu_meet.models.Message;
 public class RecentMessageCache {
 
     public static final int MAX_MESSAGES = 50;
-    private static final Duration TTL = Duration.ofMinutes(10);
+    private static final Duration TTL = Duration.ofMinutes(10); // Too Little, try 1-3 days.
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;

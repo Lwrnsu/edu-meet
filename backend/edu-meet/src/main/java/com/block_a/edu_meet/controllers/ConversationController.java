@@ -35,6 +35,20 @@ import com.block_a.edu_meet.dtos.MemberDto;
 import com.block_a.edu_meet.helpers.CreateConversationRequest;
 import com.block_a.edu_meet.helpers.MemberChangeRequest;
 
+/* 
+    Must return API response, not the data instantly. 
+    {
+        response: true / false
+        code: ex. 404
+        message: ex. "Conversation Doesn't Exist"
+        body: the data itself. 
+    }
+    explaination: so that in front-end, it must verify if the
+                api succedded or not before using the provided data.
+
+
+*/
+
 @RestController
 @RequestMapping("/api/conversations")
 public class ConversationController {
@@ -43,7 +57,7 @@ public class ConversationController {
     private final MemberLookup memberLookup;
     private final MessageRepository messageRepository;
     private final ConversationAccess conversationAccess;
-
+    // unnecessary.
     public ConversationController(ConversationRepository conversationRepository,
                                   MemberLookup memberLookup,
                                   MessageRepository messageRepository,
