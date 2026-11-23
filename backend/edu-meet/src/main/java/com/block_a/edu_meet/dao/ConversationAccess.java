@@ -23,7 +23,7 @@ public class ConversationAccess {
         }
 
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
         if (!conversation.getParticipantIds().contains(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "you are not a member of this chat");
         }

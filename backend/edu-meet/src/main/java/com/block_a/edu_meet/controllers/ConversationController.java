@@ -35,20 +35,6 @@ import com.block_a.edu_meet.dtos.MemberDto;
 import com.block_a.edu_meet.helpers.CreateConversationRequest;
 import com.block_a.edu_meet.helpers.MemberChangeRequest;
 
-/* 
-    Must return API response, not the data instantly. 
-    {
-        response: true / false
-        code: ex. 404
-        message: ex. "Conversation Doesn't Exist"
-        body: the data itself. 
-    }
-    explaination: so that in front-end, it must verify if the
-                api succedded or not before using the provided data.
-
-
-*/
-
 @RestController
 @RequestMapping("/api/conversations")
 public class ConversationController {
@@ -168,7 +154,7 @@ public class ConversationController {
     public Conversation addMembers(@PathVariable String conversationId,
                                    @RequestBody MemberChangeRequest request) {
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
@@ -192,7 +178,7 @@ public class ConversationController {
     public Conversation removeMember(@PathVariable String conversationId,
                                      @PathVariable String userId) {
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
@@ -209,7 +195,7 @@ public class ConversationController {
     public Conversation replaceMembers(@PathVariable String conversationId,
                                        @RequestBody MemberChangeRequest request) {
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
