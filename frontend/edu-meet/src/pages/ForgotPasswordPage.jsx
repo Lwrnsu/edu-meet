@@ -27,10 +27,9 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
     setLoading(true)
     try {
       const data = await requestForgotPasswordOtp({ email: trimmedEmail })
-      const otpHint = data.otp ? ` Dev OTP: ${data.otp}` : ''
-      const message = (data.message || 'OTP sent.') + otpHint
+      const message = data.message || 'OTP sent.'
       setInfo(message)
-      onOtpSent?.(trimmedEmail, { message, otp: data.otp || null })
+      onOtpSent?.(trimmedEmail, { message })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request OTP.')
     } finally {

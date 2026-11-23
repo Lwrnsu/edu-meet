@@ -1,3 +1,4 @@
+import { passwordFromPersonalInfo } from './generatedPassword'
 import { userFetch } from './http'
 import { normalizeRoleKey } from './roles'
 
@@ -24,10 +25,6 @@ function displayName(user) {
     .map((part) => (part || '').trim())
     .filter(Boolean)
   return parts.join(' ') || user?.email || 'User'
-}
-
-function generateTempPassword() {
-  return `Tmp!${Math.random().toString(36).slice(2, 8)}A1`
 }
 
 export function roleLabel(roleName) {
@@ -208,7 +205,7 @@ export async function createCollegeUser({
   const roleId = findSchoolRoleId(roles, roleName)
   if (!roleId) throw new Error('Selected role is not configured.')
 
-  const temporaryPassword = generateTempPassword()
+  const temporaryPassword = passwordFromPersonalInfo(firstName, lastName)
   const user = await userFetch('/api/php/users', {
     method: 'POST',
     body: {

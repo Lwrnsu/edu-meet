@@ -53,8 +53,8 @@ function IconEye({ open }) {
 }
 
 export default function SecuritySection({ user }) {
+  const registeredEmail = (user?.email || '').trim()
   const [step, setStep] = useState('email')
-  const [email, setEmail] = useState(() => user?.email || '')
   const [otp, setOtp] = useState('')
   const [verifiedOtp, setVerifiedOtp] = useState('')
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS)
@@ -73,29 +73,27 @@ export default function SecuritySection({ user }) {
     setVisibility(EMPTY_VISIBILITY)
   }
 
-  async function sendOtp(trimmedEmail) {
-    const data = await requestPasswordOtp({ email: trimmedEmail })
-    const otpHint = data.otp ? ` Dev OTP: ${data.otp}` : ''
-    setInfo((data.message || 'OTP sent.') + otpHint)
+  async function sendOtp() {
+    const data = await requestPasswordOtp({ email: registeredEmail })
+    setInfo(data.message || 'OTP sent.')
   }
 
   async function handleEmailSubmit(event) {
     event.preventDefault()
     clearMessages()
 
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail) {
-      setError('Email is required.')
+    if (!registeredEmail) {
+      setError('This account has no registered email.')
       return
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError('Please enter a valid email address.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registeredEmail)) {
+      setError('The registered email address is not valid.')
       return
     }
 
     setSubmitting(true)
     try {
-      await sendOtp(trimmedEmail)
+      await sendOtp()
       setOtp('')
       setVerifiedOtp('')
       resetPasswordFields()
@@ -119,7 +117,7 @@ export default function SecuritySection({ user }) {
 
     setSubmitting(true)
     try {
-      await verifyPasswordOtp({ email: email.trim(), otp: code })
+      await verifyPasswordOtp({ email: registeredEmail, otp: code })
       setVerifiedOtp(code)
       resetPasswordFields()
       setStep('password')
@@ -135,7 +133,7 @@ export default function SecuritySection({ user }) {
     setOtp('')
     setSubmitting(true)
     try {
-      await sendOtp(email.trim())
+      await sendOtp()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend OTP.')
     } finally {
@@ -189,7 +187,7 @@ export default function SecuritySection({ user }) {
     setSubmitting(true)
     try {
       const data = await changePassword({
-        email: email.trim(),
+        email: registeredEmail,
         otp: verifiedOtp,
         current_password: current,
         new_password: next,
@@ -226,22 +224,20 @@ export default function SecuritySection({ user }) {
         {step === 'email' ? (
           <>
             <p className="admin-security__subtitle">
-              Enter your registered email, and we will send you an OTP to change your password.
+              We will send an OTP to your registered email so you can change your password.
             </p>
 
             <form className="admin-security__form" onSubmit={handleEmailSubmit} noValidate>
               <label className="admin-security__field">
-                <span>Email</span>
+                <span>Registered email</span>
                 <input
                   type="email"
                   name="email"
                   autoComplete="email"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value)
-                    clearMessages()
-                  }}
-                  aria-label="Email"
+                  value={registeredEmail}
+                  readOnly
+                  aria-readonly="true"
+                  aria-label="Registered email"
                 />
               </label>
 

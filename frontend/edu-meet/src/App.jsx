@@ -183,7 +183,7 @@ function App() {
 
   function handleOtpSent(email, meta = {}) {
     setResetEmail(email)
-    setResetOtpHint(meta.message || (meta.otp ? `Dev OTP: ${meta.otp}` : ''))
+    setResetOtpHint(meta.message || '')
     setAuthView('reset')
   }
 

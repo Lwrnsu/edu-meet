@@ -1207,6 +1207,12 @@
   border-color: var(--accent);
 }
 
+.admin-security__field input[readonly] {
+  background: #f4f1fb;
+  color: var(--ink);
+  cursor: default;
+}
+
 .admin-security__message {
   margin: 0;
   font-size: 0.85rem;

@@ -9,6 +9,7 @@ import {
   updateUserRole,
 } from './roles'
 import { listSchools } from './schools'
+import { passwordFromPersonalInfo } from './generatedPassword'
 import { createUser, deleteUser, listUsers, patchUser } from './users'
 
 function displayName(user) {
@@ -173,17 +174,20 @@ export async function loadAdminsForAdmin() {
   }
 }
 
-export async function createAdminAccount({ name, email, role, school }) {
+export async function createAdminAccount({ firstName, lastName, email, role, school }) {
   const roles = await listRoles()
   const schools = await listSchools()
-  const { firstName, lastName } = splitName(name)
-  const tempPassword = generateTempPassword()
+  const givenName = String(firstName || '').trim()
+  const surname = String(lastName || '').trim()
+  const tempPassword = isSchoolAdminRole(role)
+    ? passwordFromPersonalInfo(givenName, surname)
+    : generateTempPassword()
 
   const user = await createUser({
     email,
     password: tempPassword,
-    first_name: firstName,
-    last_name: lastName,
+    first_name: givenName,
+    last_name: surname,
     status: 1,
   })
 

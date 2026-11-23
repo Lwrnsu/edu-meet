@@ -7,7 +7,8 @@ import {
 } from '../api/adminsAdmin'
 
 const EMPTY_FORM = {
-  name: '',
+  firstName: '',
+  lastName: '',
   email: '',
   role: '',
   school: '',
@@ -237,13 +238,14 @@ export default function ManageAdminsSection() {
   async function handleCreate(event) {
     event.preventDefault()
 
-    const name = form.name.trim()
+    const firstName = form.firstName.trim()
+    const lastName = form.lastName.trim()
     const email = form.email.trim().toLowerCase()
     const role = form.role.trim()
     let school = form.school.trim()
 
-    if (!name || !email || !role) {
-      setError('Admin name, email, and role are required.')
+    if (!firstName || !lastName || !email || !role) {
+      setError('First name, surname, email, and role are required.')
       return
     }
     if (!isValidEmail(email)) {
@@ -263,7 +265,7 @@ export default function ManageAdminsSection() {
     setError('')
     setInfo('')
     try {
-      const result = await createAdminAccount({ name, email, role, school })
+      const result = await createAdminAccount({ firstName, lastName, email, role, school })
       setAdmins((prev) => [...prev, result.admin])
       setInfo(`Admin created. Temporary password: ${result.temporaryPassword}`)
       closeModal()
@@ -470,11 +472,19 @@ export default function ManageAdminsSection() {
               <input
                 className="admin-schools-modal__input"
                 type="text"
-                value={form.name}
-                onChange={updateField('name')}
-                placeholder="Admin Name"
-                aria-label="Admin Name"
+                value={form.firstName}
+                onChange={updateField('firstName')}
+                placeholder="First Name"
+                aria-label="First Name"
                 autoFocus
+              />
+              <input
+                className="admin-schools-modal__input"
+                type="text"
+                value={form.lastName}
+                onChange={updateField('lastName')}
+                placeholder="Surname"
+                aria-label="Surname"
               />
               <input
                 className="admin-schools-modal__input"

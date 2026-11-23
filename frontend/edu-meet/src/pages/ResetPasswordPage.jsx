@@ -66,8 +66,7 @@ export default function ResetPasswordPage({
     setLoading(true)
     try {
       const data = await requestForgotPasswordOtp({ email })
-      const hint = data.otp ? ` Dev OTP: ${data.otp}` : ''
-      setInfo((data.message || 'OTP sent.') + hint)
+      setInfo(data.message || 'OTP sent.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend OTP.')
     } finally {
