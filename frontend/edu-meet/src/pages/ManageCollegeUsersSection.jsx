@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   assignableRoleOptions,
   createCollegeUser,
@@ -18,6 +19,14 @@ const EMPTY_FORM = {
   roleName: '',
   departmentId: '',
 }
+
+const ROLE_FILTER_OPTIONS = [
+  { key: '', label: 'All roles' },
+  { key: 'collegedean', label: 'College Dean' },
+  { key: 'programchair', label: 'Program Chair' },
+  { key: 'faculty', label: 'Faculty' },
+  { key: 'student', label: 'Student' },
+]
 
 function IconSearch() {
   return (
@@ -183,6 +192,12 @@ export default function ManageCollegeUsersSection({ schoolId }) {
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false)
+  const [roleMenuPos, setRoleMenuPos] = useState({ top: 0, left: 0, minWidth: 168 })
+  const roleFilterRef = useRef(null)
+  const roleButtonRef = useRef(null)
+  const roleMenuRef = useRef(null)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [viewRow, setViewRow] = useState(null)
@@ -212,6 +227,59 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     refresh()
   }, [refresh])
 
+  const updateRoleMenuPosition = useCallback(() => {
+    const button = roleButtonRef.current
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    setRoleMenuPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 168),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!roleMenuOpen) return undefined
+    updateRoleMenuPosition()
+
+    function handleReposition() {
+      updateRoleMenuPosition()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [roleMenuOpen, updateRoleMenuPosition])
+
+  useEffect(() => {
+    if (!roleMenuOpen) return undefined
+
+    function handlePointerDown(event) {
+      const target = event.target
+      const inTrigger = roleFilterRef.current?.contains(target)
+      const inMenu = roleMenuRef.current?.contains(target)
+      if (!inTrigger && !inMenu) {
+        setRoleMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setRoleMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [roleMenuOpen])
+
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     let list = rows
@@ -222,16 +290,22 @@ export default function ManageCollegeUsersSection({ schoolId }) {
           row.email.toLowerCase().includes(q)
       )
     }
-    if (sortKey === 'role' || sortKey === 'department') {
+    if (roleFilter) {
+      list = list.filter((row) => {
+        const key = normalizeRoleKey(row.roleName || row.role)
+        return key === roleFilter
+      })
+    }
+    if (sortKey === 'department') {
       const dir = sortDir === 'asc' ? 1 : -1
       list = [...list].sort((a, b) => {
-        const left = String(a[sortKey] || '').toLowerCase()
-        const right = String(b[sortKey] || '').toLowerCase()
+        const left = String(a.department || '').toLowerCase()
+        const right = String(b.department || '').toLowerCase()
         return left.localeCompare(right) * dir
       })
     }
     return list
-  }, [rows, query, sortKey, sortDir])
+  }, [rows, query, roleFilter, sortKey, sortDir])
 
   function toggleSort(key) {
     if (sortKey === key) {
@@ -240,6 +314,11 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     }
     setSortKey(key)
     setSortDir('asc')
+  }
+
+  function selectRoleFilter(key) {
+    setRoleFilter(key)
+    setRoleMenuOpen(false)
   }
 
   function closeModal() {
@@ -471,10 +550,24 @@ export default function ManageCollegeUsersSection({ schoolId }) {
               <th scope="col">USER</th>
               <th scope="col">EMAIL</th>
               <th scope="col">
-                <button type="button" className="college-users__sort" onClick={() => toggleSort('role')}>
-                  ROLE
-                  <IconSort />
-                </button>
+                <div className="college-users__role-filter" ref={roleFilterRef}>
+                  <button
+                    ref={roleButtonRef}
+                    type="button"
+                    className={
+                      roleFilter
+                        ? 'college-users__sort college-users__sort--active'
+                        : 'college-users__sort'
+                    }
+                    aria-haspopup="listbox"
+                    aria-expanded={roleMenuOpen}
+                    aria-label="Filter by role"
+                    onClick={() => setRoleMenuOpen((open) => !open)}
+                  >
+                    ROLE
+                    <IconSort />
+                  </button>
+                </div>
               </th>
               <th scope="col">
                 <button
@@ -541,13 +634,50 @@ export default function ManageCollegeUsersSection({ schoolId }) {
             {!loading && filteredRows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="college-users__empty">
-                  No users found for this school.
+                  {roleFilter
+                    ? 'No users found for this role.'
+                    : 'No users found for this school.'}
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
       </div>
+
+      {roleMenuOpen
+        ? createPortal(
+            <ul
+              ref={roleMenuRef}
+              className="college-users__role-menu college-users__role-menu--portal"
+              role="listbox"
+              aria-label="Role filter"
+              style={{
+                top: roleMenuPos.top,
+                left: roleMenuPos.left,
+                minWidth: roleMenuPos.minWidth,
+              }}
+            >
+              {ROLE_FILTER_OPTIONS.map((option) => (
+                <li key={option.key || 'all'}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={roleFilter === option.key}
+                    className={
+                      roleFilter === option.key
+                        ? 'college-users__role-option is-active'
+                        : 'college-users__role-option'
+                    }
+                    onClick={() => selectRoleFilter(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body
+          )
+        : null}
 
       {viewRow ? (
         <div

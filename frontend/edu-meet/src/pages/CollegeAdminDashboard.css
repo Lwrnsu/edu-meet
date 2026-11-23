@@ -770,6 +770,56 @@
   cursor: pointer;
 }
 
+.college-users__sort--active {
+  color: var(--accent, #6d28d9);
+}
+
+.college-users__role-filter {
+  position: relative;
+  display: inline-flex;
+}
+
+.college-users__role-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem 0;
+  min-width: 10.5rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  border-radius: 0.55rem;
+  box-shadow: 0 10px 24px rgba(33, 0, 70, 0.12);
+}
+
+.college-users__role-menu--portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.college-users__role-option {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.college-users__role-option:hover,
+.college-users__role-option.is-active {
+  background: rgba(165, 122, 212, 0.14);
+  color: var(--ink);
+}
+
 .college-users__name {
   margin-right: 0.45rem;
 }
