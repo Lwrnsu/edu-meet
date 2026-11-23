@@ -2,7 +2,7 @@ frontend/edu-meet/node_modules/
 
 backend/edu-meet/php/vendor/
 backend/edu-meet/php/composer.phar
-
+backend/edu-meet/php/config/mail.php
 backend/edu-meet/target/
 backend/edu-meet/.mvn/wrapper/maven-wrapper.jar
 
