@@ -11,6 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 
+import com.block_a.edu_meet.models.Message;
+import com.block_a.edu_meet.repositories.MessageRepository;
+
 @SpringBootTest
 class MessageRepositoryTest {
 

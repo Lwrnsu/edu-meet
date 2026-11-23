@@ -32,6 +32,15 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 import tools.jackson.databind.ObjectMapper;
 
+import com.block_a.edu_meet.controllers.MessageController;
+import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.models.Message;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.RecentMessageCache;
+
 @SpringBootTest
 class RecentMessageCacheTest {
 

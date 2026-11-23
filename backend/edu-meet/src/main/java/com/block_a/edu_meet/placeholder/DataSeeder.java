@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-import com.block_a.edu_meet.chat.Conversation;
-import com.block_a.edu_meet.chat.ConversationRepository;
-import com.block_a.edu_meet.chat.ConversationType;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.models.ConversationType;
 
 @Component
 public class DataSeeder implements CommandLineRunner {

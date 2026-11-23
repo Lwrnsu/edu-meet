@@ -19,6 +19,15 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import com.block_a.edu_meet.controllers.ConversationController;
+import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.helpers.CreateConversationRequest;
+import com.block_a.edu_meet.helpers.MemberLookup;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.repositories.MessageRepository;
+
 @SpringBootTest
 class ConcurrentConversationCreationTest {
 

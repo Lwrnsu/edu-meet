@@ -10,6 +10,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.block_a.edu_meet.controllers.ConversationController;
+import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.helpers.ConversationSummary;
+import com.block_a.edu_meet.helpers.MemberLookup;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.models.Message;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.repositories.MessageRepository;
+
 class ConversationSidebarTest {
 
     @Test

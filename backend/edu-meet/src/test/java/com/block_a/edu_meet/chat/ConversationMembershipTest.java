@@ -18,6 +18,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.block_a.edu_meet.controllers.ConversationController;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+
 @SpringBootTest
 class ConversationMembershipTest {
 

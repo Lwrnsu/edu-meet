@@ -20,11 +20,11 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import com.block_a.edu_meet.chat.Conversation;
-import com.block_a.edu_meet.chat.ConversationRepository;
-import com.block_a.edu_meet.chat.ConversationType;
-import com.block_a.edu_meet.chat.MessageRepository;
-import com.block_a.edu_meet.chat.RecentMessageCache;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.RecentMessageCache;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatHandlerTest {

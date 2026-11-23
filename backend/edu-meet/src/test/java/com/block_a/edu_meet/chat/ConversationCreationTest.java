@@ -17,6 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.block_a.edu_meet.controllers.ConversationController;
+import com.block_a.edu_meet.helpers.CreateConversationRequest;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+
 @SpringBootTest
 class ConversationCreationTest {
 

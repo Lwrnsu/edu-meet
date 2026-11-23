@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import com.block_a.edu_meet.chat.MemberDto;
-import com.block_a.edu_meet.chat.MemberLookup;
+import com.block_a.edu_meet.dtos.MemberDto;
+import com.block_a.edu_meet.helpers.MemberLookup;
 
 @Component
 public class PlaceholderMemberLookup implements MemberLookup {

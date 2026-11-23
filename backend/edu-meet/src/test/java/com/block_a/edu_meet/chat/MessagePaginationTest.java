@@ -16,6 +16,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import com.block_a.edu_meet.controllers.MessageController;
+import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.ConversationType;
+import com.block_a.edu_meet.models.Message;
+import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.RecentMessageCache;
+
 @SpringBootTest
 class MessagePaginationTest {
 

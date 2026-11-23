@@ -16,15 +16,6 @@ import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.services.RecentMessageCache;
 import com.block_a.edu_meet.models.Message;
 
-/* 
-    Must return API response, not the data instantly. 
-    {
-        response: true / false
-        code: ex. 404
-        message: ex. "Conversation Doesn't Exist"
-        body: the data itself. 
-    }
-*/
 @RestController
 @RequestMapping("/api/conversations")
 public class MessageController {
