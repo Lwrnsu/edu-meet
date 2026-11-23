@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Student Coding Page</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+
+      textarea {
+        width: 100%;
+      }
+
+      #output {
+        border: 1px solid #ccc;
+        background-color: #f5f5f5;
+        padding: 10px;
+        min-height: 100px;
+        white-space: pre-wrap;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Student Coding Page</h1>
+
+    <label>Student Name:</label>
+    <input type="text" id="studentName" />
+
+    <hr />
+
+    <h2>Assigned Question</h2>
+    <div id="questionBox">Loading...</div>
+
+    <hr />
+
+    <h2>Code Editor</h2>
+    <select id="language">
+      <option value="java">Java</option>
+      <option value="python">Python</option>
+      <option value="php">PHP</option>
+      <option value="sql">SQL</option>
+      <option value="c">C</option>
+      <option value="c#">C#</option>
+      <option value="c++">C++</option>
+      <option value="bash">Bash</option>
+      <option value="javascript">JavaScript</option>
+    </select>
+    <textarea
+      id="code"
+      rows="15"
+      placeholder="Write your code here..."
+    ></textarea>
+
+    <br /><br />
+
+    <button onclick="runCode()">Run Code</button>
+    <button onclick="submitCode()">Submit Code</button>
+
+    <hr />
+
+    <h2>Output</h2>
+
+    <div id="output">Program output will appear here...</div>
+
+    <script>
+      let currentQuestionId = 0;
+
+      loadQuestion();
+
+      function loadQuestion() {
+        fetch("/api/assigned-question")
+          .then((r) => r.json())
+          .then((data) => {
+            currentQuestionId = data.id;
+
+            document.getElementById("questionBox").innerHTML = data.question;
+          })
+          .catch(() => {
+            document.getElementById("questionBox").innerHTML =
+              "No assigned question.";
+          });
+      }
+
+      function runCode() {
+        fetch("/api/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code: document.getElementById("code").value,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById("output").innerText = data.output;
+          })
+          .catch((error) => {
+            console.error(error);
+
+            document.getElementById("output").innerText = error;
+          });
+      }
+
+      function runCode() {
+        const language = document.getElementById("language").value;
+
+        const code = document.getElementById("code").value;
+
+        fetch("/api/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            language: language,
+            code: code,
+          }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            document.getElementById("output").innerText = data.output;
+          });
+      }
+    </script>
+  </body>
+</html>

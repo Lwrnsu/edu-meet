@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Teacher Panel</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+
+      input {
+        padding: 8px;
+        margin: 5px;
+      }
+
+      button {
+        padding: 8px 15px;
+        margin: 5px;
+        cursor: pointer;
+      }
+
+      .question {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Teacher Panel</h1>
+
+    <h2>Question Management</h2>
+
+    <input type="hidden" id="questionId" />
+
+    <input type="text" id="question" placeholder="Enter Question" size="60" />
+
+    <br />
+
+    <button onclick="addQuestion()">Add Question</button>
+
+    <button onclick="updateQuestion()">Update Question</button>
+
+    <button onclick="clearForm()">Clear</button>
+
+    <hr />
+
+    <h2>All Questions</h2>
+
+    <div id="questions"></div>
+
+    <script>
+      loadQuestions();
+
+      function clearForm() {
+        document.getElementById("questionId").value = "";
+        document.getElementById("question").value = "";
+      }
+
+      function addQuestion() {
+        const question = document.getElementById("question").value;
+
+        if (question.trim() === "") {
+          alert("Enter a question.");
+          return;
+        }
+
+        fetch("/api/question", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question: question,
+          }),
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            console.log(data);
+
+            alert("Question Added");
+
+            clearForm();
+
+            loadQuestions();
+          })
+          .catch((error) => {
+            console.error(error);
+            alert("Error adding question");
+          });
+      }
+
+      function updateQuestion() {
+        const id = document.getElementById("questionId").value;
+
+        const question = document.getElementById("question").value;
+
+        if (id === "") {
+          alert("Select a question first.");
+          return;
+        }
+
+        fetch("/api/question/edit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: id,
+            question: question,
+          }),
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            console.log(data);
+
+            alert("Question Updated");
+
+            clearForm();
+
+            loadQuestions();
+          });
+      }
+
+      function deleteQuestion(id) {
+        if (!confirm("Delete this question?")) {
+          return;
+        }
+
+        fetch("/api/question/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: id,
+          }),
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            console.log(data);
+
+            alert("Question Deleted");
+
+            loadQuestions();
+          });
+      }
+
+      function assignQuestion(id) {
+        fetch("/api/assign", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            questionId: id,
+          }),
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            console.log(data);
+
+            alert("Question Assigned");
+          });
+      }
+
+      function editQuestion(id, question) {
+        document.getElementById("questionId").value = id;
+
+        document.getElementById("question").value = question;
+      }
+
+      function loadQuestions() {
+        fetch("/api/questions")
+          .then((response) => response.json())
+          .then((data) => {
+            let html = "";
+
+            data.forEach((q) => {
+              html += `
+                <div class="question">
+
+                    <b>ID:</b> ${q.id}
+                    <br><br>
+
+                    ${q.question}
+
+                    <br><br>
+
+                    <button
+                        onclick="editQuestion('${q.id}','${q.question}')">
+                        Edit
+                    </button>
+
+                    <button
+                        onclick="deleteQuestion(${q.id})">
+                        Delete
+                    </button>
+
+                    <button
+                        onclick="assignQuestion(${q.id})">
+                        Assign
+                    </button>
+
+                </div>
+            `;
+            });
+
+            document.getElementById("questions").innerHTML = html;
+          })
+          .catch((error) => {
+            console.error(error);
+
+            document.getElementById("questions").innerHTML =
+              "Could not load questions.";
+          });
+      }
+    </script>
+  </body>
+</html>
