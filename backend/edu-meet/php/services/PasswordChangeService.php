@@ -111,6 +111,113 @@ class PasswordChangeService
         ];
     }
 
+    public function requestForgotOtp(array $payload): array
+    {
+        $user = $this->resolveUserByEmail($payload['email'] ?? null);
+
+        if ((int) ($user['status'] ?? 0) !== 1) {
+            throw new ApiException('User account is inactive', 403);
+        }
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $reset = $this->resets->createExpiring(
+            (int) $user['user_id'],
+            password_hash($otp, PASSWORD_DEFAULT),
+            10
+        );
+
+        return [
+            'message' => 'OTP generated. Use the code to continue (email delivery coming later).',
+            'otp' => $otp,
+            'expires_at' => $reset['expires_at'],
+        ];
+    }
+
+    public function verifyForgotOtp(array $payload): array
+    {
+        $user = $this->resolveUserByEmail($payload['email'] ?? null);
+        $otp = isset($payload['otp']) ? trim((string) $payload['otp']) : '';
+
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            throw new ApiException('Validation failed', 422, ['otp' => 'OTP must be a 6-digit code']);
+        }
+
+        $this->assertValidOtp((int) $user['user_id'], $otp);
+
+        return [
+            'message' => 'OTP verified. You may change your password.',
+        ];
+    }
+
+    public function resetForgotPassword(array $payload): array
+    {
+        $user = $this->resolveUserByEmail($payload['email'] ?? null);
+        $otp = isset($payload['otp']) ? trim((string) $payload['otp']) : '';
+        $newPassword = isset($payload['new_password']) ? (string) $payload['new_password'] : '';
+        $confirmPassword = isset($payload['confirm_password']) ? (string) $payload['confirm_password'] : '';
+
+        $errors = [];
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            $errors['otp'] = 'OTP must be a 6-digit code';
+        }
+        if ($newPassword === '') {
+            $errors['new_password'] = 'New password is required';
+        } elseif (!$this->isStrongPassword($newPassword)) {
+            $errors['new_password'] = 'New password must be at least 8 characters and include an uppercase letter, a number, and a special character (@, #, !, %, or _)';
+        }
+        if ($confirmPassword === '') {
+            $errors['confirm_password'] = 'Confirm password is required';
+        } elseif ($confirmPassword !== $newPassword) {
+            $errors['confirm_password'] = 'New password and confirmation do not match';
+        }
+        if (!empty($errors)) {
+            throw new ApiException('Validation failed', 422, $errors);
+        }
+
+        if ((int) ($user['status'] ?? 0) !== 1) {
+            throw new ApiException('User account is inactive', 403);
+        }
+
+        $reset = $this->assertValidOtp((int) $user['user_id'], $otp);
+
+        $this->users->update((int) $user['user_id'], [
+            'email' => $user['email'],
+            'first_name' => $user['first_name'],
+            'middle_name' => $user['middle_name'] ?? null,
+            'last_name' => $user['last_name'],
+            'suffix' => $user['suffix'] ?? null,
+            'status' => (int) $user['status'],
+            'password_hash' => password_hash($newPassword, PASSWORD_DEFAULT),
+        ]);
+
+        $this->resets->update((int) $reset['reset_id'], [
+            'user_id' => (int) $reset['user_id'],
+            'token_hash' => $reset['token_hash'],
+            'expires_at' => $reset['expires_at'],
+            'is_used' => 1,
+        ]);
+
+        return [
+            'message' => 'Password updated successfully.',
+        ];
+    }
+
+    private function resolveUserByEmail(mixed $emailRaw): array
+    {
+        $email = is_string($emailRaw) ? strtolower(trim($emailRaw)) : '';
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new ApiException('Validation failed', 422, ['email' => 'A valid email is required']);
+        }
+
+        $user = $this->users->findByEmail($email);
+        if ($user === null) {
+            throw new ApiException('User not found', 404);
+        }
+
+        return $user;
+    }
+
     private function resolveAuthorizedUser(array $claims, mixed $emailRaw): array
     {
         $authUserId = isset($claims['sub']) ? (int) $claims['sub'] : 0;

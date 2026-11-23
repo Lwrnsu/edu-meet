@@ -98,6 +98,42 @@ public class AuthController {
 				body);
 	}
 
+	@PostMapping("/php-forgot-request-password-otp")
+	public ResponseEntity<JsonNode> forgotRequestPasswordOtp(
+			@RequestBody(required = false) JsonNode body,
+			HttpServletRequest request) {
+		return phpApiClient.forward(
+				HttpMethod.POST,
+				"auth/forgot_request_password_otp.php",
+				null,
+				authorization(request),
+				body);
+	}
+
+	@PostMapping("/php-forgot-verify-password-otp")
+	public ResponseEntity<JsonNode> forgotVerifyPasswordOtp(
+			@RequestBody(required = false) JsonNode body,
+			HttpServletRequest request) {
+		return phpApiClient.forward(
+				HttpMethod.POST,
+				"auth/forgot_verify_password_otp.php",
+				null,
+				authorization(request),
+				body);
+	}
+
+	@PostMapping("/php-forgot-reset-password")
+	public ResponseEntity<JsonNode> forgotResetPassword(
+			@RequestBody(required = false) JsonNode body,
+			HttpServletRequest request) {
+		return phpApiClient.forward(
+				HttpMethod.POST,
+				"auth/forgot_reset_password.php",
+				null,
+				authorization(request),
+				body);
+	}
+
 	private static String authorization(HttpServletRequest request) {
 		return request.getHeader(HttpHeaders.AUTHORIZATION);
 	}

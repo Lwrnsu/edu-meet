@@ -59,6 +59,37 @@ function findSchoolRoleId(roles, roleName) {
   return match ? Number(match.role_id) : null
 }
 
+async function listUserRolesForUser(userId) {
+  const rows = await userFetch('/api/php/user-roles', { query: { user_id: userId } })
+  return Array.isArray(rows) ? rows : []
+}
+
+async function upsertCollegeUserRole(userId, roleId) {
+  const rows = await listUserRolesForUser(userId)
+  const existing = rows[0]
+  if (existing) {
+    return userFetch('/api/php/user-roles', {
+      method: 'PATCH',
+      query: { id: existing.user_role_id },
+      body: { role_id: roleId },
+    })
+  }
+  return userFetch('/api/php/user-roles', {
+    method: 'POST',
+    body: { user_id: Number(userId), role_id: Number(roleId) },
+  })
+}
+
+async function deleteUserRolesForUser(userId) {
+  const rows = await listUserRolesForUser(userId)
+  for (const row of rows) {
+    await userFetch('/api/php/user-roles', {
+      method: 'DELETE',
+      query: { id: row.user_role_id },
+    })
+  }
+}
+
 export function assignableRoleOptions(roles) {
   const active = (roles || []).filter((role) => Number(role.status) === 1)
   const preferred = [
@@ -207,6 +238,11 @@ export async function createCollegeUser({
       body: payload,
     })
 
+    await userFetch('/api/php/user-roles', {
+      method: 'POST',
+      body: { user_id: Number(user.user_id), role_id: roleId },
+    })
+
     return {
       user: {
         membershipId: Number(membership.membership_id),
@@ -268,6 +304,8 @@ export async function updateCollegeUser(
     body: membershipPayload,
   })
 
+  await upsertCollegeUserRole(row.userId, roleId)
+
   const updatedUser = {
     first_name: firstName,
     middle_name: middleName || '',
@@ -311,6 +349,7 @@ export async function removeCollegeUser(membershipId, userId) {
   })
 
   if (!Array.isArray(remaining) || remaining.length === 0) {
+    await deleteUserRolesForUser(userId)
     await userFetch('/api/php/users', {
       method: 'DELETE',
       query: { id: userId },

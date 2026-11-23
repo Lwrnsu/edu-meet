@@ -48,7 +48,10 @@ public class SecurityConfig {
 								"/api/auth/php-signup",
 								"/api/auth/php-request-password-otp",
 								"/api/auth/php-verify-password-otp",
-								"/api/auth/php-change-password")
+								"/api/auth/php-change-password",
+								"/api/auth/php-forgot-request-password-otp",
+								"/api/auth/php-forgot-verify-password-otp",
+								"/api/auth/php-forgot-reset-password")
 						.permitAll()
 						.requestMatchers(HttpMethod.GET, "/", "/api/health").permitAll()
 						.requestMatchers("/api/php/**").permitAll()

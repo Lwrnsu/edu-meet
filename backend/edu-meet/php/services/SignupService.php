@@ -5,6 +5,7 @@ require_once __DIR__ . '/../repositories/UserRepository.php';
 require_once __DIR__ . '/../repositories/SchoolRepository.php';
 require_once __DIR__ . '/../repositories/SchoolMembershipRepository.php';
 require_once __DIR__ . '/../repositories/RoleRepository.php';
+require_once __DIR__ . '/../repositories/UserRoleRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 
 class SignupService
@@ -14,19 +15,22 @@ class SignupService
     private SchoolRepository $schools;
     private SchoolMembershipRepository $memberships;
     private RoleRepository $roles;
+    private UserRoleRepository $userRoles;
 
     public function __construct(
         ?mysqli $db = null,
         ?UserRepository $users = null,
         ?SchoolRepository $schools = null,
         ?SchoolMembershipRepository $memberships = null,
-        ?RoleRepository $roles = null
+        ?RoleRepository $roles = null,
+        ?UserRoleRepository $userRoles = null
     ) {
         $this->db = $db ?? Database::getConnection();
         $this->users = $users ?? new UserRepository($this->db);
         $this->schools = $schools ?? new SchoolRepository($this->db);
         $this->memberships = $memberships ?? new SchoolMembershipRepository($this->db);
         $this->roles = $roles ?? new RoleRepository($this->db);
+        $this->userRoles = $userRoles ?? new UserRoleRepository($this->db);
     }
 
     public function register(array $payload): array
@@ -76,6 +80,8 @@ class SignupService
                 'role_id' => (int) $role['role_id'],
                 'status' => 0,
             ]);
+
+            $this->userRoles->create($userId, (int) $role['role_id']);
 
             $this->db->commit();
         } catch (Throwable $e) {

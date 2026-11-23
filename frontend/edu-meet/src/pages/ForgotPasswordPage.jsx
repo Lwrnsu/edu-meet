@@ -1,13 +1,17 @@
 import { useState } from 'react'
+import { requestForgotPasswordOtp } from '../api/passwordSecurity'
 import './ForgotPasswordPage.css'
 
 export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, onOtpSent }) {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    setInfo('')
 
     const trimmedEmail = email.trim()
     if (!trimmedEmail) {
@@ -20,7 +24,18 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
       return
     }
 
-    onOtpSent?.(trimmedEmail)
+    setLoading(true)
+    try {
+      const data = await requestForgotPasswordOtp({ email: trimmedEmail })
+      const otpHint = data.otp ? ` Dev OTP: ${data.otp}` : ''
+      const message = (data.message || 'OTP sent.') + otpHint
+      setInfo(message)
+      onOtpSent?.(trimmedEmail, { message, otp: data.otp || null })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request OTP.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -45,7 +60,12 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
                 placeholder="Registered Email"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setError('')
+                  setInfo('')
+                }}
+                disabled={loading}
                 required
               />
             </label>
@@ -55,6 +75,7 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
                 type="button"
                 className="forgot__back"
                 onClick={() => onBackToLogin?.()}
+                disabled={loading}
               >
                 Go back to Login
               </button>
@@ -66,8 +87,14 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
               </p>
             ) : null}
 
-            <button className="forgot__submit" type="submit">
-              SEND OTP
+            {info ? (
+              <p className="forgot__message forgot__message--info" role="status">
+                {info}
+              </p>
+            ) : null}
+
+            <button className="forgot__submit" type="submit" disabled={loading}>
+              {loading ? 'Sending…' : 'SEND OTP'}
             </button>
           </form>
 
@@ -77,6 +104,7 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
               type="button"
               className="forgot__link"
               onClick={() => onSwitchToSignUp?.()}
+              disabled={loading}
             >
               Sign Up
             </button>

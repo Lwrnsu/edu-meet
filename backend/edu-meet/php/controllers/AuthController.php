@@ -76,6 +76,27 @@ class AuthController
         );
     }
 
+    public function requestForgotPasswordOtp(): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->requestForgotOtp($payload)
+        );
+    }
+
+    public function verifyForgotPasswordOtp(): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->verifyForgotOtp($payload)
+        );
+    }
+
+    public function resetForgotPassword(): void
+    {
+        $this->handlePost(
+            fn(array $payload) => $this->passwordChangeService->resetForgotPassword($payload)
+        );
+    }
+
     public function refresh(): void
     {
         $this->handlePost(function (array $payload) {

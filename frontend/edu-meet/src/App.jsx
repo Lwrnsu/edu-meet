@@ -64,6 +64,7 @@ function App() {
   const [checking, setChecking] = useState(true)
   const [authView, setAuthView] = useState(initialAuthView)
   const [resetEmail, setResetEmail] = useState('')
+  const [resetOtpHint, setResetOtpHint] = useState('')
   const [forgotReturnView, setForgotReturnView] = useState(
     isAdminLoginPath() ? 'admin-login' : 'login'
   )
@@ -180,17 +181,24 @@ function App() {
     setAuthView('forgot')
   }
 
-  function handleOtpSent(email) {
+  function handleOtpSent(email, meta = {}) {
     setResetEmail(email)
+    setResetOtpHint(meta.message || (meta.otp ? `Dev OTP: ${meta.otp}` : ''))
     setAuthView('reset')
   }
 
   function returnFromForgotOrReset() {
+    setResetEmail('')
+    setResetOtpHint('')
     if (forgotReturnView === 'admin-login') {
       goToAdminLogin()
       return
     }
     setAuthView('login')
+  }
+
+  function handleResetSuccess() {
+    returnFromForgotOrReset()
   }
 
   async function handleLogout() {
@@ -254,7 +262,9 @@ function App() {
       return (
         <ResetPasswordPage
           email={resetEmail}
+          otpHint={resetOtpHint}
           onCancel={returnFromForgotOrReset}
+          onSuccess={handleResetSuccess}
         />
       )
     }
