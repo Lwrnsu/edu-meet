@@ -14,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 public class RecentMessageCache {
 
     static final int MAX_MESSAGES = 50;
-    private static final Duration TTL = Duration.ofMinutes(10);
+    private static final Duration TTL = Duration.ofDays(3);
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
