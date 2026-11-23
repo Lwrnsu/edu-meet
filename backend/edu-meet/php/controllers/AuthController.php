@@ -39,6 +39,17 @@ class AuthController
         $this->handlePost(fn(array $payload) => $this->withCookies($this->service->loginSystemAdmin($payload)));
     }
 
+    public function schoolLogin(): void
+    {
+        $this->handlePost(fn(array $payload) => $this->withCookies($this->service->loginSchoolPortal($payload)));
+    }
+
+    /** @deprecated Use schoolLogin() */
+    public function collegeAdminLogin(): void
+    {
+        $this->schoolLogin();
+    }
+
     public function signup(): void
     {
         $this->handlePost(fn(array $payload) => $this->signupService->register($payload), 201);

@@ -21,7 +21,7 @@ function displayName(user) {
   const first = user?.first_name?.trim() || ''
   const last = user?.last_name?.trim() || ''
   const full = `${first} ${last}`.trim()
-  return full || 'System Admin'
+  return full || user?.email || 'Administrator'
 }
 
 function isStrongPassword(password) {

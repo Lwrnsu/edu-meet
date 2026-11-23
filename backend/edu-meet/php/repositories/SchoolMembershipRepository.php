@@ -195,19 +195,30 @@ class SchoolMembershipRepository
 
     public function update(int $id, array $data): bool
     {
-        $sql = 'UPDATE school_memberships
-                SET department_id = ?, role_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE membership_id = ? AND deleted_at IS NULL';
-
-        $stmt = $this->db->prepare($sql);
-        if ($stmt === false) {
-            throw new RuntimeException('Failed to prepare update: ' . $this->db->error);
-        }
-
         $departmentId = $data['department_id'];
         $roleId = (int) $data['role_id'];
         $status = (int) $data['status'];
-        $stmt->bind_param('iiii', $departmentId, $roleId, $status, $id);
+
+        if ($departmentId === null) {
+            $sql = 'UPDATE school_memberships
+                    SET department_id = NULL, role_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE membership_id = ? AND deleted_at IS NULL';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare update: ' . $this->db->error);
+            }
+            $stmt->bind_param('iii', $roleId, $status, $id);
+        } else {
+            $sql = 'UPDATE school_memberships
+                    SET department_id = ?, role_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE membership_id = ? AND deleted_at IS NULL';
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) {
+                throw new RuntimeException('Failed to prepare update: ' . $this->db->error);
+            }
+            $departmentId = (int) $departmentId;
+            $stmt->bind_param('iiii', $departmentId, $roleId, $status, $id);
+        }
 
         if (!$stmt->execute()) {
             $error = $stmt->error;

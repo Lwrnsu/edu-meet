@@ -7,6 +7,8 @@ export const JAVA_API_BASE_URL =
 
 const ADMIN_ACCESS_KEY = 'edu_meet_admin_access_token'
 const ADMIN_REFRESH_KEY = 'edu_meet_admin_refresh_token'
+const USER_ACCESS_KEY = 'edu_meet_user_access_token'
+const USER_REFRESH_KEY = 'edu_meet_user_refresh_token'
 
 export function getAdminTokens() {
   const accessToken = sessionStorage.getItem(ADMIN_ACCESS_KEY)
@@ -29,6 +31,29 @@ export function storeAdminTokens(data = {}) {
 export function clearAdminTokens() {
   sessionStorage.removeItem(ADMIN_ACCESS_KEY)
   sessionStorage.removeItem(ADMIN_REFRESH_KEY)
+}
+
+export function getUserTokens() {
+  const accessToken = sessionStorage.getItem(USER_ACCESS_KEY)
+  const refreshToken = sessionStorage.getItem(USER_REFRESH_KEY)
+  if (!accessToken && !refreshToken) {
+    return null
+  }
+  return { accessToken, refreshToken }
+}
+
+export function storeUserTokens(data = {}) {
+  if (data.access_token) {
+    sessionStorage.setItem(USER_ACCESS_KEY, data.access_token)
+  }
+  if (data.refresh_token) {
+    sessionStorage.setItem(USER_REFRESH_KEY, data.refresh_token)
+  }
+}
+
+export function clearUserTokens() {
+  sessionStorage.removeItem(USER_ACCESS_KEY)
+  sessionStorage.removeItem(USER_REFRESH_KEY)
 }
 
 async function post(path, payload = {}, { bearerToken } = {}) {
@@ -55,12 +80,30 @@ async function post(path, payload = {}, { bearerToken } = {}) {
   return data
 }
 
-export function login(email, password) {
+export async function login(email, password) {
   clearAdminTokens()
-  return post('/auth/login.php', { email, password })
+
+  const response = await fetch(`${JAVA_API_BASE_URL}/api/auth/php-school-login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Request failed.')
+  }
+
+  storeUserTokens(data)
+  return data
 }
 
 export async function systemAdminLogin(email, password) {
+  clearUserTokens()
+
   const response = await fetch(`${JAVA_API_BASE_URL}/api/auth/php-system-admin-login`, {
     method: 'POST',
     headers: {
@@ -97,8 +140,26 @@ export async function signup(payload) {
   return data
 }
 
-
 export async function restoreSession() {
+  const userTokens = getUserTokens()
+  if (userTokens) {
+    try {
+      const data = await post(
+        '/auth/refresh.php',
+        {
+          access_token: userTokens.accessToken || undefined,
+          refresh_token: userTokens.refreshToken || undefined,
+        },
+        { bearerToken: userTokens.accessToken || undefined }
+      )
+      storeUserTokens(data)
+      return data
+    } catch (error) {
+      clearUserTokens()
+      throw error
+    }
+  }
+
   const adminTokens = getAdminTokens()
   if (adminTokens) {
     try {
@@ -122,8 +183,19 @@ export async function restoreSession() {
 }
 
 export async function logoutRequest() {
+  const userTokens = getUserTokens()
   const adminTokens = getAdminTokens()
   try {
+    if (userTokens) {
+      return await post(
+        '/auth/logout.php',
+        {
+          access_token: userTokens.accessToken || undefined,
+          refresh_token: userTokens.refreshToken || undefined,
+        },
+        { bearerToken: userTokens.accessToken || undefined }
+      )
+    }
     if (adminTokens) {
       return await post(
         '/auth/logout.php',
@@ -136,6 +208,7 @@ export async function logoutRequest() {
     }
     return await post('/auth/logout.php')
   } finally {
+    clearUserTokens()
     clearAdminTokens()
   }
 }

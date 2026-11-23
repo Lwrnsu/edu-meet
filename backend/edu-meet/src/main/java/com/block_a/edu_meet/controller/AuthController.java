@@ -46,6 +46,17 @@ public class AuthController {
 		return phpLoginClient.systemAdminLogin(request.getEmail(), request.getPassword());
 	}
 
+	@PostMapping("/php-school-login")
+	public ResponseEntity<JsonNode> schoolLoginWithPhp(@RequestBody LoginRequest request) {
+		return phpLoginClient.schoolLogin(request.getEmail(), request.getPassword());
+	}
+
+	/** Compatibility alias for school portal login. */
+	@PostMapping("/php-college-admin-login")
+	public ResponseEntity<JsonNode> collegeAdminLoginWithPhp(@RequestBody LoginRequest request) {
+		return phpLoginClient.schoolLogin(request.getEmail(), request.getPassword());
+	}
+
 	@PostMapping("/php-signup")
 	public ResponseEntity<JsonNode> signupWithPhp(@RequestBody SignupRequest request) {
 		return phpLoginClient.signup(request.toPhpPayload());

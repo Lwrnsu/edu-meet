@@ -1,7 +1,9 @@
 import {
   JAVA_API_BASE_URL,
   clearAdminTokens,
+  clearUserTokens,
   getAdminTokens,
+  getUserTokens,
   restoreSession,
 } from './auth'
 
@@ -33,7 +35,7 @@ async function parseBody(response) {
   }
 }
 
-async function rawAdminFetch(path, { method = 'GET', body, query, bearerToken } = {}) {
+async function rawFetch(path, { method = 'GET', body, query, bearerToken } = {}) {
   const headers = {}
   if (bearerToken) {
     headers.Authorization = `Bearer ${bearerToken}`
@@ -52,22 +54,22 @@ async function rawAdminFetch(path, { method = 'GET', body, query, bearerToken } 
   return { response, data }
 }
 
-export async function adminFetch(path, options = {}) {
-  const tokens = getAdminTokens()
+async function authedFetch(path, options, { getTokens, clearTokens }) {
+  const tokens = getTokens()
   if (!tokens?.accessToken && !tokens?.refreshToken) {
     throw new Error('Not authenticated. Please log in again.')
   }
 
   let bearerToken = tokens.accessToken || undefined
-  let { response, data } = await rawAdminFetch(path, { ...options, bearerToken })
+  let { response, data } = await rawFetch(path, { ...options, bearerToken })
 
   if (response.status === 401) {
     try {
       const refreshed = await restoreSession()
-      bearerToken = refreshed.access_token || getAdminTokens()?.accessToken || undefined
-      ;({ response, data } = await rawAdminFetch(path, { ...options, bearerToken }))
+      bearerToken = refreshed.access_token || getTokens()?.accessToken || undefined
+      ;({ response, data } = await rawFetch(path, { ...options, bearerToken }))
     } catch {
-      clearAdminTokens()
+      clearTokens()
       throw new Error('Session expired. Please log in again.')
     }
   }
@@ -77,4 +79,19 @@ export async function adminFetch(path, options = {}) {
   }
 
   return data
+}
+
+export async function adminFetch(path, options = {}) {
+  return authedFetch(path, options, {
+    getTokens: getAdminTokens,
+    clearTokens: clearAdminTokens,
+  })
+}
+
+/** School-portal sessions (College Admin, Faculty, Student, etc.). */
+export async function userFetch(path, options = {}) {
+  return authedFetch(path, options, {
+    getTokens: getUserTokens,
+    clearTokens: clearUserTokens,
+  })
 }

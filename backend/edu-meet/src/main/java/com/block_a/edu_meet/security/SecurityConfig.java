@@ -43,6 +43,8 @@ public class SecurityConfig {
 								"/api/auth/login",
 								"/api/auth/php-login",
 								"/api/auth/php-system-admin-login",
+								"/api/auth/php-school-login",
+								"/api/auth/php-college-admin-login",
 								"/api/auth/php-signup",
 								"/api/auth/php-request-password-otp",
 								"/api/auth/php-verify-password-otp",

@@ -1,23 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../repositories/UserRepository.php';
-require_once __DIR__ . '/../repositories/UserRoleRepository.php';
 require_once __DIR__ . '/../repositories/PasswordResetRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 
 class PasswordChangeService
 {
     private UserRepository $users;
-    private UserRoleRepository $userRoles;
     private PasswordResetRepository $resets;
 
     public function __construct(
         ?UserRepository $users = null,
-        ?UserRoleRepository $userRoles = null,
         ?PasswordResetRepository $resets = null
     ) {
         $this->users = $users ?? new UserRepository();
-        $this->userRoles = $userRoles ?? new UserRoleRepository();
         $this->resets = $resets ?? new PasswordResetRepository();
     }
 
@@ -122,10 +118,6 @@ class PasswordChangeService
             throw new ApiException('Invalid authentication token', 401);
         }
 
-        if (!$this->hasSystemAdminRole($authUserId)) {
-            throw new ApiException('Not authorized as system admin', 403);
-        }
-
         $email = is_string($emailRaw) ? strtolower(trim($emailRaw)) : '';
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new ApiException('Validation failed', 422, ['email' => 'A valid email is required']);
@@ -151,18 +143,6 @@ class PasswordChangeService
         }
 
         return $reset;
-    }
-
-    private function hasSystemAdminRole(int $userId): bool
-    {
-        foreach ($this->userRoles->findByUserId($userId) as $row) {
-            $normalized = strtolower(preg_replace('/[\s_-]+/', '', (string) ($row['role_name'] ?? '')));
-            if ($normalized === 'systemadmin') {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function isStrongPassword(string $password): bool

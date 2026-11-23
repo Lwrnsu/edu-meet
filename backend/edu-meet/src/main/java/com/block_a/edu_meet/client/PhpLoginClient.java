@@ -32,12 +32,14 @@ public class PhpLoginClient {
 	private final ObjectMapper objectMapper;
 	private final String loginUrl;
 	private final String systemAdminLoginUrl;
+	private final String schoolLoginUrl;
 	private final String signupUrl;
 
 	@Autowired
 	public PhpLoginClient(
 			@Value("${app.php.login-url}") String loginUrl,
 			@Value("${app.php.system-admin-login-url}") String systemAdminLoginUrl,
+			@Value("${app.php.school-login-url}") String schoolLoginUrl,
 			@Value("${app.php.signup-url}") String signupUrl) {
 		HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 		JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
@@ -46,6 +48,7 @@ public class PhpLoginClient {
 		this.objectMapper = new ObjectMapper();
 		this.loginUrl = loginUrl;
 		this.systemAdminLoginUrl = systemAdminLoginUrl;
+		this.schoolLoginUrl = schoolLoginUrl;
 		this.signupUrl = signupUrl;
 	}
 
@@ -54,11 +57,13 @@ public class PhpLoginClient {
 			ObjectMapper objectMapper,
 			String loginUrl,
 			String systemAdminLoginUrl,
+			String schoolLoginUrl,
 			String signupUrl) {
 		this.restClient = restClient;
 		this.objectMapper = objectMapper;
 		this.loginUrl = loginUrl;
 		this.systemAdminLoginUrl = systemAdminLoginUrl;
+		this.schoolLoginUrl = schoolLoginUrl;
 		this.signupUrl = signupUrl;
 	}
 
@@ -68,6 +73,15 @@ public class PhpLoginClient {
 
 	public ResponseEntity<JsonNode> systemAdminLogin(String email, String password) {
 		return postLogin(systemAdminLoginUrl, email, password);
+	}
+
+	public ResponseEntity<JsonNode> schoolLogin(String email, String password) {
+		return postLogin(schoolLoginUrl, email, password);
+	}
+
+	/** Compatibility alias for school portal login. */
+	public ResponseEntity<JsonNode> collegeAdminLogin(String email, String password) {
+		return schoolLogin(email, password);
 	}
 
 	public ResponseEntity<JsonNode> signup(Map<String, Object> payload) {
