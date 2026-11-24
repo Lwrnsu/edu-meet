@@ -19,6 +19,7 @@ import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.ConversationCreationService;
 
 class ConversationSidebarTest {
 
@@ -27,7 +28,8 @@ class ConversationSidebarTest {
         ConversationRepository conversations = mock(ConversationRepository.class);
         MessageRepository messages = mock(MessageRepository.class);
         ConversationController controller = new ConversationController(
-                conversations, mock(MemberLookup.class), messages, mock(ConversationAccess.class));
+                conversations, mock(MemberLookup.class), messages, mock(ConversationAccess.class),
+                new ConversationCreationService(conversations));
 
         Conversation empty = conversation("empty");
         Conversation older = conversation("older");

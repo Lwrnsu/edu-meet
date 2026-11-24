@@ -18,10 +18,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.controllers.ConversationController;
+import com.block_a.edu_meet.helpers.CreateClassConversationRequest;
 import com.block_a.edu_meet.helpers.CreateConversationRequest;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.services.ConversationCreationService;
 
 @SpringBootTest
 class ConversationCreationTest {
@@ -31,6 +33,9 @@ class ConversationCreationTest {
 
     @Autowired
     private ConversationRepository repository;
+
+    @Autowired
+    private ConversationCreationService creationService;
 
     private final Set<String> createdIds = new HashSet<>();
 
@@ -128,5 +133,32 @@ class ConversationCreationTest {
                 UUID.randomUUID().toString())).getId());
         assertEquals(2, repository.findByTypeAndParticipantIdsContaining(
                 ConversationType.SUBJECT, members.getFirst()).size());
+    }
+
+    @Test
+    void createsClassChatWithFacultyAndStudentsAndReusesItOnRetry() {
+        String classId = UUID.randomUUID().toString();
+        Conversation created = creationService.createClassConversation(new CreateClassConversationRequest(
+                classId, "Web development", List.of("professor"), List.of("student", "professor")));
+        createdIds.add(created.getId());
+
+        assertEquals(classId, created.getClassId());
+        assertEquals(ConversationType.SUBJECT, created.getType());
+        assertEquals("Web development", created.getName());
+        assertEquals(List.of("professor", "student"), created.getParticipantIds());
+
+        Conversation retry = creationService.createClassConversation(new CreateClassConversationRequest(
+                classId, "Changed name", List.of("professor"), List.of("other-student")));
+        assertEquals(created.getId(), retry.getId());
+        assertEquals(created.getName(), retry.getName());
+        assertEquals(created.getParticipantIds(), retry.getParticipantIds());
+    }
+
+    @Test
+    void classChatRequiresAClassId() {
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () ->
+                creationService.createClassConversation(new CreateClassConversationRequest(
+                        " ", "Web development", List.of("professor"), List.of("student"))));
+        assertEquals(400, error.getStatusCode().value());
     }
 }

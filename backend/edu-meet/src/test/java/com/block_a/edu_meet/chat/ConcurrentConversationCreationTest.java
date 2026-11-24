@@ -27,6 +27,7 @@ import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.ConversationCreationService;
 
 @SpringBootTest
 class ConcurrentConversationCreationTest {
@@ -71,7 +72,8 @@ class ConcurrentConversationCreationTest {
         }
 
         ConversationController controller = new ConversationController(racingRepository,
-                mock(MemberLookup.class), mock(MessageRepository.class), mock(ConversationAccess.class));
+                mock(MemberLookup.class), mock(MessageRepository.class), mock(ConversationAccess.class),
+                new ConversationCreationService(racingRepository));
         CreateConversationRequest request = new CreateConversationRequest(type, "Concurrent test",
                 List.of(first, second), first, first);
         CreateConversationRequest other = new CreateConversationRequest(type, "Other request name",

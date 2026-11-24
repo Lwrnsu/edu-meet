@@ -37,6 +37,7 @@ import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.RecentMessageCache;
+import com.block_a.edu_meet.services.ConversationCreationService;
 
 class ConversationReadAccessTest {
 
@@ -63,7 +64,8 @@ class ConversationReadAccessTest {
         ConversationAccess access = new ConversationAccess(conversations);
         mvc = MockMvcBuilders.standaloneSetup(
                 new MessageController(messages, access, cache),
-                new ConversationController(conversations, members, messages, access))
+                new ConversationController(conversations, members, messages, access,
+                        new ConversationCreationService(conversations)))
                 .setControllerAdvice(new CommunicationApiResponseAdvice())
                 .build();
     }
