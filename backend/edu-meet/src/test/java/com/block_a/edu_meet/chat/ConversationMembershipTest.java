@@ -1,27 +1,34 @@
 package com.block_a.edu_meet.chat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.repositories.ConversationRepository;
+import com.block_a.edu_meet.services.ConversationMembershipService;
 
 @SpringBootTest
 class ConversationMembershipTest {
@@ -31,6 +38,9 @@ class ConversationMembershipTest {
 
     @Autowired
     private ConversationRepository repository;
+
+    @Autowired
+    private ConversationMembershipService membershipService;
 
     private MockMvc mvc;
     private Conversation conversation;
@@ -118,6 +128,52 @@ class ConversationMembershipTest {
                     .andExpect(status().isBadRequest());
             assertMembers(List.of("alice", "bob"));
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ConversationType.class, names = {"BLOCK", "SUBJECT"})
+    void leavingRemovesOnlyTheCallerAndKeepsTheChat(ConversationType type) {
+        setType(type);
+
+        membershipService.leaveGroupConversation(conversation.getId(), "alice");
+
+        assertMembers(List.of("bob"));
+    }
+
+    @Test
+    void missingChatAndNonMemberReturnTheSameLeaveError() {
+        var missing = assertThrows(ResponseStatusException.class,
+                () -> membershipService.leaveGroupConversation("missing-chat", "alice"));
+        var outsider = assertThrows(ResponseStatusException.class,
+                () -> membershipService.leaveGroupConversation(conversation.getId(), "outsider"));
+
+        assertEquals(HttpStatus.NOT_FOUND, missing.getStatusCode());
+        assertEquals(missing.getStatusCode(), outsider.getStatusCode());
+        assertEquals(missing.getReason(), outsider.getReason());
+        assertMembers(List.of("alice", "bob"));
+    }
+
+    @Test
+    void leavingDoesNotChangePrivateChats() {
+        setType(ConversationType.PRIVATE);
+
+        var error = assertThrows(ResponseStatusException.class,
+                () -> membershipService.leaveGroupConversation(conversation.getId(), "alice"));
+
+        assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
+        assertMembers(List.of("alice", "bob"));
+    }
+
+    @Test
+    void simultaneousLeavesDoNotRestoreEitherMember() throws Exception {
+        try (var workers = Executors.newFixedThreadPool(2)) {
+            var alice = workers.submit(() -> membershipService.leaveGroupConversation(conversation.getId(), "alice"));
+            var bob = workers.submit(() -> membershipService.leaveGroupConversation(conversation.getId(), "bob"));
+            alice.get(5, TimeUnit.SECONDS);
+            bob.get(5, TimeUnit.SECONDS);
+        }
+
+        assertMembers(List.of());
     }
 
     private String membersUrl() {
