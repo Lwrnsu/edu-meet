@@ -1,9 +1,14 @@
 package com.block_a.edu_meet.handlers;
 
+import java.io.IOException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -21,6 +26,8 @@ import com.block_a.edu_meet.services.RecentMessageCache;
 
 @Component
 public class ChatHandler extends TextWebSocketHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatHandler.class);
 
     private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByUser =
             new ConcurrentHashMap<>();
@@ -93,7 +100,19 @@ public class ChatHandler extends TextWebSocketHandler {
         }
 
         incoming.setTimestamp(Instant.now());
-        Message saved = messageRepository.save(incoming);
+        Message saved;
+        try {
+            saved = messageRepository.save(incoming);
+        } catch (DataAccessException exception) {
+            log.warn("Failed to save a message in conversation {}", incoming.getConversationId(), exception);
+            send(session, new TextMessage(objectMapper.writeValueAsString(Map.of(
+                    "type", "message_error",
+                    "code", "MESSAGE_SAVE_FAILED",
+                    "conversationId", incoming.getConversationId(),
+                    "message", "Could not save the message. Please try again."
+            ))));
+            return;
+        }
         System.out.println("Saved: " + saved.getId());
         recentMessageCache.invalidate(saved.getConversationId());
 
@@ -103,12 +122,19 @@ public class ChatHandler extends TextWebSocketHandler {
             if (memberSessions == null) continue;
             for (WebSocketSession s : memberSessions) {
                                 try {
-                    if (s.isOpen()) {
-                        s.sendMessage(out);
-                    }
+                    send(s, out);
                 } catch (Exception e) {
                     System.out.println("Failed to send to a connection: " + e.getMessage());
                 }
+            }
+        }
+    }
+
+    private void send(WebSocketSession session, TextMessage message) throws IOException {
+        // The underlying WebSocket session only supports one write at a time.
+        synchronized (session) {
+            if (session.isOpen()) {
+                session.sendMessage(message);
             }
         }
     }

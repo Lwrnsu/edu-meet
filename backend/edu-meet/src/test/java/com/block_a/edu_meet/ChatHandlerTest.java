@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 import java.net.URI;
 import java.util.List;
@@ -15,16 +17,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.RecentMessageCache;
+
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatHandlerTest {
@@ -35,8 +43,11 @@ class ChatHandlerTest {
     @Autowired
     private ConversationRepository conversationRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private MessageRepository messageRepository;
+
+    @Autowired
+    private ObjectMapper mapper;
     @Autowired
     private RecentMessageCache cache;
 
@@ -88,6 +99,41 @@ class ChatHandlerTest {
             messageRepository.deleteAll(messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
                     convoId, org.springframework.data.domain.PageRequest.of(0, 50)));
             conversationRepository.deleteById(convoId);
+        }
+    }
+
+    @Test
+    void failedSaveNotifiesOnlyTheSender() throws Exception {
+        Conversation conversation = conversationRepository.save(
+                new Conversation(ConversationType.SUBJECT, "failed-save-test", List.of("sender", "recipient")));
+        String conversationId = conversation.getId();
+        BlockingQueue<String> senderInbox = new LinkedBlockingQueue<>();
+        BlockingQueue<String> recipientInbox = new LinkedBlockingQueue<>();
+
+        try (WebSocketSession recipient = connect("recipient", recipientInbox);
+             WebSocketSession sender = connect("sender", senderInbox)) {
+            cache.putLatest(conversationId, List.of());
+            doThrow(new DataAccessResourceFailureException("Simulated save failure"))
+                    .when(messageRepository).save(any(Message.class));
+
+            sender.sendMessage(new TextMessage(mapper.writeValueAsString(
+                    new Message(conversationId, null, "Unsaved message", null))));
+
+            String received = senderInbox.poll(5, TimeUnit.SECONDS);
+            assertNotNull(received);
+            var error = mapper.readTree(received);
+            assertEquals("message_error", error.path("type").asText());
+            assertEquals("MESSAGE_SAVE_FAILED", error.path("code").asText());
+            assertEquals(conversationId, error.path("conversationId").asText());
+            assertEquals("Could not save the message. Please try again.", error.path("message").asText());
+            assertTrue(sender.isOpen());
+            assertNull(recipientInbox.poll(1, TimeUnit.SECONDS));
+            assertTrue(messageRepository.findByConversationIdOrderByTimestampDescIdDesc(
+                    conversationId, PageRequest.of(0, 10)).isEmpty());
+            assertTrue(cache.getLatest(conversationId, List.of()).isPresent());
+        } finally {
+            cache.invalidate(conversationId);
+            conversationRepository.deleteById(conversationId);
         }
     }
 }
