@@ -173,7 +173,7 @@ function UserFormFields({ form, onChange, roleOptions, departments, idPrefix }) 
           <option value="">Department</option>
           {departments.map((dept) => (
             <option key={dept.department_id} value={dept.department_id}>
-              {dept.slug || dept.name}
+              {dept.name || dept.slug}
             </option>
           ))}
         </select>
