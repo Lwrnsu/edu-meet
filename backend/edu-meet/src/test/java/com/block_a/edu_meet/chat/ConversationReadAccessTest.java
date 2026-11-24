@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -38,6 +39,10 @@ import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.RecentMessageCache;
 
 class ConversationReadAccessTest {
+
+    private static final String NOT_FOUND_RESPONSE = """
+            {"response":false,"code":404,"message":"Conversation doesn't exist","body":null}
+            """;
 
     private ConversationRepository conversations;
     private MessageRepository messages;
@@ -88,12 +93,11 @@ class ConversationReadAccessTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
-    void outsidersCannotRead(String endpoint) throws Exception {
+    void outsidersSeeNotFound(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
                 .param("userId", "outsider").param("beforeId", "cursor"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.response").value(false))
-                .andExpect(jsonPath("$.code").value(403));
+                .andExpect(status().isNotFound())
+                .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);
     }
 
@@ -123,9 +127,7 @@ class ConversationReadAccessTest {
         mvc.perform(get("/api/conversations/missing" + endpoint)
                 .param("userId", "member").param("beforeId", "cursor"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().json("""
-                        {"response":false,"code":404,"message":"Conversation doesn't exist","body":null}
-                        """));
+                .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);
     }
 
@@ -187,7 +189,8 @@ class ConversationReadAccessTest {
         conversation.setParticipantIds(List.of("someone-else"));
         clearInvocations(messages, cache);
         mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound())
+                .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);
     }
 }
