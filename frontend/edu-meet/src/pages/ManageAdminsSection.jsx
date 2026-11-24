@@ -5,6 +5,7 @@ import {
   removeAdminAccount,
   updateAdminAccount,
 } from '../api/adminsAdmin'
+import { isLettersOnlyName } from '../api/nameValidation'
 
 const EMPTY_FORM = {
   firstName: '',
@@ -248,6 +249,14 @@ export default function ManageAdminsSection() {
       setError('First name, surname, email, and role are required.')
       return
     }
+    if (!isLettersOnlyName(firstName)) {
+      setError('First name must contain letters only.')
+      return
+    }
+    if (!isLettersOnlyName(lastName)) {
+      setError('Surname must contain letters only.')
+      return
+    }
     if (!isValidEmail(email)) {
       setError('Enter a valid email.')
       return
@@ -287,6 +296,10 @@ export default function ManageAdminsSection() {
 
     if (!name || !role) {
       setEditError('Admin name and role are required.')
+      return
+    }
+    if (!isLettersOnlyName(name)) {
+      setEditError('Admin name must contain letters only.')
       return
     }
     if (!school) {

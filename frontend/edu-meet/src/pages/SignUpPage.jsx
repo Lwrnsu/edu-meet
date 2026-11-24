@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { signup } from '../api/auth'
+import { isLettersOnlyName } from '../api/nameValidation'
 import './SignUpPage.css'
 
 const INITIAL_FORM = {
@@ -51,6 +52,31 @@ export default function SignUpPage({ onSwitchToSignIn }) {
 
     if (!firstName || !lastName || !schoolName || !location || !email || !password || !confirmPassword) {
       setError('Please fill in all required fields.')
+      return
+    }
+
+    if (!isLettersOnlyName(firstName)) {
+      setError('First name must contain letters only.')
+      return
+    }
+
+    if (!isLettersOnlyName(lastName)) {
+      setError('Last name must contain letters only.')
+      return
+    }
+
+    if (middleName && !isLettersOnlyName(middleName)) {
+      setError('Middle name must contain letters only.')
+      return
+    }
+
+    if (suffix && !isLettersOnlyName(suffix)) {
+      setError('Suffix must contain letters only.')
+      return
+    }
+
+    if (!isLettersOnlyName(schoolName)) {
+      setError('School name must contain letters only.')
       return
     }
 

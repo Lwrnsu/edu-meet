@@ -216,6 +216,7 @@ export async function createCollegeUser({
       last_name: lastName,
       suffix: suffix || null,
       status: 1,
+      send_welcome_email: true,
     },
   })
 

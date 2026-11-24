@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { mapSchoolFromApi } from '../api/schools'
+import { isLettersOnlyName } from '../api/nameValidation'
 import {
   approveSchoolRequest,
   createApprovedSchool,
@@ -269,6 +270,10 @@ export default function ManageSchoolsSection() {
       setError('School name, address, and email are required.')
       return
     }
+    if (!isLettersOnlyName(name)) {
+      setError('School name must contain letters only.')
+      return
+    }
     if (!isValidEmail(email)) {
       setError('Enter a valid school email.')
       return
@@ -297,6 +302,10 @@ export default function ManageSchoolsSection() {
 
     if (!name || !address) {
       setEditError('School name and address are required.')
+      return
+    }
+    if (!isLettersOnlyName(name)) {
+      setEditError('School name must contain letters only.')
       return
     }
 

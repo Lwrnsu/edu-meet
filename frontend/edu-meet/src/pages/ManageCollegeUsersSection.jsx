@@ -8,6 +8,7 @@ import {
   roleRequiresDepartment,
   updateCollegeUser,
 } from '../api/collegeUsersAdmin'
+import { isLettersOnlyName } from '../api/nameValidation'
 import { normalizeRoleKey } from '../api/roles'
 
 const EMPTY_FORM = {
@@ -401,6 +402,18 @@ export default function ManageCollegeUsersSection({ schoolId }) {
 
     if (!firstName || !lastName || !email || !roleName) {
       return { ok: false, message: 'First name, last name, email, and role are required.' }
+    }
+    if (!isLettersOnlyName(firstName)) {
+      return { ok: false, message: 'First name must contain letters only.' }
+    }
+    if (!isLettersOnlyName(lastName)) {
+      return { ok: false, message: 'Last name must contain letters only.' }
+    }
+    if (middleName && !isLettersOnlyName(middleName)) {
+      return { ok: false, message: 'Middle name must contain letters only.' }
+    }
+    if (suffix && !isLettersOnlyName(suffix)) {
+      return { ok: false, message: 'Suffix must contain letters only.' }
     }
     if (!isValidEmail(email)) {
       return { ok: false, message: 'Enter a valid email.' }

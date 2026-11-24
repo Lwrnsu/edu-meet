@@ -183,13 +183,18 @@ export async function createAdminAccount({ firstName, lastName, email, role, sch
     ? passwordFromPersonalInfo(givenName, surname)
     : generateTempPassword()
 
-  const user = await createUser({
+  const userPayload = {
     email,
     password: tempPassword,
     first_name: givenName,
     last_name: surname,
     status: 1,
-  })
+  }
+  if (isSchoolAdminRole(role)) {
+    userPayload.send_welcome_email = true
+  }
+
+  const user = await createUser(userPayload)
 
   try {
     const roleId = adminRoleId(roles, role)

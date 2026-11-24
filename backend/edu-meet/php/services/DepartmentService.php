@@ -116,6 +116,8 @@ class DepartmentService
             $errors['name'] = 'Name is required';
         } elseif (strlen($name) > 255) {
             $errors['name'] = 'Name must be at most 255 characters';
+        } elseif (!$this->isLettersOnlyName($name)) {
+            $errors['name'] = 'Department name must contain letters only.';
         }
 
         $slug = '';
@@ -149,6 +151,11 @@ class DepartmentService
             'slug' => $slug,
             'status' => $status,
         ];
+    }
+
+    private function isLettersOnlyName(string $value): bool
+    {
+        return preg_match('/^[A-Za-z]+(?: [A-Za-z]+)*$/', $value) === 1;
     }
 
     private function parsePositiveInt(mixed $value, string $field): int

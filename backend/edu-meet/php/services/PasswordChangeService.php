@@ -3,10 +3,7 @@
 require_once __DIR__ . '/../repositories/UserRepository.php';
 require_once __DIR__ . '/../repositories/PasswordResetRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
-require_once __DIR__ . '/../vendor/autoload.php';
-
-use PHPMailer\PHPMailer\Exception as MailException;
-use PHPMailer\PHPMailer\PHPMailer;
+require_once __DIR__ . '/../helpers/MailHelper.php';
 
 class PasswordChangeService
 {
@@ -260,47 +257,11 @@ class PasswordChangeService
 
     private function sendOtpMail(array $user, string $otp): void
     {
-        $to = strtolower(trim((string) ($user['email'] ?? '')));
-        if ($to === '' || preg_match('/[\r\n]/', $to) === 1) {
-            throw new ApiException('Unable to send the verification code email.', 500);
-        }
-
-        $name = trim((string) ($user['first_name'] ?? ''));
-        $name = str_replace(["\r", "\n"], '', $name);
-        $greeting = $name !== '' ? $name : 'there';
-
-        $mailConfig = require __DIR__ . '/../config/mail.php';
-        $password = trim((string) ($mailConfig['password'] ?? ''));
-        $fromEmail = trim((string) ($mailConfig['from_email'] ?? ''));
-        if ($password === '' || $fromEmail === '' || filter_var($fromEmail, FILTER_VALIDATE_EMAIL) === false) {
-            throw new ApiException(
-                'Brevo mail is not configured. Set the SMTP key and a verified sender in php/config/mail.php.',
-                500
-            );
-        }
-
-        $mail = new PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->Host = (string) ($mailConfig['host'] ?? 'smtp-relay.brevo.com');
-            $mail->Port = (int) ($mailConfig['port'] ?? 587);
-            $mail->SMTPAuth = true;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Username = (string) ($mailConfig['username'] ?? '');
-            $mail->Password = $password;
-            $mail->CharSet = 'UTF-8';
-
-            $mail->setFrom($fromEmail, (string) ($mailConfig['from_name'] ?? 'EduMeet'));
-            $mail->addAddress($to);
-            $mail->Subject = 'Your EduMeet verification code';
-            $mail->Body = "Hello {$greeting},\n\n"
-                . "Your verification code is: {$otp}\n\n"
-                . "This code expires in 10 minutes. If you did not request it, you can ignore this email.\n";
-
-            $mail->send();
-        } catch (MailException $e) {
-            throw new ApiException('Unable to send the verification code email. Please try again.', 500);
-        }
+        MailHelper::sendOtpMail(
+            (string) ($user['email'] ?? ''),
+            (string) ($user['first_name'] ?? ''),
+            $otp
+        );
     }
 
     private function isStrongPassword(string $password): bool

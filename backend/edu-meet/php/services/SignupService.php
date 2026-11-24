@@ -122,12 +122,16 @@ class SignupService
             $errors['first_name'] = 'First name is required';
         } elseif (strlen($firstName) > 100) {
             $errors['first_name'] = 'First name must be at most 100 characters';
+        } elseif (!$this->isLettersOnlyName($firstName)) {
+            $errors['first_name'] = 'First name must contain letters only.';
         }
 
         if ($lastName === '') {
             $errors['last_name'] = 'Last name is required';
         } elseif (strlen($lastName) > 100) {
             $errors['last_name'] = 'Last name must be at most 100 characters';
+        } elseif (!$this->isLettersOnlyName($lastName)) {
+            $errors['last_name'] = 'Last name must contain letters only.';
         }
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -152,6 +156,8 @@ class SignupService
             $errors['school_name'] = 'School name is required';
         } elseif (strlen($schoolName) > 128) {
             $errors['school_name'] = 'School name must be at most 128 characters';
+        } elseif (!$this->isLettersOnlyName($schoolName)) {
+            $errors['school_name'] = 'School name must contain letters only.';
         }
 
         if ($location === '') {
@@ -191,11 +197,19 @@ class SignupService
             return null;
         }
 
+        $label = ucfirst(str_replace('_', ' ', $field));
         if (strlen($value) > $maxLength) {
-            $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . " must be at most {$maxLength} characters";
+            $errors[$field] = "{$label} must be at most {$maxLength} characters";
+        } elseif (!$this->isLettersOnlyName($value)) {
+            $errors[$field] = "{$label} must contain letters only.";
         }
 
         return $value;
+    }
+
+    private function isLettersOnlyName(string $value): bool
+    {
+        return preg_match('/^[A-Za-z]+(?: [A-Za-z]+)*$/', $value) === 1;
     }
 
     private function uniqueSlug(string $schoolName): string

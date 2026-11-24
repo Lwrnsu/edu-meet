@@ -5,6 +5,7 @@ import {
   removeCollegeDepartment,
   updateCollegeDepartment,
 } from '../api/collegeDepartmentsAdmin'
+import { isLettersOnlyName } from '../api/nameValidation'
 
 const EMPTY_FORM = {
   name: '',
@@ -192,6 +193,10 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
       setError('Department name is required.')
       return
     }
+    if (!isLettersOnlyName(name)) {
+      setError('Department name must contain letters only.')
+      return
+    }
     if (!deanMembershipId) {
       setError('Select a College Dean.')
       return
@@ -223,6 +228,10 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
 
     if (!name) {
       setEditError('Department name is required.')
+      return
+    }
+    if (!isLettersOnlyName(name)) {
+      setEditError('Department name must contain letters only.')
       return
     }
     if (!deanMembershipId) {
