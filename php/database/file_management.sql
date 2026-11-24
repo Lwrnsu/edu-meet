@@ -1,10 +1,9 @@
-CREATE DATABASE IF NOT EXISTS edumeet CHARACTER SET utf8mb4;
-USE edumeet;
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS task_files, submissions, files, tasks;
-SET FOREIGN_KEY_CHECKS = 1;
+-- File management tables (tasks, task attachments, submissions, class resources).
+-- Uses the same database as php/config/Database.php.
+CREATE DATABASE IF NOT EXISTS EduMeet CHARACTER SET utf8mb4;
+USE EduMeet;
 
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
   description TEXT,
@@ -15,7 +14,7 @@ CREATE TABLE tasks (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE task_files (
+CREATE TABLE IF NOT EXISTS task_files (
   id INT AUTO_INCREMENT PRIMARY KEY,
   task_id INT NOT NULL,
   file_name VARCHAR(255) NOT NULL,
@@ -24,7 +23,7 @@ CREATE TABLE task_files (
   FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
-CREATE TABLE submissions (
+CREATE TABLE IF NOT EXISTS submissions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   task_id INT NOT NULL,
   student_id INT NOT NULL,
@@ -38,7 +37,7 @@ CREATE TABLE submissions (
   FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
-CREATE TABLE files (
+CREATE TABLE IF NOT EXISTS files (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
   file_name VARCHAR(255) NOT NULL,

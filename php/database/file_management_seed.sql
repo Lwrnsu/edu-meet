@@ -1,6 +1,8 @@
-USE edumeet;
-DROP TABLE IF EXISTS users;
-CREATE TABLE users (
+-- LOCAL TESTING ONLY. Sample users and tasks for the file management feature.
+-- Creates a minimal users table only if the team's users table doesn't exist yet.
+USE EduMeet;
+
+CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   role ENUM('faculty','student') NOT NULL
