@@ -24,10 +24,6 @@ import com.block_a.edu_meet.models.Message;
         message: ex. "Conversation Doesn't Exist"
         body: the data itself. 
     }
-    explaination: so that in front-end, it must verify if the
-                api succedded or not before using the provided data.
-
-
 */
 @RestController
 @RequestMapping("/api/conversations")
@@ -38,7 +34,7 @@ public class MessageController {
     private final MessageRepository messageRepository;
     private final ConversationAccess conversationAccess;
     private final RecentMessageCache recentMessageCache;
-    // unnecessary.
+
     public MessageController(MessageRepository messageRepository,
                              ConversationAccess conversationAccess,
                              RecentMessageCache recentMessageCache) {
