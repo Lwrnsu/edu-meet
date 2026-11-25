@@ -6,7 +6,6 @@ require_once __DIR__ . '/../repositories/SchoolMembershipRepository.php';
 require_once __DIR__ . '/../repositories/SchoolRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/JwtHelper.php';
-require_once __DIR__ . '/../helpers/SessionStore.php';
 
 class AuthService
 {
@@ -14,7 +13,6 @@ class AuthService
     private UserRoleRepository $userRoleRepository;
     private SchoolMembershipRepository $membershipRepository;
     private SchoolRepository $schoolRepository;
-    private SessionStore $store;
     private array $jwtConfig;
 
     /** @var array<string, array{priority:int, key:string, label:string}> */
@@ -29,7 +27,6 @@ class AuthService
 
     public function __construct(
         ?UserRepository $repository = null,
-        ?SessionStore $store = null,
         ?UserRoleRepository $userRoleRepository = null,
         ?SchoolMembershipRepository $membershipRepository = null,
         ?SchoolRepository $schoolRepository = null
@@ -38,7 +35,6 @@ class AuthService
         $this->userRoleRepository = $userRoleRepository ?? new UserRoleRepository();
         $this->membershipRepository = $membershipRepository ?? new SchoolMembershipRepository();
         $this->schoolRepository = $schoolRepository ?? new SchoolRepository();
-        $this->store = $store ?? new SessionStore();
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
     }
 
@@ -186,59 +182,18 @@ class AuthService
 
     public function refresh(?string $refreshToken, ?string $oldAccessToken): array
     {
-        if ($refreshToken === null) {
-            throw new ApiException('Session expired, please log in again', 401);
-        }
-
-        $userId = $this->store->findRefresh($refreshToken);
-        if ($userId === null) {
-            throw new ApiException('Session expired, please log in again', 401);
-        }
-
-        $user = $this->repository->findById($userId);
-        if ($user === null || (int) $user['status'] !== 1) {
-            $this->store->deleteRefresh($refreshToken);
-            throw new ApiException('Session expired, please log in again', 401);
-        }
-
-        $accessToken = $this->createAccessToken($user);
-        $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
-        $this->store->saveRefresh($refreshToken, $userId);
-
-        if ($oldAccessToken !== null) {
-            $this->store->deleteAccess($oldAccessToken);
-        }
-
-        $context = null;
-        if (!$this->hasSystemAdminRole($userId)) {
-            $context = $this->resolveSchoolPortalContext($userId);
-        }
-
-        return $this->sessionResult($accessToken, $refreshToken, $user, $context);
+        throw new ApiException('Session refresh is handled by Spring Boot', 401);
     }
 
     public function logout(?string $refreshToken, ?string $accessToken): void
     {
-        try {
-            if ($refreshToken !== null) {
-                $this->store->deleteRefresh($refreshToken);
-            }
-            if ($accessToken !== null) {
-                $this->store->deleteAccess($accessToken);
-            }
-        } catch (Throwable $e) {
-            return;
-        }
+        // Session invalidation is handled by Spring Boot POST /api/auth/logOut
     }
 
     private function startSession(array $user, ?array $context = null): array
     {
-        $userId = (int) $user['user_id'];
         $accessToken = $this->createAccessToken($user);
         $refreshToken = bin2hex(random_bytes(32));
-
-        $this->store->saveRefresh($refreshToken, $userId);
-        $this->store->saveAccess($accessToken, $userId, (int) $this->jwtConfig['expiration_seconds']);
 
         return $this->sessionResult($accessToken, $refreshToken, $user, $context);
     }

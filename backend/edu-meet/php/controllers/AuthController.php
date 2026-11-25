@@ -14,7 +14,6 @@ class AuthController
     private PasswordChangeService $passwordChangeService;
     private array $cookies;
     private array $jwtConfig;
-    private array $redisConfig;
 
     public function __construct(
         ?AuthService $service = null,
@@ -26,7 +25,6 @@ class AuthController
         $this->passwordChangeService = $passwordChangeService ?? new PasswordChangeService();
         $this->cookies = require __DIR__ . '/../config/cookies.php';
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
-        $this->redisConfig = require __DIR__ . '/../config/redis.php';
     }
 
     public function login(): void
@@ -180,7 +178,7 @@ class AuthController
             CookieHelper::set(
                 $this->cookies['refresh_name'],
                 $session['refresh_token'],
-                (int) $this->redisConfig['session_ttl_seconds']
+                604800
             );
         }
 
