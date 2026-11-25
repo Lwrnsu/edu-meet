@@ -1,9 +1,7 @@
 package com.block_a.edu_meet;
 
-import java.util.UUID;
 
 public class Meeting {
-    private final UUID id = UUID.randomUUID();
     private final Classroom classroom;
 
     public Meeting(Classroom classroom){
