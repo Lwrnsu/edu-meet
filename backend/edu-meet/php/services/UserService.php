@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../repositories/UserRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
+require_once __DIR__ . '/../helpers/MailHelper.php';
 
 class UserService
 {
@@ -44,6 +45,19 @@ class UserService
             'suffix' => $data['suffix'],
             'status' => $data['status'],
         ]);
+
+        if ($this->wantsWelcomeEmail($payload)) {
+            try {
+                MailHelper::sendAccountCreatedMail(
+                    $data['email'],
+                    $data['first_name'],
+                    (string) $data['password']
+                );
+            } catch (ApiException $e) {
+                $this->repository->softDelete($id);
+                throw $e;
+            }
+        }
 
         return $this->getById($id);
     }
@@ -129,12 +143,16 @@ class UserService
             $errors['first_name'] = 'First name is required';
         } elseif (strlen($firstName) > 100) {
             $errors['first_name'] = 'First name must be at most 100 characters';
+        } elseif (!$this->isLettersOnlyName($firstName)) {
+            $errors['first_name'] = 'First name must contain letters only.';
         }
 
         if ($lastName === '') {
             $errors['last_name'] = 'Last name is required';
         } elseif (strlen($lastName) > 100) {
             $errors['last_name'] = 'Last name must be at most 100 characters';
+        } elseif (!$this->isLettersOnlyName($lastName)) {
+            $errors['last_name'] = 'Last name must contain letters only.';
         }
 
         if ($creating) {
@@ -169,6 +187,28 @@ class UserService
         ];
     }
 
+    private function isLettersOnlyName(string $value): bool
+    {
+        return preg_match('/^[A-Za-z]+(?: [A-Za-z]+)*$/', $value) === 1;
+    }
+
+    private function wantsWelcomeEmail(array $payload): bool
+    {
+        $raw = $payload['send_welcome_email'] ?? false;
+        if (is_bool($raw)) {
+            return $raw;
+        }
+        if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
+            return (int) $raw === 1;
+        }
+        if (is_string($raw)) {
+            $normalized = strtolower(trim($raw));
+            return $normalized === 'true' || $normalized === '1' || $normalized === 'yes';
+        }
+
+        return false;
+    }
+
     private function parseOptionalName(
         array $payload,
         string $field,
@@ -185,8 +225,11 @@ class UserService
             if ($value === '') {
                 return null;
             }
+            $label = ucfirst(str_replace('_', ' ', $field));
             if (strlen($value) > $maxLength) {
-                $errors[$field] = ucfirst(str_replace('_', ' ', $field)) . " must be at most {$maxLength} characters";
+                $errors[$field] = "{$label} must be at most {$maxLength} characters";
+            } elseif (!$this->isLettersOnlyName($value)) {
+                $errors[$field] = "{$label} must contain letters only.";
             }
             return $value;
         }

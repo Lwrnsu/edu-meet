@@ -5,6 +5,7 @@ import {
   removeCollegeDepartment,
   updateCollegeDepartment,
 } from '../api/collegeDepartmentsAdmin'
+import { isLettersOnlyName } from '../api/nameValidation'
 
 const EMPTY_FORM = {
   name: '',
@@ -192,6 +193,10 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
       setError('Department name is required.')
       return
     }
+    if (!isLettersOnlyName(name)) {
+      setError('Department name must contain letters only.')
+      return
+    }
     if (!deanMembershipId) {
       setError('Select a College Dean.')
       return
@@ -223,6 +228,10 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
 
     if (!name) {
       setEditError('Department name is required.')
+      return
+    }
+    if (!isLettersOnlyName(name)) {
+      setEditError('Department name must contain letters only.')
       return
     }
     if (!deanMembershipId) {
@@ -332,7 +341,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
           <tbody>
             {filteredRows.map((row) => (
               <tr key={row.id}>
-                <td>{row.slug}</td>
+                <td>{row.name || row.slug}</td>
                 <td>{row.dean}</td>
                 <td>{row.id}</td>
                 <td>{row.facultyCount.toLocaleString('en-US')}</td>
@@ -342,7 +351,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
                     <button
                       type="button"
                       className="college-users__icon-btn"
-                      aria-label={`View ${row.slug}`}
+                      aria-label={`View ${row.name || row.slug}`}
                       title="View"
                       disabled={busy}
                       onClick={() => openViewModal(row)}
@@ -352,7 +361,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
                     <button
                       type="button"
                       className="college-users__icon-btn"
-                      aria-label={`Edit ${row.slug}`}
+                      aria-label={`Edit ${row.name || row.slug}`}
                       disabled={busy}
                       onClick={() => openEditModal(row)}
                     >
@@ -361,7 +370,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
                     <button
                       type="button"
                       className="college-users__icon-btn"
-                      aria-label={`Delete ${row.slug}`}
+                      aria-label={`Delete ${row.name || row.slug}`}
                       disabled={busy}
                       onClick={() => openDeleteModal(row)}
                     >
@@ -403,7 +412,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
             <div className="college-depts__form">
               <label className="college-users__field">
                 <span className="college-users__sr-only">Department</span>
-                <input value={viewRow.slug || ''} readOnly disabled placeholder="Department" />
+                <input value={viewRow.name || viewRow.slug || ''} readOnly disabled placeholder="Department" />
               </label>
               <label className="college-users__field">
                 <span className="college-users__sr-only">Department ID</span>

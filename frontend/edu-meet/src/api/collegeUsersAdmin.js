@@ -126,8 +126,8 @@ function mapRow(membership, user, roleNameById) {
     roleId: Number(membership.role_id),
     departmentId: membership.department_id != null ? Number(membership.department_id) : null,
     department:
-      membership.department_slug ||
       membership.department_name ||
+      membership.department_slug ||
       (membership.department_id == null ? '—' : '—'),
     departmentName: membership.department_name || '',
     status: Number(membership.status) === 1 ? 'active' : 'inactive',
@@ -172,7 +172,7 @@ export async function loadCollegeUsers(schoolId) {
       if (mapped.department === '—' && mapped.departmentId) {
         const dept = departments.find((item) => Number(item.department_id) === mapped.departmentId)
         if (dept) {
-          mapped.department = dept.slug || dept.name || '—'
+          mapped.department = dept.name || dept.slug || '—'
           mapped.departmentName = dept.name || ''
         }
       }
@@ -216,6 +216,7 @@ export async function createCollegeUser({
       last_name: lastName,
       suffix: suffix || null,
       status: 1,
+      send_welcome_email: true,
     },
   })
 
@@ -254,7 +255,7 @@ export async function createCollegeUser({
         roleName,
         roleId,
         departmentId: membership.department_id != null ? Number(membership.department_id) : null,
-        department: membership.department_slug || membership.department_name || '—',
+        department: membership.department_name || membership.department_slug || '—',
         status: 'active',
         schoolId: id,
       },
@@ -323,7 +324,7 @@ export async function updateCollegeUser(
     roleName,
     roleId,
     departmentId: membership.department_id != null ? Number(membership.department_id) : null,
-    department: membership.department_slug || membership.department_name || '—',
+    department: membership.department_name || membership.department_slug || '—',
   }
 }
 
