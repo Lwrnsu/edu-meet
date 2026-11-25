@@ -1,7 +1,18 @@
+
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
+const quizExamDirectory = fileURLToPath(
+  new URL('./src/features/quiz-exam', import.meta.url)
+)
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@quiz': quizExamDirectory,
+    },
+  },
 })
