@@ -32,8 +32,12 @@ function isAdminAppPath(pathname = window.location.pathname) {
   return path === ADMIN_APP_PATH || path.startsWith(`${ADMIN_APP_PATH}/`)
 }
 
+function isUserLoginPath(pathname = window.location.pathname) {
+  return normalizePath(pathname) === USER_LOGIN_PATH
+}
+
 function getStoredPortal() {
-  return sessionStorage.getItem(PORTAL_KEY)
+  return localStorage.getItem(PORTAL_KEY)
 }
 
 function initialAuthView() {
@@ -54,7 +58,7 @@ function resolveSchoolRole(data = {}, user = null) {
   return (
     data.role ||
     user?.role ||
-    sessionStorage.getItem(SCHOOL_ROLE_KEY) ||
+    localStorage.getItem(SCHOOL_ROLE_KEY) ||
     null
   )
 }
@@ -70,7 +74,7 @@ function App() {
   )
   const [portal, setPortal] = useState(() => getStoredPortal())
   const [schoolRole, setSchoolRole] = useState(
-    () => sessionStorage.getItem(SCHOOL_ROLE_KEY)
+    () => localStorage.getItem(SCHOOL_ROLE_KEY)
   )
 
   useEffect(() => {
@@ -82,20 +86,24 @@ function App() {
           const nextUser = withSchoolContext(data.user, data)
           setUser(nextUser)
           const stored = getStoredPortal()
-          if (stored) {
-            setPortal(stored)
-          } else if (isAdminAppPath() || isAdminLoginPath()) {
-            sessionStorage.setItem(PORTAL_KEY, 'admin')
-            setPortal('admin')
-          } else {
-            sessionStorage.setItem(PORTAL_KEY, 'user')
-            setPortal('user')
-          }
+          const resolvedPortal =
+            stored || (isAdminAppPath() || isAdminLoginPath() ? 'admin' : 'user')
+
+          localStorage.setItem(PORTAL_KEY, resolvedPortal)
+          setPortal(resolvedPortal)
 
           const role = resolveSchoolRole(data, nextUser)
           if (role) {
-            sessionStorage.setItem(SCHOOL_ROLE_KEY, role)
+            localStorage.setItem(SCHOOL_ROLE_KEY, role)
             setSchoolRole(role)
+          }
+
+          if (isUserLoginPath() || isAdminLoginPath()) {
+            window.history.replaceState(
+              {},
+              '',
+              resolvedPortal === 'admin' ? ADMIN_APP_PATH : '/'
+            )
           }
         }
       })
@@ -115,20 +123,31 @@ function App() {
 
   useEffect(() => {
     function syncFromUrl() {
+      if (user) {
+        if (isUserLoginPath() || isAdminLoginPath()) {
+          window.history.replaceState(
+            {},
+            '',
+            portal === 'admin' ? ADMIN_APP_PATH : '/'
+          )
+        }
+        return
+      }
+
       if (isAdminLoginPath()) {
         setAuthView('admin-login')
         setForgotReturnView('admin-login')
         return
       }
 
-      if (normalizePath(window.location.pathname) === USER_LOGIN_PATH) {
+      if (isUserLoginPath()) {
         setAuthView('login')
       }
     }
 
     window.addEventListener('popstate', syncFromUrl)
     return () => window.removeEventListener('popstate', syncFromUrl)
-  }, [])
+  }, [user, portal])
 
   function goToAdminLogin() {
     if (!isAdminLoginPath()) {
@@ -139,7 +158,7 @@ function App() {
   }
 
   function goToUserLogin() {
-    if (normalizePath(window.location.pathname) !== USER_LOGIN_PATH) {
+    if (!isUserLoginPath()) {
       window.history.pushState({}, '', USER_LOGIN_PATH)
     }
     setForgotReturnView('login')
@@ -153,8 +172,8 @@ function App() {
   }
 
   function handleAdminLoginSuccess(data) {
-    sessionStorage.setItem(PORTAL_KEY, 'admin')
-    sessionStorage.removeItem(SCHOOL_ROLE_KEY)
+    localStorage.setItem(PORTAL_KEY, 'admin')
+    localStorage.removeItem(SCHOOL_ROLE_KEY)
     setPortal('admin')
     setSchoolRole(null)
     goToAdminApp()
@@ -162,16 +181,19 @@ function App() {
   }
 
   function handleUserLoginSuccess(data) {
-    sessionStorage.setItem(PORTAL_KEY, 'user')
+    localStorage.setItem(PORTAL_KEY, 'user')
     setPortal('user')
     const nextUser = withSchoolContext(data.user, data)
     const role = resolveSchoolRole(data, nextUser)
     if (role) {
-      sessionStorage.setItem(SCHOOL_ROLE_KEY, role)
+      localStorage.setItem(SCHOOL_ROLE_KEY, role)
       setSchoolRole(role)
     } else {
-      sessionStorage.removeItem(SCHOOL_ROLE_KEY)
+      localStorage.removeItem(SCHOOL_ROLE_KEY)
       setSchoolRole(null)
+    }
+    if (isUserLoginPath() || isAdminLoginPath()) {
+      window.history.replaceState({}, '', '/')
     }
     setUser(nextUser)
   }
@@ -204,8 +226,8 @@ function App() {
   async function handleLogout() {
     const wasAdmin = portal === 'admin' || isAdminAppPath() || isAdminLoginPath()
     await logoutRequest().catch(() => {})
-    sessionStorage.removeItem(PORTAL_KEY)
-    sessionStorage.removeItem(SCHOOL_ROLE_KEY)
+    localStorage.removeItem(PORTAL_KEY)
+    localStorage.removeItem(SCHOOL_ROLE_KEY)
     setPortal(null)
     setSchoolRole(null)
     setUser(null)
