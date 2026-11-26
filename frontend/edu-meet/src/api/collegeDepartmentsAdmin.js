@@ -124,7 +124,7 @@ export async function loadCollegeDepartments(schoolId) {
         studentCount: studentByDept.get(deptId) || 0,
       }
     })
-    .sort((a, b) => (a.name || a.slug).localeCompare(b.name || b.slug))
+    .sort((a, b) => a.slug.localeCompare(b.slug))
 
   return {
     departments: list,
