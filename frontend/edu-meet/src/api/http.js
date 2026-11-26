@@ -1,10 +1,8 @@
 import {
   JAVA_API_BASE_URL,
-  clearAdminTokens,
-  clearUserTokens,
-  getAdminTokens,
-  getUserTokens,
-  restoreSession,
+  clearAuthSession,
+  getAccessBearerToken,
+  getAuthBearerToken,
 } from './auth'
 
 function buildUrl(path, query) {
@@ -54,24 +52,22 @@ async function rawFetch(path, { method = 'GET', body, query, bearerToken } = {})
   return { response, data }
 }
 
-async function authedFetch(path, options, { getTokens, clearTokens }) {
-  const tokens = getTokens()
-  if (!tokens?.accessToken && !tokens?.refreshToken) {
+function resolveBearerToken() {
+  return getAccessBearerToken() || getAuthBearerToken() || null
+}
+
+async function authedFetch(path, options = {}) {
+  const bearerToken = resolveBearerToken()
+  if (!bearerToken) {
+    clearAuthSession()
     throw new Error('Not authenticated. Please log in again.')
   }
 
-  let bearerToken = tokens.accessToken || undefined
-  let { response, data } = await rawFetch(path, { ...options, bearerToken })
+  const { response, data } = await rawFetch(path, { ...options, bearerToken })
 
   if (response.status === 401) {
-    try {
-      const refreshed = await restoreSession()
-      bearerToken = refreshed.access_token || getTokens()?.accessToken || undefined
-      ;({ response, data } = await rawFetch(path, { ...options, bearerToken }))
-    } catch {
-      clearTokens()
-      throw new Error('Session expired. Please log in again.')
-    }
+    clearAuthSession()
+    throw new Error('Session expired. Please log in again.')
   }
 
   if (!response.ok) {
@@ -82,16 +78,10 @@ async function authedFetch(path, options, { getTokens, clearTokens }) {
 }
 
 export async function adminFetch(path, options = {}) {
-  return authedFetch(path, options, {
-    getTokens: getAdminTokens,
-    clearTokens: clearAdminTokens,
-  })
+  return authedFetch(path, options)
 }
 
 /** School-portal sessions (College Admin, Faculty, Student, etc.). */
 export async function userFetch(path, options = {}) {
-  return authedFetch(path, options, {
-    getTokens: getUserTokens,
-    clearTokens: clearUserTokens,
-  })
+  return authedFetch(path, options)
 }

@@ -52,7 +52,6 @@ export async function loadCollegeAdminOverview(schoolId) {
     return {
       id: deptId,
       name: dept.name || '',
-      name: dept.name || '',
       slug: dept.slug || dept.name || `Dept ${deptId}`,
       studentCount: studentsByDept.get(deptId) || 0,
     }

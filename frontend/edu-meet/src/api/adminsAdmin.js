@@ -174,11 +174,21 @@ export async function loadAdminsForAdmin() {
   }
 }
 
-export async function createAdminAccount({ firstName, lastName, email, role, school }) {
+export async function createAdminAccount({
+  firstName,
+  lastName,
+  middleName,
+  suffix,
+  email,
+  role,
+  school,
+}) {
   const roles = await listRoles()
   const schools = await listSchools()
   const givenName = String(firstName || '').trim()
   const surname = String(lastName || '').trim()
+  const middle = String(middleName || '').trim()
+  const nameSuffix = String(suffix || '').trim()
   const tempPassword = isSchoolAdminRole(role)
     ? passwordFromPersonalInfo(givenName, surname)
     : generateTempPassword()
@@ -187,7 +197,9 @@ export async function createAdminAccount({ firstName, lastName, email, role, sch
     email,
     password: tempPassword,
     first_name: givenName,
+    middle_name: middle || null,
     last_name: surname,
+    suffix: nameSuffix || null,
     status: 1,
   }
   if (isSchoolAdminRole(role)) {

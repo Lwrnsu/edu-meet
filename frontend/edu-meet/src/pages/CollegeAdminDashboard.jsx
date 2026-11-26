@@ -316,7 +316,7 @@ export default function CollegeAdminDashboard({ user, onLogout }) {
               <ul className="college-dash__dept-list">
                 {departments.map((dept) => (
                   <li key={dept.id} className="college-dash__dept-item">
-                    <span className="college-dash__dept-name">{dept.name || dept.slug}</span>
+                    <span className="college-dash__dept-name">{dept.slug}</span>
                     <span className="college-dash__dept-count">
                       {dept.studentCount.toLocaleString('en-US')}
                     </span>

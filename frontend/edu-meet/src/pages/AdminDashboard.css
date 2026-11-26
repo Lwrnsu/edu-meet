@@ -789,6 +789,12 @@
   gap: 0.85rem;
 }
 
+.admin-schools-modal__name-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
 .admin-schools-modal__input {
   width: 100%;
   min-height: 2.5rem;
