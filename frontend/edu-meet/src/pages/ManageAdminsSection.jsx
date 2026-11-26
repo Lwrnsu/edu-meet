@@ -10,6 +10,8 @@ import { isLettersOnlyName } from '../api/nameValidation'
 const EMPTY_FORM = {
   firstName: '',
   lastName: '',
+  middleName: '',
+  suffix: '',
   email: '',
   role: '',
   school: '',
@@ -101,9 +103,9 @@ function dbRoleNameForLabel(label, roles) {
   return active.find((role) => role.name === label)?.name || ''
 }
 
-function adminRoleOptions(roles) {
+function adminRoleOptions(roles, { includeSystemAdmin = true } = {}) {
   const active = (roles || []).filter((role) => Number(role.status) === 1)
-  const system = active.find((role) => isSystemAdmin(role.name))
+  const system = includeSystemAdmin ? active.find((role) => isSystemAdmin(role.name)) : null
   const college =
     active.find((role) => roleKey(role.name) === 'schooladmin') ||
     active.find((role) => isCollegeAdmin(role.name))
@@ -241,12 +243,14 @@ export default function ManageAdminsSection() {
 
     const firstName = form.firstName.trim()
     const lastName = form.lastName.trim()
+    const middleName = form.middleName.trim()
+    const suffix = form.suffix.trim()
     const email = form.email.trim().toLowerCase()
     const role = form.role.trim()
-    let school = form.school.trim()
+    const school = form.school.trim()
 
     if (!firstName || !lastName || !email || !role) {
-      setError('First name, surname, email, and role are required.')
+      setError('First name, last name, email, and role are required.')
       return
     }
     if (!isLettersOnlyName(firstName)) {
@@ -254,7 +258,15 @@ export default function ManageAdminsSection() {
       return
     }
     if (!isLettersOnlyName(lastName)) {
-      setError('Surname must contain letters only.')
+      setError('Last name must contain letters only.')
+      return
+    }
+    if (middleName && !isLettersOnlyName(middleName)) {
+      setError('Middle name must contain letters only.')
+      return
+    }
+    if (suffix && !isLettersOnlyName(suffix)) {
+      setError('Suffix must contain letters only.')
       return
     }
     if (!isValidEmail(email)) {
@@ -262,19 +274,23 @@ export default function ManageAdminsSection() {
       return
     }
     if (!school) {
-      if (isSystemAdmin(role)) {
-        school = '—'
-      } else {
-        setError('Assigned school is required.')
-        return
-      }
+      setError('Assigned school is required.')
+      return
     }
 
     setBusy(true)
     setError('')
     setInfo('')
     try {
-      const result = await createAdminAccount({ firstName, lastName, email, role, school })
+      const result = await createAdminAccount({
+        firstName,
+        lastName,
+        middleName,
+        suffix,
+        email,
+        role,
+        school,
+      })
       setAdmins((prev) => [...prev, result.admin])
       setInfo(`Admin created. Temporary password: ${result.temporaryPassword}`)
       closeModal()
@@ -482,23 +498,41 @@ export default function ManageAdminsSection() {
             </h3>
 
             <form className="admin-schools-modal__form" onSubmit={handleCreate}>
-              <input
-                className="admin-schools-modal__input"
-                type="text"
-                value={form.firstName}
-                onChange={updateField('firstName')}
-                placeholder="First Name"
-                aria-label="First Name"
-                autoFocus
-              />
-              <input
-                className="admin-schools-modal__input"
-                type="text"
-                value={form.lastName}
-                onChange={updateField('lastName')}
-                placeholder="Surname"
-                aria-label="Surname"
-              />
+              <div className="admin-schools-modal__name-grid">
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={form.firstName}
+                  onChange={updateField('firstName')}
+                  placeholder="First Name"
+                  aria-label="First Name"
+                  autoFocus
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={form.lastName}
+                  onChange={updateField('lastName')}
+                  placeholder="Last Name"
+                  aria-label="Last Name"
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={form.middleName}
+                  onChange={updateField('middleName')}
+                  placeholder="Middle Name"
+                  aria-label="Middle Name"
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={form.suffix}
+                  onChange={updateField('suffix')}
+                  placeholder="Suffix"
+                  aria-label="Suffix"
+                />
+              </div>
               <input
                 className="admin-schools-modal__input"
                 type="email"
@@ -514,7 +548,7 @@ export default function ManageAdminsSection() {
                 aria-label="Role"
               >
                 <option value="">Select role</option>
-                {adminRoleOptions(roles).map((role) => (
+                {adminRoleOptions(roles, { includeSystemAdmin: false }).map((role) => (
                   <option key={role.role_id} value={role.name}>
                     {role.label}
                   </option>
@@ -525,7 +559,6 @@ export default function ManageAdminsSection() {
                 value={form.school}
                 onChange={updateField('school')}
                 aria-label="Assigned School"
-                disabled={isSystemAdmin(form.role)}
               >
                 <option value="">Select school</option>
                 {schoolChoices(schools, form.school).map((school) => (
