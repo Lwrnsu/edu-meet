@@ -15,13 +15,16 @@ public class ActivitySessionService {
 
     private final ActivityRepository activityRepository;
     private final ActivitySessionRepository sessionRepository;
+    private final StudentAnswerService studentAnswerService;
 
     public ActivitySessionService(
             ActivityRepository activityRepository,
-            ActivitySessionRepository sessionRepository
+            ActivitySessionRepository sessionRepository,
+            StudentAnswerService studentAnswerService
     ) {
         this.activityRepository = activityRepository;
         this.sessionRepository = sessionRepository;
+        this.studentAnswerService = studentAnswerService;
     }
 
     // START AN ASSESSMENT SESSION
@@ -33,7 +36,6 @@ public class ActivitySessionService {
 
         validateIds(activityId, facultyId);
 
-        // Verify that the Professor owns this assessment.
         Map<String, Object> activity =
             activityRepository.findByIdAndFacultyId(
                 activityId,
@@ -42,7 +44,6 @@ public class ActivitySessionService {
                 "Assessment not found or not owned by this Professor."
             ));
 
-        // Only published assessments can be started.
         String status = String.valueOf(activity.get("status"));
 
         if (!"published".equalsIgnoreCase(status)) {
@@ -57,7 +58,7 @@ public class ActivitySessionService {
         );
     }
 
-    // END AN ASSESSMENT SESSION
+    // END AN ASSESSMENT SESSION AND SCORE AUTO-SUBMITTED ATTEMPTS
     @Transactional
     public ActivitySessionResponse endSession(
             Long sessionId,
@@ -66,10 +67,18 @@ public class ActivitySessionService {
 
         validateIds(sessionId, facultyId);
 
-        return sessionRepository.endSession(
-            sessionId,
-            facultyId
-        );
+        // The PostgreSQL function ends the session and auto-submits
+        // all remaining in-progress student attempts.
+        ActivitySessionResponse session =
+            sessionRepository.endSession(
+                sessionId,
+                facultyId
+            );
+
+        // Calculate objective scores for those auto-submitted attempts.
+        studentAnswerService.scoreAutoSubmittedAnswers(sessionId);
+
+        return session;
     }
 
     // VALIDATE IDENTIFIERS
