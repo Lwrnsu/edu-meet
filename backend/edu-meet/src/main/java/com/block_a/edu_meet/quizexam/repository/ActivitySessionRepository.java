@@ -1,9 +1,9 @@
+
 package com.block_a.edu_meet.quizexam.repository;
 
 import com.block_a.edu_meet.quizexam.dto.ActivitySessionResponse;
 
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementCallback;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
@@ -26,8 +26,12 @@ public class ActivitySessionRepository {
                 resultSet.getLong("id"),
                 resultSet.getLong("activity_id"),
                 resultSet.getString("status"),
-                startedAt == null ? null : startedAt.toLocalDateTime(),
-                endedAt == null ? null : endedAt.toLocalDateTime()
+                startedAt == null
+                    ? null
+                    : startedAt.toLocalDateTime(),
+                endedAt == null
+                    ? null
+                    : endedAt.toLocalDateTime()
             );
         };
 
@@ -41,15 +45,26 @@ public class ActivitySessionRepository {
             Integer facultyId
     ) {
 
-        executeSessionFunction(
-            "SELECT public.start_activity_session(?, ?)",
+        String sql = """
+            SELECT public.start_activity_session(?, ?)
+            """;
+
+        Long sessionId = jdbcTemplate.queryForObject(
+            sql,
+            Long.class,
             activityId,
             facultyId
         );
 
-        return findActiveSessionByActivityId(activityId)
+        if (sessionId == null) {
+            throw new IllegalStateException(
+                "The database did not return a session ID."
+            );
+        }
+
+        return findById(sessionId)
             .orElseThrow(() -> new IllegalStateException(
-                "Session was started but could not be retrieved."
+                "Session was created but could not be retrieved."
             ));
     }
 
@@ -59,11 +74,23 @@ public class ActivitySessionRepository {
             Integer facultyId
     ) {
 
-        executeSessionFunction(
-            "SELECT public.end_activity_session(?, ?)",
+        String sql = """
+            SELECT public.end_activity_session(?, ?)
+            """;
+
+        Boolean ended = jdbcTemplate.queryForObject(
+            sql,
+            Boolean.class,
             sessionId,
             facultyId
         );
+
+        if (!Boolean.TRUE.equals(ended)) {
+            throw new IllegalArgumentException(
+                "Session could not be ended. It may already be ended, " +
+                "inactive, or not owned by this Professor."
+            );
+        }
 
         return findById(sessionId)
             .orElseThrow(() -> new IllegalStateException(
@@ -124,27 +151,5 @@ public class ActivitySessionRepository {
             );
 
         return results.stream().findFirst();
-    }
-
-    // EXECUTE A POSTGRESQL SESSION FUNCTION
-    private void executeSessionFunction(
-            String sql,
-            Long id,
-            Integer facultyId
-    ) {
-
-        jdbcTemplate.execute(
-            sql,
-            (PreparedStatementCallback<Void>) statement -> {
-
-                statement.setLong(1, id);
-                statement.setInt(2, facultyId);
-
-                // The function return value is intentionally ignored.
-                statement.execute();
-
-                return null;
-            }
-        );
     }
 }
