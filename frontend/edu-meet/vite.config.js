@@ -6,10 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ["roster-choir-indirect-skilled.trycloudflare.com"],
-    proxy: {
-      "/api": "http://localhost:8080",
-    },
+    allowedHosts: ["edu-meet.app"],
     watch: {
       usePolling: true,
     },
