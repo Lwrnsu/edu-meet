@@ -1,130 +1,249 @@
 <!doctype html>
 <html>
-  <head>
+<head>
     <title>Student Coding Page</title>
 
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
-      }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
 
-      textarea {
-        width: 100%;
-      }
+        textarea {
+            width: 100%;
+        }
 
-      #output {
-        border: 1px solid #ccc;
-        background-color: #f5f5f5;
-        padding: 10px;
-        min-height: 100px;
-        white-space: pre-wrap;
-        margin-top: 10px;
-      }
+        #output,
+        #expectedOutputBox,
+        #result {
+            border: 1px solid #ccc;
+            background-color: #f5f5f5;
+            padding: 10px;
+            min-height: 50px;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+
+        #result {
+            font-size: 20px;
+            font-weight: bold;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
+
     <h1>Student Coding Page</h1>
 
     <label>Student Name:</label>
-    <input type="text" id="studentName" />
+    <input type="text" id="studentName"/>
 
-    <hr />
+    <hr>
 
     <h2>Assigned Question</h2>
     <div id="questionBox">Loading...</div>
 
-    <hr />
+    <hr>
+
+    <h2>Expected Output</h2>
+    <pre id="expectedOutputBox">Loading...</pre>
+
+    <hr>
 
     <h2>Code Editor</h2>
-    <select id="language">
-      <option value="java">Java</option>
-      <option value="python">Python</option>
-      <option value="php">PHP</option>
-      <option value="sql">SQL</option>
-      <option value="c">C</option>
-      <option value="c#">C#</option>
-      <option value="c++">C++</option>
-      <option value="bash">Bash</option>
-      <option value="javascript">JavaScript</option>
-    </select>
-    <textarea
-      id="code"
-      rows="15"
-      placeholder="Write your code here..."
-    ></textarea>
 
-    <br /><br />
+    <select id="language">
+        <option value="java">Java</option>
+        <option value="python">Python</option>
+        <option value="php">PHP</option>
+        <option value="sql">SQL</option>
+        <option value="c">C</option>
+        <option value="c#">C#</option>
+        <option value="c++">C++</option>
+        <option value="bash">Bash</option>
+        <option value="javascript">JavaScript</option>
+    </select>
+
+    <textarea
+        id="code"
+        rows="15"
+        placeholder="Write your code here..."></textarea>
+
+    <br><br>
 
     <button onclick="runCode()">Run Code</button>
     <button onclick="submitCode()">Submit Code</button>
 
-    <hr />
+    <hr>
 
     <h2>Output</h2>
+    <div id="output">
+        Program output will appear here...
+    </div>
 
-    <div id="output">Program output will appear here...</div>
+    <hr>
+
+    <h2>Result</h2>
+    <div id="result">
+        Run your code first.
+    </div>
 
     <script>
-      let currentQuestionId = 0;
 
-      loadQuestion();
+        let currentQuestionId = 0;
+        let latestOutput = "";
+        let latestResult = "";
 
-      function loadQuestion() {
-        fetch("/api/assigned-question")
-          .then((r) => r.json())
-          .then((data) => {
-            currentQuestionId = data.id;
+        loadQuestion();
 
-            document.getElementById("questionBox").innerHTML = data.question;
-          })
-          .catch(() => {
-            document.getElementById("questionBox").innerHTML =
-              "No assigned question.";
-          });
-      }
+        function loadQuestion() {
 
-      function runCode() {
-        fetch("/api/run", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            code: document.getElementById("code").value,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            document.getElementById("output").innerText = data.output;
-          })
-          .catch((error) => {
-            console.error(error);
+            fetch("/api/assigned-question")
+            .then((r) => r.json())
+            .then((data) => {
 
-            document.getElementById("output").innerText = error;
-          });
-      }
+                currentQuestionId = data.id;
 
-      function runCode() {
-        const language = document.getElementById("language").value;
+                document.getElementById("questionBox")
+                    .innerHTML = data.question;
 
-        const code = document.getElementById("code").value;
+                document.getElementById("expectedOutputBox")
+                    .innerText = data.expected_output || "";
 
-        fetch("/api/run", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            language: language,
-            code: code,
-          }),
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            document.getElementById("output").innerText = data.output;
-          });
-      }
+            })
+            .catch(() => {
+
+                document.getElementById("questionBox")
+                    .innerHTML =
+                    "No assigned question.";
+
+            });
+
+        }
+
+        function runCode() {
+
+            const language =
+                document.getElementById("language").value;
+
+            const code =
+                document.getElementById("code").value;
+
+            fetch("/api/run", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    language: language,
+                    code: code
+                })
+
+            })
+            .then((r) => r.json())
+            .then((data) => {
+
+                document.getElementById("output")
+                    .innerText = data.output;
+
+                latestOutput = data.output;
+
+                const expected =
+                    document.getElementById(
+                        "expectedOutputBox"
+                    ).innerText.trim();
+
+                const actual =
+                    (data.output || "").trim();
+
+                if(expected === actual) {
+
+                    latestResult = "Correct";
+
+                    document.getElementById("result")
+                        .innerHTML =
+                        "<span style='color:green;'>Correct</span>";
+
+                } else {
+
+                    latestResult = "Incorrect";
+
+                    document.getElementById("result")
+                        .innerHTML =
+                        "<span style='color:red;'>ncorrect</span>";
+
+                }
+
+            })
+            .catch((error) => {
+
+                console.error(error);
+
+                document.getElementById("output")
+                    .innerText =
+                    "Error running code.";
+
+            });
+
+        }
+
+        function submitCode() {
+
+            fetch("/api/submit", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    studentName:
+                        document.getElementById(
+                            "studentName"
+                        ).value,
+
+                    questionId:
+                        currentQuestionId,
+
+                    language:
+                        document.getElementById(
+                            "language"
+                        ).value,
+
+                    code:
+                        document.getElementById(
+                            "code"
+                        ).value,
+
+                    output:
+                        latestOutput,
+
+                    result:
+                        latestResult
+
+                })
+
+            })
+            .then((r) => r.json())
+            .then(() => {
+
+                alert("Code Submitted Successfully!");
+
+            })
+            .catch(() => {
+
+                alert("Submission Failed");
+
+            });
+
+        }
+
     </script>
-  </body>
+
+</body>
 </html>
