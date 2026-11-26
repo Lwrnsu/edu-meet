@@ -1,3 +1,4 @@
+
 package com.block_a.edu_meet.quizexam.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -56,7 +57,7 @@ public class ActivityRepository {
         );
     }
 
-    // ASSIGN A CLASS TO AN ASSESSMENT
+    // ADD A TARGET CLASS TO AN ASSESSMENT
     public void addTargetClass(
             Long activityId,
             Integer classId,
@@ -83,7 +84,36 @@ public class ActivityRepository {
         );
     }
 
-    // RETRIEVE ASSESSMENTS BELONGING TO A FACULTY MEMBER
+    // REMOVE ALL TARGET CLASSES FROM AN ASSESSMENT
+    public int deleteTargetClasses(Long activityId) {
+
+        String sql = """
+            DELETE FROM public.activity_targets
+            WHERE activity_id = ?
+            """;
+
+        return jdbcTemplate.update(sql, activityId);
+    }
+
+    // RETRIEVE TARGET CLASSES FOR AN ASSESSMENT
+    public List<Map<String, Object>> findTargetClassesByActivityId(
+            Long activityId
+    ) {
+
+        String sql = """
+            SELECT
+                class_id,
+                class_name,
+                class_code
+            FROM public.activity_targets
+            WHERE activity_id = ?
+            ORDER BY class_name ASC
+            """;
+
+        return jdbcTemplate.queryForList(sql, activityId);
+    }
+
+    // RETRIEVE ALL ASSESSMENTS BELONGING TO A FACULTY MEMBER
     public List<Map<String, Object>> findAllByFacultyId(
             Integer facultyId
     ) {
@@ -141,6 +171,47 @@ public class ActivityRepository {
             );
 
         return results.stream().findFirst();
+    }
+
+    // UPDATE AN EXISTING DRAFT ASSESSMENT
+    // Published and archived assessments cannot be edited through this method.
+    public int updateDraft(
+            Long activityId,
+            Integer facultyId,
+            String name,
+            String type,
+            String courseName,
+            String courseCode,
+            BigDecimal passingGradePercent,
+            String questionAndAnswerJson
+    ) {
+
+        String sql = """
+            UPDATE public.activities
+            SET
+                name = ?,
+                type = ?,
+                course_name = ?,
+                course_code = ?,
+                passing_grade_percent = ?,
+                question_and_answer = CAST(? AS jsonb),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND faculty_id = ?
+              AND status = 'draft'
+            """;
+
+        return jdbcTemplate.update(
+            sql,
+            name,
+            type,
+            courseName,
+            courseCode,
+            passingGradePercent,
+            questionAndAnswerJson,
+            activityId,
+            facultyId
+        );
     }
 
     // UPDATE ASSESSMENT STATUS
