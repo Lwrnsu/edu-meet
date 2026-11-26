@@ -19,17 +19,15 @@ services:
       - "8000:8000"
     depends_on: [postgres]
 
-  postgres:
-    image: postgres:19rc1-alpine3.24
-    container_name: postgressql
+  mysql:
+    image: mysql:latest
+    container_name: mysql
     ports: 
-      - "5432:5432"
+      - "3306:3306"
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: edumeet
+      MYSQL_ROOT_PASSWORD: secret
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:8.10.3-alpine3.23
@@ -53,5 +51,5 @@ services:
 
 volumes:
     caddy_data:
-    postgres_data:
+    mysql_data:
     redisdata: 
