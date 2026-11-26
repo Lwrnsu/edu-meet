@@ -1,0 +1,18 @@
+<IfModule mod_php.c>
+php_value upload_max_filesize 30M
+php_value post_max_size 35M
+php_value max_file_uploads 20
+php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php7.c>
+php_value upload_max_filesize 30M
+php_value post_max_size 35M
+php_value max_file_uploads 20
+php_value max_execution_time 120
+</IfModule>
+
+# Only index.php should be reachable from the browser
+<Files "config.php">
+Require all denied
+</Files>
+Options -Indexes
