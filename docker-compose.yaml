@@ -11,6 +11,11 @@ services:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      ATTENDANCE_REPORT_KEY: ${ATTENDANCE_REPORT_KEY:-}
+
     depends_on: [mysql, redis]
 
   php:
