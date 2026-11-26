@@ -3,7 +3,7 @@ class Database {
     private static string $host = "localhost";
     private static string $database = "EduMeet";
     private static string $username = "root";
-    private static string $password = "";
+    private static string $password = "secret";
     private static ?PDO $connection = null;
 
     public static function connect(): PDO {
