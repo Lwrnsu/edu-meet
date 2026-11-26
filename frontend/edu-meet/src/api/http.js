@@ -4,7 +4,6 @@ import {
   clearUserTokens,
   getAdminTokens,
   getUserTokens,
-  restoreSession,
 } from './auth'
 
 function buildUrl(path, query) {
@@ -64,14 +63,9 @@ async function authedFetch(path, options, { getTokens, clearTokens }) {
   let { response, data } = await rawFetch(path, { ...options, bearerToken })
 
   if (response.status === 401) {
-    try {
-      const refreshed = await restoreSession()
-      bearerToken = refreshed.access_token || getTokens()?.accessToken || undefined
-      ;({ response, data } = await rawFetch(path, { ...options, bearerToken }))
-    } catch {
-      clearTokens()
-      throw new Error('Session expired. Please log in again.')
-    }
+    // Redis restoreSession() no longer returns a PHP JWT access_token.
+    clearTokens()
+    throw new Error('Session expired. Please log in again.')
   }
 
   if (!response.ok) {

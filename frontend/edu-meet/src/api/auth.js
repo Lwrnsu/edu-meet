@@ -46,7 +46,7 @@ function saveRedisSession(response, data) {
     localStorage.setItem(REDIS_TOKEN_KEY, authHeader)
   }
   if (data?.user) {
-    sessionStorage.setItem(
+    localStorage.setItem(
       CACHED_USER_KEY,
       JSON.stringify({
         ...data.user,
@@ -61,6 +61,7 @@ function saveRedisSession(response, data) {
 function clearRedisSession() {
   localStorage.removeItem(REDIS_TOKEN_KEY)
   localStorage.removeItem(CACHED_USER_KEY)
+  sessionStorage.removeItem(CACHED_USER_KEY)
   clearUserTokens()
   clearAdminTokens()
 }
@@ -78,6 +79,7 @@ export async function login(email, password) {
   if (!response.ok) throw new Error(data.message || 'Request failed.')
 
   saveRedisSession(response, data)
+  storeUserTokens(data)
   return data
 }
 
@@ -94,6 +96,7 @@ export async function systemAdminLogin(email, password) {
   if (!response.ok) throw new Error(data.message || 'Request failed.')
 
   saveRedisSession(response, data)
+  storeAdminTokens(data)
   return data
 }
 
