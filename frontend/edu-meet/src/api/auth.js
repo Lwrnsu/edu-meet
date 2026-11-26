@@ -6,7 +6,73 @@ const ADMIN_REFRESH_KEY = 'edu_meet_admin_refresh_token'
 const USER_ACCESS_KEY = 'edu_meet_user_access_token'
 const USER_REFRESH_KEY = 'edu_meet_user_refresh_token'
 const REDIS_TOKEN_KEY = 'edu_meet_redis_token'
+const AUTH_COOKIE_NAME = 'edu_meet_auth'
+const ACCESS_COOKIE_NAME = 'edu_meet_access'
 const CACHED_USER_KEY = 'edu_meet_cached_user'
+const AUTH_COOKIE_MAX_AGE_SECONDS = 86400
+
+function setCookie(name, value) {
+  const encoded = encodeURIComponent(String(value))
+  document.cookie = `${name}=${encoded}; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
+}
+
+function clearCookie(name) {
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`
+}
+
+function readCookie(name) {
+  const prefix = `${name}=`
+  const parts = document.cookie ? document.cookie.split('; ') : []
+  for (const part of parts) {
+    if (part.startsWith(prefix)) {
+      const raw = part.slice(prefix.length)
+      try {
+        return decodeURIComponent(raw)
+      } catch {
+        return raw
+      }
+    }
+  }
+  return null
+}
+
+function stripBearer(value) {
+  if (!value) return null
+  const trimmed = String(value).trim()
+  if (!trimmed) return null
+  const match = trimmed.match(/^Bearer\s+(\S+)$/i)
+  return match ? match[1] : trimmed
+}
+
+function setAuthCookie(value) {
+  setCookie(AUTH_COOKIE_NAME, value)
+}
+
+function clearAuthCookie() {
+  clearCookie(AUTH_COOKIE_NAME)
+}
+
+function setAccessCookie(value) {
+  setCookie(ACCESS_COOKIE_NAME, value)
+}
+
+function clearAccessCookie() {
+  clearCookie(ACCESS_COOKIE_NAME)
+}
+
+export function getAuthCookie() {
+  return readCookie(AUTH_COOKIE_NAME)
+}
+
+/** Raw Redis token for Authorization: Bearer <token>. */
+export function getAuthBearerToken() {
+  return stripBearer(getAuthCookie())
+}
+
+/** Raw PHP JWT for /api/php/* calls. */
+export function getAccessBearerToken() {
+  return stripBearer(readCookie(ACCESS_COOKIE_NAME))
+}
 
 export function getAdminTokens() {
   const accessToken = sessionStorage.getItem(ADMIN_ACCESS_KEY)
@@ -15,7 +81,10 @@ export function getAdminTokens() {
 }
 
 export function storeAdminTokens(data = {}) {
-  if (data.access_token) sessionStorage.setItem(ADMIN_ACCESS_KEY, data.access_token)
+  if (data.access_token) {
+    sessionStorage.setItem(ADMIN_ACCESS_KEY, data.access_token)
+    setAccessCookie(`Bearer ${data.access_token}`)
+  }
   if (data.refresh_token) sessionStorage.setItem(ADMIN_REFRESH_KEY, data.refresh_token)
 }
 
@@ -31,7 +100,10 @@ export function getUserTokens() {
 }
 
 export function storeUserTokens(data = {}) {
-  if (data.access_token) sessionStorage.setItem(USER_ACCESS_KEY, data.access_token)
+  if (data.access_token) {
+    sessionStorage.setItem(USER_ACCESS_KEY, data.access_token)
+    setAccessCookie(`Bearer ${data.access_token}`)
+  }
   if (data.refresh_token) sessionStorage.setItem(USER_REFRESH_KEY, data.refresh_token)
 }
 
@@ -43,7 +115,11 @@ export function clearUserTokens() {
 function saveRedisSession(response, data) {
   const authHeader = response.headers.get('Authorization')
   if (authHeader) {
+    setAuthCookie(authHeader)
     localStorage.setItem(REDIS_TOKEN_KEY, authHeader)
+  }
+  if (data?.access_token) {
+    setAccessCookie(`Bearer ${data.access_token}`)
   }
   if (data?.user) {
     localStorage.setItem(
@@ -58,12 +134,18 @@ function saveRedisSession(response, data) {
   }
 }
 
-function clearRedisSession() {
+export function clearAuthSession() {
+  clearAuthCookie()
+  clearAccessCookie()
   localStorage.removeItem(REDIS_TOKEN_KEY)
   localStorage.removeItem(CACHED_USER_KEY)
   sessionStorage.removeItem(CACHED_USER_KEY)
   clearUserTokens()
   clearAdminTokens()
+}
+
+function clearRedisSession() {
+  clearAuthSession()
 }
 
 export async function login(email, password) {
@@ -113,8 +195,9 @@ export async function signup(payload) {
 }
 
 export async function restoreSession() {
-  const redisToken = localStorage.getItem(REDIS_TOKEN_KEY)
+  const redisToken = getAuthCookie()
   if (!redisToken) {
+    clearRedisSession()
     throw new Error('No active session.')
   }
 
@@ -137,7 +220,7 @@ export async function restoreSession() {
 }
 
 export async function logoutRequest() {
-  const redisToken = localStorage.getItem(REDIS_TOKEN_KEY)
+  const redisToken = getAuthCookie()
   try {
     if (redisToken) {
       await fetch(`${JAVA_API_BASE_URL}/api/auth/logOut`, {
