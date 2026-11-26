@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public class StudentAssessmentRepository {
@@ -37,6 +38,7 @@ public class StudentAssessmentRepository {
                 a.course_name,
                 a.course_code,
                 a.question_and_answer,
+                a.passing_grade_percent,
                 a.created_at
             FROM public.activities a
             WHERE a.status = 'published'
@@ -75,6 +77,7 @@ public class StudentAssessmentRepository {
                 a.course_name,
                 a.course_code,
                 a.question_and_answer,
+                a.passing_grade_percent,
                 a.created_at
             FROM public.activities a
             WHERE a.id = ?
