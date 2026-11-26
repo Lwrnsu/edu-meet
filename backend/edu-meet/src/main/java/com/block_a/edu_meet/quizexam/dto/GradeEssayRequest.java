@@ -10,7 +10,8 @@ public record GradeEssayRequest(
 
     public record EssayGradeData(
             Integer questionIndex,
-            BigDecimal pointsAwarded
+            BigDecimal pointsAwarded,
+            String feedback
     ) {
     }
 }
