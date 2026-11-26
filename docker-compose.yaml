@@ -11,6 +11,17 @@ services:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+    depends_on: [redis]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
 
   proxy:
     image: caddy:alpine
@@ -24,3 +35,4 @@ services:
 
 volumes:
     caddy_data:
+    redis_data:

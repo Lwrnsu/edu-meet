@@ -159,8 +159,12 @@ public class AuthController {
                 JsonNode body = response.getBody();
                 int userId = extractUserId(body);
                 String role = extractUserRole(body, defaultRole);
+                JsonNode userNode = body.path("user");
+                java.util.Map<String, Object> user = userNode.isObject()
+                                ? com.block_a.edu_meet.services.AuthService.toMap(userNode.toString())
+                                : null;
                 String redisToken = com.block_a.edu_meet.services.AuthService.createAuthToken(
-                                new LogInModel(userId, role));
+                                new LogInModel(userId, role, user));
 
                 return ResponseEntity.status(response.getStatusCode())
                                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + redisToken)

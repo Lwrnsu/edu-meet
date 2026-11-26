@@ -38,7 +38,7 @@ public class PhpUserRolesController {
 	public ResponseEntity<JsonNode> create(
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.POST, "user_roles.php", null, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.POST, "user_roles.php", null, authorization(request), body);
 	}
 
 	@PutMapping
@@ -46,7 +46,7 @@ public class PhpUserRolesController {
 			@RequestParam MultiValueMap<String, String> query,
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.PUT, "user_roles.php", query, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.PUT, "user_roles.php", query, authorization(request), body);
 	}
 
 	@PatchMapping
@@ -54,14 +54,14 @@ public class PhpUserRolesController {
 			@RequestParam MultiValueMap<String, String> query,
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.PATCH, "user_roles.php", query, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.PATCH, "user_roles.php", query, authorization(request), body);
 	}
 
 	@DeleteMapping
 	public ResponseEntity<JsonNode> delete(
 			@RequestParam MultiValueMap<String, String> query,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.DELETE, "user_roles.php", query, authorization(request), null);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.DELETE, "user_roles.php", query, authorization(request), null);
 	}
 
 	private static String authorization(HttpServletRequest request) {

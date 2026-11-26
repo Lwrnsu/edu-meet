@@ -38,7 +38,7 @@ public class PhpSchoolMembershipsController {
 	public ResponseEntity<JsonNode> create(
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.POST, "school_memberships.php", null, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.POST, "school_memberships.php", null, authorization(request), body);
 	}
 
 	@PutMapping
@@ -46,7 +46,7 @@ public class PhpSchoolMembershipsController {
 			@RequestParam MultiValueMap<String, String> query,
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.PUT, "school_memberships.php", query, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.PUT, "school_memberships.php", query, authorization(request), body);
 	}
 
 	@PatchMapping
@@ -54,14 +54,14 @@ public class PhpSchoolMembershipsController {
 			@RequestParam MultiValueMap<String, String> query,
 			@RequestBody(required = false) JsonNode body,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.PATCH, "school_memberships.php", query, authorization(request), body);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.PATCH, "school_memberships.php", query, authorization(request), body);
 	}
 
 	@DeleteMapping
 	public ResponseEntity<JsonNode> delete(
 			@RequestParam MultiValueMap<String, String> query,
 			HttpServletRequest request) {
-		return phpApiClient.forward(HttpMethod.DELETE, "school_memberships.php", query, authorization(request), null);
+		return RoleSessionSync.forward(phpApiClient, HttpMethod.DELETE, "school_memberships.php", query, authorization(request), null);
 	}
 
 	private static String authorization(HttpServletRequest request) {

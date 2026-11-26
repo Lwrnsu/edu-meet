@@ -37,3 +37,4 @@ frontend/edu-meet/dist-ssr
 *.njsproj
 *.sln
 *.sw?*.class
+dump.rdb

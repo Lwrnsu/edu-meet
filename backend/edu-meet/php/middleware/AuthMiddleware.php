@@ -42,45 +42,85 @@ class AuthMiddleware
 
     private static function verifyWithSpringBoot(string $token): ?array
     {
-        if (!function_exists('curl_init')) {
-            return null;
-        }
-
-        $ch = curl_init(self::SPRING_CACHED_LOGIN_URL);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer ' . $token,
-                'Accept: application/json',
-            ],
-            CURLOPT_CONNECTTIMEOUT => 2,
-            CURLOPT_TIMEOUT => 5,
-        ]);
-
-        $raw = curl_exec($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !is_string($raw) || $raw === '') {
+        $raw = self::fetchCachedLogin($token);
+        if ($raw === null) {
             return null;
         }
 
         $decoded = json_decode($raw, true);
-        if (!is_array($decoded) || empty($decoded['success'])) {
+
+        // Spring's ApiResponse is { status, message, body }
+        if (!is_array($decoded)) {
             return null;
         }
 
-        $data = $decoded['data'] ?? [];
-        $userId = $data['userId'] ?? $data['user_id'] ?? $data['id'] ?? null;
+        $ok = $decoded['status'] ?? $decoded['success'] ?? false;
+        if (empty($ok)) {
+            return null;
+        }
 
-        if ($userId === null) {
+        $data = $decoded['body'] ?? $decoded['data'] ?? [];
+        if (!is_array($data)) {
+            return null;
+        }
+
+        $userId = (int) ($data['id'] ?? $data['userId'] ?? $data['user_id'] ?? 0);
+
+        if ($userId <= 0) {
             return null;
         }
 
         return [
-            'sub' => (int) $userId,
+            'sub' => $userId,
             'role' => $data['role'] ?? null,
         ];
+    }
+
+    /** Returns Spring's response body only when it answered HTTP 200, otherwise null. */
+    private static function fetchCachedLogin(string $token): ?string
+    {
+        $headers = [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json',
+        ];
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init(self::SPRING_CACHED_LOGIN_URL);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_TIMEOUT => 5,
+            ]);
+
+            $raw = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            return ($httpCode === 200 && is_string($raw) && $raw !== '') ? $raw : null;
+        }
+
+        // No curl extension: use PHP streams instead
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers),
+                'timeout' => 5,
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $raw = @file_get_contents(self::SPRING_CACHED_LOGIN_URL, false, $context);
+
+        $responseHeaders = function_exists('http_get_last_response_headers')
+            ? (http_get_last_response_headers() ?? [])
+            : ($http_response_header ?? []);
+
+        $httpCode = 0;
+        if (isset($responseHeaders[0]) && preg_match('#HTTP/\S+\s+(\d{3})#', $responseHeaders[0], $m)) {
+            $httpCode = (int) $m[1];
+        }
+
+        return ($httpCode === 200 && is_string($raw) && $raw !== '') ? $raw : null;
     }
 
     private static function getBearerToken(): ?string

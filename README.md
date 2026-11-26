@@ -31,3 +31,11 @@
 > 3. In installing spring dependencies, simply look for their xml file and paste it to pom.xml. *Take note, check the pom.xml first if there's already dependency installed that you're trying to install.*
 >
 > 4. Viola! You can now proceed with your tasks!
+
+## Running the demo and the Redis session test
+
+> **Mac / Linux:** `bash demo.sh`, then in another terminal `EMAIL=you@mail.com PASSWORD=secret bash test-redis.sh`
+>
+> **Windows:** start MySQL in XAMPP, then run `demo.cmd`. In a second window run `set EMAIL=you@mail.com`, `set PASSWORD=secret`, then `test-redis.cmd`. Redis on Windows needs Memurai, Docker Desktop, or WSL. `demo.cmd` starts whichever it finds.
+>
+> The test prints `ALL GOOD` when everything passes. Add `LOGIN_PATH=php-system-admin-login` (Mac) or `set LOGIN_PATH=php-system-admin-login` (Windows) for an admin account.

@@ -46,7 +46,7 @@ function saveRedisSession(response, data) {
     localStorage.setItem(REDIS_TOKEN_KEY, authHeader)
   }
   if (data?.user) {
-    sessionStorage.setItem(
+    localStorage.setItem(
       CACHED_USER_KEY,
       JSON.stringify({
         ...data.user,
@@ -126,7 +126,12 @@ export async function restoreSession() {
   }
 
   const cached = await response.json().catch(() => ({}))
-  const savedUser = JSON.parse(localStorage.getItem(CACHED_USER_KEY) || 'null')
+  let savedUser = null
+  try {
+    savedUser = JSON.parse(localStorage.getItem(CACHED_USER_KEY) || 'null')
+  } catch {
+    savedUser = null
+  }
   return {
     user: savedUser || { id: cached.body?.id, role: cached.body?.role },
     role: cached.body?.role || savedUser?.role || null,
