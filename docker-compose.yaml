@@ -22,11 +22,6 @@ services:
     build: ./php/
     ports:
       - "8000:8000"
-    environment:
-      PHP_DB_HOST: mysql
-      PHP_DB_NAME: EduMeet
-      PHP_DB_USER: ${PHP_CLASS_DATABASE_USERNAME:-root}
-      PHP_DB_PASSWORD: ${PHP_CLASS_DATABASE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-secret}}
     depends_on: [mysql]
 
   mysql:
@@ -44,12 +39,6 @@ services:
       retries: 10
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
 
   redis:
     image: redis:8.10.3-alpine3.23
