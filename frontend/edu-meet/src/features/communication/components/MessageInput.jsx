@@ -1,18 +1,18 @@
 import { useState } from "react";
 import sendMessageIcon from "../assets/send-message.png";
+import { validateMessageText } from "../utils/communicationValidation.js";
 
 export default function MessageInput({ onSendMessage }) {
   const [draft, setDraft] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
-    const text = draft.trim();
-
-    if (!text) {
+    const validation = validateMessageText(draft);
+    if (!validation.valid) {
       return;
     }
 
-    if (onSendMessage(text) === false) {
+    if (onSendMessage(validation.text) === false) {
       return;
     }
 

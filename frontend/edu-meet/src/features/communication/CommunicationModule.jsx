@@ -6,61 +6,43 @@ import LeaveGroupDialog from "./components/LeaveGroupDialog.jsx";
 import MessageInput from "./components/MessageInput.jsx";
 import MessageList from "./components/MessageList.jsx";
 import ConversationPanel from "./components/ConversationPanel.jsx";
-import mockConversations from "./data/mockConversations.js";
-import mockMembers from "./data/mockMembers.js";
-import mockMessagesByConversationId from "./data/mockMessages.js";
-import mockPinnedMessageIdsByConversationId from "./data/mockPinnedMessages.js";
+import mockCommunicationProvider from "./data/mockCommunicationProvider.js";
+import useConversations from "./hooks/useConversations.js";
+import useChat from "./hooks/useChat.js";
 import "./styles/communication.css";
 
 export default function CommunicationModule() {
-  const [selectedConversationId, setSelectedConversationId] = useState(
-    mockConversations[0]?.id,
+  const [initialMockData] = useState(() =>
+    mockCommunicationProvider.getInitialState(),
   );
-  const [activeChatPanelView, setActiveChatPanelView] = useState("chat");
-  const [visibleConversationIds, setVisibleConversationIds] = useState(
-    () => new Set(mockConversations.map((conversation) => conversation.id)),
-  );
-  const [leaveGroupConversationId, setLeaveGroupConversationId] =
-    useState(null);
-  const [messagesByConversationId, setMessagesByConversationId] = useState(
-    () =>
-      Object.fromEntries(
-        Object.entries(mockMessagesByConversationId).map(
-          ([conversationId, messages]) => [
-            conversationId,
-            messages.map((message) => ({ ...message })),
-          ],
-        ),
-      ),
-  );
-  const [lastSentMessageId, setLastSentMessageId] = useState(null);
+  const mockConversations = initialMockData.conversations;
+  const mockMembers = initialMockData.members;
+  const mockPinnedMessageIdsByConversationId =
+    initialMockData.pinnedMessageIdsByConversationId;
+  const initialMessagesByConversationId =
+    initialMockData.messagesByConversationId;
+  const chatState = useChat({
+    initialMessagesByConversationId,
+    currentUserId: "current-user",
+  });
+  const conversationState = useConversations({
+    initialConversations: mockConversations,
+    messagesByConversationId: chatState.messagesByConversationId,
+  });
+  const selectedConversationId =
+    conversationState.selectedConversationId;
+  const activeChatPanelView =
+    conversationState.activeChatPanelView;
+  const leaveGroupConversationId =
+    conversationState.leaveGroupConversationId;
+  const conversations = conversationState.conversations;
+  const selectedConversation = conversationState.selectedConversation;
+  const selectedMessages =
+    chatState.messagesByConversationId[selectedConversationId] ?? [];
+  const lastSentMessageId = chatState.lastSentMessageId;
   const menuTriggerRef = useRef(null);
   const conversationSearchRef = useRef(null);
   const dialogCloseIntentRef = useRef(null);
-  const conversations = mockConversations
-    .filter((conversation) => visibleConversationIds.has(conversation.id))
-    .map((conversation) => {
-      const conversationMessages =
-        messagesByConversationId[conversation.id] ?? [];
-      const latestMessage =
-        conversationMessages[conversationMessages.length - 1];
-
-      const sender =
-        latestMessage?.direction === "outgoing"
-          ? "You"
-          : latestMessage?.senderName ?? conversation.name;
-
-      return {
-        ...conversation,
-        preview: latestMessage
-          ? `${sender}: ${latestMessage.text}`
-          : "No messages yet.",
-      };
-    });
-  const selectedConversation = conversations.find(
-    (conversation) => conversation.id === selectedConversationId,
-  );
-  const selectedMessages = messagesByConversationId[selectedConversationId] ?? [];
   const selectedMembers =
     selectedConversation?.type === "group"
       ? mockMembers.filter(
@@ -104,80 +86,25 @@ export default function CommunicationModule() {
   }, [leaveGroupConversationId]);
 
   function handleSendMessage(text) {
-    if (!selectedConversationId) {
-      return false;
-    }
-
-    const sentAt = new Date();
-    const messageId = crypto.randomUUID();
-    const timestamp = new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(sentAt);
-
-    const message = {
-      id: messageId,
-      direction: "outgoing",
-      senderId: "current-user",
-      text,
-      timestamp,
-      createdAt: sentAt.toISOString(),
-    };
-
-    setMessagesByConversationId((currentMessages) => ({
-      ...currentMessages,
-      [selectedConversationId]: [
-        ...(currentMessages[selectedConversationId] ?? []),
-        message,
-      ],
-    }));
-    setLastSentMessageId(messageId);
-    return true;
+    return chatState.sendMessage(selectedConversationId, text);
   }
 
   function handleMenuAction(action, conversation) {
-    if (
-      (action === "view-members" || action === "pinned-messages") &&
-      conversation?.type === "group" &&
-      conversation.id === selectedConversationId
-    ) {
-      setActiveChatPanelView(
-        action === "view-members" ? "members" : "pinned",
-      );
-      return;
-    }
-
-    if (action === "leave-group" && conversation?.type === "group") {
-      setLeaveGroupConversationId(conversation.id);
-    }
+    conversationState.handleMenuAction(action, conversation);
   }
 
   function handleSelectConversation(conversationId) {
-    setSelectedConversationId(conversationId);
-    setActiveChatPanelView("chat");
+    conversationState.handleSelectConversation(conversationId);
   }
 
   function handleCancelLeaveGroup() {
     dialogCloseIntentRef.current = "cancel";
-    setLeaveGroupConversationId(null);
+    conversationState.handleCancelLeaveGroup();
   }
 
   function handleConfirmLeaveGroup() {
-    if (leaveGroupConversationId === null) {
-      return;
-    }
-
-    const conversationId = leaveGroupConversationId;
     dialogCloseIntentRef.current = "leave";
-    setVisibleConversationIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      nextIds.delete(conversationId);
-      return nextIds;
-    });
-    setSelectedConversationId((currentId) =>
-      currentId === conversationId ? null : currentId,
-    );
-    setLeaveGroupConversationId(null);
+    conversationState.handleConfirmLeaveGroup();
   }
 
   return (
@@ -210,7 +137,9 @@ export default function CommunicationModule() {
                         ? "pinned"
                         : "chat"
                   }
-                  onBackToChat={() => setActiveChatPanelView("chat")}
+                  onBackToChat={() =>
+                    conversationState.setActiveChatPanelView("chat")
+                  }
                   triggerRef={menuTriggerRef}
                 />
                 {showingMembers ? (
