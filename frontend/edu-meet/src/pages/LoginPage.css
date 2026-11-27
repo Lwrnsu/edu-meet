@@ -51,6 +51,75 @@
   grid-template-columns: minmax(0, 1.7fr) minmax(12rem, 0.9fr);
 }
 
+.login__art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.login__art-bottom {
+  position: absolute;
+  bottom: 0;
+  width: min(48vw, 38rem);
+  height: min(62vh, 37rem);
+}
+
+.login__art-side {
+  position: absolute;
+  top: 18%;
+  width: min(22vw, 17rem);
+  height: min(62vh, 37rem);
+}
+
+.login__art-vector2,
+.login__art-vector5,
+.login__art-vector6 {
+  position: absolute;
+  display: block;
+  max-width: none;
+  mix-blend-mode: lighten;
+}
+
+.login__art-vector2 {
+  left: 0;
+  bottom: 0;
+  width: 82%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.login__art-vector5 {
+  left: 38%;
+  bottom: 0;
+  width: 62%;
+  height: 82%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.login__art-vector6 {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.login--admin .login__art-bottom,
+.login--admin .login__art-side {
+  left: 0;
+}
+
+.login--user .login__art-bottom,
+.login--user .login__art-side {
+  right: 0;
+  transform: scaleX(-1);
+}
+
 .login__welcome {
   display: grid;
   place-items: center;
@@ -273,5 +342,19 @@
 
   .login__content {
     padding: 1.5rem 1.25rem 1.35rem;
+  }
+
+  .login--admin .login__art-bottom,
+  .login--user .login__art-bottom {
+    width: min(70vw, 22rem);
+    height: min(38vh, 16rem);
+    opacity: 0.85;
+  }
+
+  .login--admin .login__art-side,
+  .login--user .login__art-side {
+    width: min(28vw, 9rem);
+    height: min(42vh, 18rem);
+    opacity: 0.7;
   }
 }

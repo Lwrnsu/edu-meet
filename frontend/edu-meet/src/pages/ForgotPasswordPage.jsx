@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { requestForgotPasswordOtp } from '../api/passwordSecurity'
+import vector2 from '../assets/auth/vector-2.png'
+import vector5 from '../assets/auth/vector-5.png'
+import vector6 from '../assets/auth/vector-6.png'
 import './ForgotPasswordPage.css'
 
 export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, onOtpSent }) {
@@ -39,7 +42,15 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
 
   return (
     <main className="forgot">
-      <div className="forgot__blob" aria-hidden="true" />
+      <div className="forgot__art" aria-hidden="true">
+        <div className="forgot__art-bottom">
+          <img className="forgot__art-vector5" src={vector5} alt="" />
+          <img className="forgot__art-vector2" src={vector2} alt="" />
+        </div>
+        <div className="forgot__art-side">
+          <img className="forgot__art-vector6" src={vector6} alt="" />
+        </div>
+      </div>
 
       <section className="forgot__card">
         <div className="forgot__banner" aria-hidden="true" />
