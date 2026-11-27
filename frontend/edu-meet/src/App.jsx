@@ -1,26 +1,20 @@
 import { Routes, Route } from "react-router"
+import AdminLoginPage from "./pages/AdminLoginPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 
 function App() {
+  const checkPrefix = window.location.hostname;
+  if (checkPrefix.startsWith("admin.")) {
+    return (
+      <>
+        <AdminLoginPage />
+      </>
+    );
+  } 
   return (
     <>
       <Routes>
-        <Route path="*" element={<NotFoundPage />}/>
-        <Route path="/" element={<AuthPage />}/>
-        <Route element={<Header />} >
-          <Route path="/dashboard" element={<DashboardPage />}/>
-          <Route path="/chat" element={<ChatPage />}/>
-          <Route path="/review" element={<ReviewPage />}/>
-          <Route path="/notepad" element={<NotepadPage />}/>
-          <Route path="/task" element={<TaskPage />}/>
-          <Route path="/class" element={<ClassPage />}/>
-          <Route path="/meet" element={< MeetPage/>}/>
-          <Route path="/activity" element={<ActivityPage />}/>
-          <Route path="/department" element={<DepartmentPage />}/>
-          <Route path="/account" element={<AccountManagementPage />}/>
-          <Route path="/sys" element={<SchoolSystemPage />}/>
-          <Route path="/school" element={<SchoolManagementPage />}/>
-        </Route>
-
+        <Route path="/" element={<LoginPage />}/>
       </Routes>
     </>
   )
