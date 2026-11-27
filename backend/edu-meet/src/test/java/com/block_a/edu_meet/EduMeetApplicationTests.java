@@ -9,5 +9,4 @@ class EduMeetApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }

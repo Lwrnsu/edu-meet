@@ -3,8 +3,9 @@
     Who can do what inside a class.
 
     This is the only file in the Files & Blogs module that reads tables
-    owned by other groups (classes, enrollments, blocks, deans). If those
-    groups rename a table or column, update the queries here.
+    owned by other groups (users, classes, enrollments, departments, programs,
+    blocks, deans, program_chairs). If those groups rename a table or column,
+    update the queries here.
 
     Rules (from the flowchart and use-case diagram):
     - Managers of a class: its assigned faculty, and the dean of its department.
@@ -188,6 +189,125 @@ class ClassAccess {
             $names[(int) $row['id']] = $row['name'];
         }
         return $names;
+    }
+
+    // ================================================================
+    //  School-wide announcements (dashboard)
+    //  Same tables, plus program_chairs(id, program_id) — program_chairs.id = users.id.
+    // ================================================================
+
+    // The department a dean runs (deans.id = users.id), or null.
+    public function deanDepartmentId(int $userId): ?int {
+        $stmt = $this->pdo->prepare("SELECT department_id FROM deans WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (int) $id;
+    }
+
+    // The program a program chair runs, or null.
+    public function chairProgramId(int $userId): ?int {
+        $stmt = $this->pdo->prepare("SELECT program_id FROM program_chairs WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (int) $id;
+    }
+
+    // Sections that have students in any class this faculty teaches.
+    public function facultyBlockIds(int $userId): array {
+        $stmt = $this->pdo->prepare("
+            SELECT DISTINCT e.block_id
+            FROM enrollments e
+            INNER JOIN classes c ON c.id = e.class_id
+            WHERE c.faculty_id = :user_id AND e.block_id IS NOT NULL
+        ");
+        $stmt->execute([':user_id' => $userId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    // [id => ['id', 'code', 'name']]
+    public function departments(): array {
+        $rows = $this->pdo->query("SELECT id, code, name FROM departments ORDER BY code")->fetchAll(PDO::FETCH_ASSOC);
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = ['id' => (int) $r['id'], 'code' => $r['code'], 'name' => $r['name']];
+        }
+        return $out;
+    }
+
+    // [id => ['id', 'department_id', 'code', 'name']]
+    public function programs(): array {
+        $rows = $this->pdo->query("SELECT id, department_id, code, name FROM programs ORDER BY code")->fetchAll(PDO::FETCH_ASSOC);
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = ['id' => (int) $r['id'], 'department_id' => (int) $r['department_id'], 'code' => $r['code'], 'name' => $r['name']];
+        }
+        return $out;
+    }
+
+    // Every section in the school, as sectionInfo(), keyed by id.
+    public function allSections(): array {
+        $rows = $this->pdo->query("
+            SELECT " . self::SECTION_SELECT . " FROM blocks b " . self::SECTION_JOIN . "
+            ORDER BY " . self::SECTION_ORDER
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = self::sectionInfo($r);
+        }
+        return $out;
+    }
+
+    /*
+        SQL test: "does announcement target t reach this student?"
+        A student is reached through the sections (blocks) they are enrolled in.
+        Students with no section are reached only by whole-school announcements.
+        Use with alias t = announcement_targets and one parameter :student_id.
+    */
+    public const TARGET_REACHES_STUDENT = "(
+        t.scope_type = 'school'
+        OR EXISTS (
+            SELECT 1
+            FROM enrollments e
+            INNER JOIN blocks b ON b.id = e.block_id
+            INNER JOIN programs p ON p.id = b.program_id
+            WHERE e.student_id = :student_id AND (
+                   (t.scope_type = 'department'   AND p.department_id = t.department_id
+                                                  AND (t.year_level IS NULL OR b.year_level = t.year_level))
+                OR (t.scope_type = 'program'      AND b.program_id = t.program_id)
+                OR (t.scope_type = 'year_level'   AND b.year_level = t.year_level)
+                OR (t.scope_type = 'program_year' AND b.program_id = t.program_id AND b.year_level = t.year_level)
+                OR (t.scope_type = 'section'      AND b.id = t.block_id)
+            )
+        )
+    )";
+
+    // Every student an announcement reaches, for its notifications.
+    public function announcementRecipients(int $announcementId): array {
+        $school = $this->pdo->prepare("
+            SELECT 1 FROM announcement_targets WHERE announcement_id = :id AND scope_type = 'school'
+        ");
+        $school->execute([':id' => $announcementId]);
+        if ($school->fetchColumn()) {
+            $stmt = $this->pdo->query("SELECT id FROM users WHERE role = 'student'");
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        }
+        $stmt = $this->pdo->prepare("
+            SELECT DISTINCT e.student_id
+            FROM announcement_targets t
+            INNER JOIN enrollments e ON e.block_id IS NOT NULL
+            INNER JOIN blocks b ON b.id = e.block_id
+            INNER JOIN programs p ON p.id = b.program_id
+            WHERE t.announcement_id = :id AND (
+                   (t.scope_type = 'department'   AND p.department_id = t.department_id
+                                                  AND (t.year_level IS NULL OR b.year_level = t.year_level))
+                OR (t.scope_type = 'program'      AND b.program_id = t.program_id)
+                OR (t.scope_type = 'year_level'   AND b.year_level = t.year_level)
+                OR (t.scope_type = 'program_year' AND b.program_id = t.program_id AND b.year_level = t.year_level)
+                OR (t.scope_type = 'section'      AND b.id = t.block_id)
+            )
+        ");
+        $stmt->execute([':id' => $announcementId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     // Full name of a user, for "Uploaded by" and post authors.

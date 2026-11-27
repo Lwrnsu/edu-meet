@@ -7,6 +7,7 @@
     Resources uploaded            students in the chosen sections
     Announcement posted           students in the chosen sections
     Blog posted                   students in the chosen sections
+    School announcement published students its targets reach (dashboard)
     (The person posting is never notified about their own post.)
 
     Other modules (e.g. Activities in the Classes module) can call
@@ -48,6 +49,15 @@ class Notifier {
             $isBlog ? 'New blog' : 'New announcement',
             $post['title'] . ' · ' . $this->className($classId),
             "feed.php?class_id=$classId");
+    }
+
+    // School-wide (dashboard) announcement published: every student it reaches.
+    public function schoolAnnouncementPublished(int $announcementId, string $title, string $audience): int {
+        return $this->notifications->send(
+            $this->access->announcementRecipients($announcementId), 'announcement',
+            'New announcement', $title . ' · ' . $audience,
+            "announcements.php?id=$announcementId", $this->senderId
+        );
     }
 
     private function className(int $classId): string {
