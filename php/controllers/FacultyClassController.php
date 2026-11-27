@@ -2,47 +2,56 @@
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/ControllerHelper.php';
+require_once __DIR__ . '/FacultyClassService.php';
+
 class FacultyClassController
 {
-    // "METHOD /path" => function name
+    use ApiRouteHelper;
+
+    private FacultyClassService $service;
+
     private array $routes = [
-        'GET /api/get/classes' => 'getClasses',
-        'GET /api/get/class' => 'getClass',
+        'GET /api/faculty/classes'        => 'getAssignedClasses',
+        'GET /api/faculty/class/open'     => 'openClass',
+        'GET /api/faculty/class/roster'   => 'getClassRoster',
+        'POST /api/faculty/attendance/save' => 'saveAttendance',
     ];
 
-    public function handle()
+    public function __construct(FacultyClassService $service)
     {
-        $method = $_SERVER['REQUEST_METHOD'];
-        $path   = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $key    = "$method $path";
-
-        if (isset($this->routes[$key])) {
-            $this->{$this->routes[$key]}();
-            return;
-        }
-
-        // Same path but wrong HTTP method -> 405, otherwise 404
-        foreach (array_keys($this->routes) as $k) {
-            if (substr($k, strpos($k, ' ') + 1) === $path) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-        }
-
-        http_response_code(404);
-        echo json_encode(['error' => 'Not found']);
-    }
-// same thing as studentcontroller
-    private function getClasses()
-    {
-        
+        $this->service = $service;
     }
 
-    private function getClass()
+    public function handle(): void
     {
-        
+        $this->dispatch($this->routes);
+    }
+
+    private function getAssignedClasses(): void
+    {
+        $profId = (int) ($_GET['prof_id'] ?? 0);
+        $this->respond($this->service->getAssignedClasses($profId));
+    }
+
+    private function openClass(): void
+    {
+        $classId = (int) ($_GET['class_id'] ?? 0);
+        $profId  = (int) ($_GET['prof_id'] ?? 0);
+        $this->respond($this->service->openClass($classId, $profId));
+    }
+
+    private function getClassRoster(): void
+    {
+        $classId        = (int) ($_GET['class_id'] ?? 0);
+        $profId         = (int) ($_GET['prof_id'] ?? 0);
+        $attendanceDate = isset($_GET['attendance_date']) ? trim((string) $_GET['attendance_date']) : null;
+        $this->respond($this->service->getClassRoster($classId, $profId, $attendanceDate));
+    }
+
+    private function saveAttendance(): void
+    {
+        $this->respond($this->service->saveAttendance($this->getJsonInput()));
     }
 }
-
-(new FacultyClassController())->handle();

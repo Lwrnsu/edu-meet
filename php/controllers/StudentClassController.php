@@ -2,48 +2,44 @@
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/ControllerHelper.php';
+require_once __DIR__ . '/StudentClassService.php';
+
 class StudentClassController
 {
-    // "METHOD /path" => function name
+    use ApiRouteHelper;
+
+    private StudentClassService $service;
+
     private array $routes = [
-        'GET /api/get/classes' => 'getClasses',
-        'GET /api/get/class' => 'getClass',
+        'GET /api/student/classes'    => 'getEnrolledClasses',
+        'GET /api/student/attendance' => 'getAttendanceRecords',
     ];
 
-    public function handle()
+    public function __construct(StudentClassService $service)
     {
-        $method = $_SERVER['REQUEST_METHOD'];
-        $path   = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $key    = "$method $path";
-
-        if (isset($this->routes[$key])) {
-            $this->{$this->routes[$key]}();
-            return;
-        }
-
-        // Same path but wrong HTTP method -> 405, otherwise 404
-        foreach (array_keys($this->routes) as $k) {
-            if (substr($k, strpos($k, ' ') + 1) === $path) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-        }
-
-        http_response_code(404);
-        echo json_encode(['error' => 'Not found']);
+        $this->service = $service;
     }
 
-    private function getClasses()
+    public function handle(): void
     {
-        // This get the classes that the user is enrolled. Param: (User ID)
-        // Returns lists of classes with ther basic info (name, block, lec/lab, minor/major, schedule) and the ID of the class. 
+        $this->dispatch($this->routes);
     }
 
-    private function getClass()
+    private function getEnrolledClasses(): void
     {
-        // This returns the info of the class. Param: (classID)
+        $studentId = (int) ($_GET['student_id'] ?? 0);
+        $this->respond($this->service->getEnrolledClasses($studentId));
+    }
+
+    private function getAttendanceRecords(): void
+    {
+        $studentId = (int) ($_GET['student_id'] ?? 0);
+        $classId   = isset($_GET['class_id']) && $_GET['class_id'] !== ''
+            ? (int) $_GET['class_id']
+            : null;
+
+        $this->respond($this->service->getAttendanceRecords($studentId, $classId));
     }
 }
-
-(new StudentClassController())->handle();
