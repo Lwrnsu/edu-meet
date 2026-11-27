@@ -10,6 +10,11 @@ public record ConversationSummary(
         String name,
         String avatarUrl,
         List<String> participantIds,
+        boolean archived,
         String lastMessageText,
-        Instant lastMessageTime) {
+        Instant lastMessageTime,
+        String lastMessageId,
+        String lastMessageSenderId,
+        String lastMessageSenderName,
+        String lastMessageAttachmentContentType) {
 }

@@ -38,20 +38,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			return;
 		}
 
-		String token = header.substring(7);
-		if (!jwtService.isTokenValid(token)) {
-			filterChain.doFilter(request, response);
-			return;
-		}
-
-		Integer userId = jwtService.extractUserId(token);
-		User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
-		if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-					user.getEmail(),
-					null,
-					List.of(new SimpleGrantedAuthority("ROLE_USER")));
-			SecurityContextHolder.getContext().setAuthentication(authentication);
+		if (SecurityContextHolder.getContext().getAuthentication() == null) {
+			jwtService.verifyAccountToken(header.substring(7)).ifPresent(token ->
+					userRepository.findByIdAndDeletedAtIsNull(token.userId())
+							.filter(User::isActive)
+							.ifPresent(user -> SecurityContextHolder.getContext().setAuthentication(
+									UsernamePasswordAuthenticationToken.authenticated(
+											new JwtAccount(user.getId(), user.getEmail(), token.expiresAt()),
+											null, List.of(new SimpleGrantedAuthority("ROLE_USER"))))));
 		}
 
 		filterChain.doFilter(request, response);

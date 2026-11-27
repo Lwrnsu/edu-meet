@@ -4,7 +4,10 @@ import java.util.Map;
 
 public class LogInModel {
 
+    public static final String PHP_SCHOOL = "php-school";
+
     private int id;
+    private String source;
     private String role;
     // user info (email, names, school, ...) stored next to the role
     private Map<String, Object> user;
@@ -37,6 +40,14 @@ public class LogInModel {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 
     public Map<String, Object> getUser() {
