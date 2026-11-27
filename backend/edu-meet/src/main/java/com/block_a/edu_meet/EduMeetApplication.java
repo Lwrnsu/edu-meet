@@ -8,14 +8,7 @@ import org.springframework.web.bind.annotation.*;;
 @RestController 
 @SpringBootApplication
 public class EduMeetApplication {
-
-	@RequestMapping("/")
-	public String home() {
-		return "Hi po!";
-	}
-
 	public static void main(String[] args) {
 		SpringApplication.run(EduMeetApplication.class, args);
 	}
-
 }
