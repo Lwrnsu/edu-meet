@@ -13,6 +13,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
 	List<User> findAllByDeletedAtIsNull();
 
+	List<User> findByIdInAndDeletedAtIsNull(List<Integer> ids);
+
 	boolean existsByEmailAndDeletedAtIsNull(String email);
 
 	boolean existsByEmailAndIdNotAndDeletedAtIsNull(String email, Integer id);

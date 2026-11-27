@@ -11,26 +11,12 @@ services:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
-    environment:
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
-      LIVEKIT_URL: ${LIVEKIT_URL:-}
-      ATTENDANCE_REPORT_KEY: ${ATTENDANCE_REPORT_KEY:-}
-      PHP_CLASS_DATABASE_URL: ${PHP_CLASS_DATABASE_URL:-jdbc:mysql://mysql:3306/EduMeet}
-      PHP_CLASS_DATABASE_USERNAME: ${PHP_CLASS_DATABASE_USERNAME:-root}
-      PHP_CLASS_DATABASE_PASSWORD: ${PHP_CLASS_DATABASE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-secret}}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/edu_meet_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
-      REDIS_HOST: redis
-      MONGODB_URI: mongodb://mongo:27017/edumeet
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mongo:
-        condition: service_healthy
+      
 
   php:
     build: ./php/
@@ -49,8 +35,13 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
-      MYSQL_DATABASE: edu_meet_db
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: EduMeet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
@@ -66,6 +57,11 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --dir /data --protected-mode no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - redisdata:/data
     healthcheck:

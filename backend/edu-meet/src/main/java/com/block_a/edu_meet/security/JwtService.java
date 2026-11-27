@@ -5,7 +5,10 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
+import java.util.Optional;
+import io.jsonwebtoken.JwtException;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -47,6 +50,22 @@ public class JwtService {
 			return false;
 		}
 	}
+
+	public Optional<VerifiedToken> verifyAccountToken(String token) {
+		try {
+			Claims claims = parseClaims(token);
+			int userId = Integer.parseInt(claims.getSubject());
+			Date expiration = claims.getExpiration();
+			if (userId <= 0 || expiration == null || !expiration.toInstant().isAfter(Instant.now())) {
+				return Optional.empty();
+			}
+			return Optional.of(new VerifiedToken(userId, expiration.toInstant()));
+		} catch (JwtException | IllegalArgumentException exception) {
+			return Optional.empty();
+		}
+	}
+
+	public record VerifiedToken(int userId, Instant expiresAt) {}
 
 	private Claims parseClaims(String token) {
 		return Jwts.parser()

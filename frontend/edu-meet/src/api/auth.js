@@ -148,10 +148,10 @@ function clearRedisSession() {
   clearAuthSession()
 }
 
-export async function login(email, password) {
+export async function login(email, password, { baseUrl = JAVA_API_BASE_URL } = {}) {
   clearRedisSession()
 
-  const response = await fetch(`${JAVA_API_BASE_URL}/api/auth/php-school-login`, {
+  const response = await fetch(`${baseUrl}/api/auth/php-school-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -224,11 +224,11 @@ export async function restoreSession() {
   }
 }
 
-export async function logoutRequest() {
+export async function logoutRequest({ baseUrl = JAVA_API_BASE_URL } = {}) {
   const redisToken = getAuthCookie()
   try {
     if (redisToken) {
-      await fetch(`${JAVA_API_BASE_URL}/api/auth/logOut`, {
+      await fetch(`${baseUrl}/api/auth/logOut`, {
         method: 'POST',
         headers: { Authorization: redisToken },
       }).catch(() => {})

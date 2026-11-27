@@ -5,16 +5,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 import com.block_a.edu_meet.models.Message;
+@Profile("chat")
 @Component
 public class RecentMessageCache {
 
     public static final int MAX_MESSAGES = 50;
-    private static final Duration TTL = Duration.ofMinutes(10); // Too Little, try 1-3 days.
+    private static final Duration TTL = Duration.ofDays(3);
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;

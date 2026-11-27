@@ -2,6 +2,8 @@ package com.block_a.edu_meet.models;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -15,6 +17,10 @@ public class Conversation {
     private String name;
     @Indexed
     private List<String> participantIds;
+    @JsonIgnore
+    private List<String> pinnedMessageIds = List.of();
+    @JsonIgnore
+    private List<String> archivedBy = List.of();
     private String avatarUrl;
     private String blockId;
     private String classId;
@@ -44,6 +50,12 @@ public class Conversation {
 
         public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public List<String> getPinnedMessageIds() { return pinnedMessageIds; }
+
+    public boolean isArchivedBy(String userId) {
+        return archivedBy != null && archivedBy.contains(userId);
+    }
 
     public String getBlockId() { return blockId; }
     public void setBlockId(String blockId) { this.blockId = blockId; }

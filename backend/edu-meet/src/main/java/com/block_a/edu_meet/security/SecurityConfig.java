@@ -23,12 +23,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-        private final JwtAuthFilter jwtAuthFilter;
-
-        public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
-                this.jwtAuthFilter = jwtAuthFilter;
-        }
-
         @Bean
         PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
@@ -43,45 +37,26 @@ public class SecurityConfig {
 
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
+                        http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(Customizer.withDefaults())
                                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .exceptionHandling(exceptions -> exceptions
                                                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                HttpMethod.POST,
-                                                                "/api/auth/login",
-                                                                "/api/auth/php-login",
-                                                                "/api/auth/php-system-admin-login",
-                                                                "/api/auth/php-school-login",
-                                                                "/api/auth/php-college-admin-login",
-                                                                "/api/auth/php-signup",
-                                                                "/api/auth/php-request-password-otp",
-                                                                "/api/auth/php-verify-password-otp",
-                                                                "/api/auth/php-change-password",
-                                                                "/api/auth/php-forgot-request-password-otp",
-                                                                "/api/auth/php-forgot-verify-password-otp",
-                                                                "/api/auth/php-forgot-reset-password",
-                                                                "/api/auth/logOut")
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/", "/api/health", "/api/auth/logIn/cached").permitAll()
-                                                .requestMatchers("/api/php/**").permitAll()
-                                                .requestMatchers("/api/**").authenticated()
-                                                .anyRequest().permitAll())
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                                .anyRequest().permitAll()
+                );
 
-                return http.build();
+        return http.build();
         }
 
         @Bean
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173", "http://edu-meet.app", "https://edu-meet.app"));
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                config.setAllowedOriginPatterns(List.of("*"));
+                config.setAllowedMethods(List.of("*"));
                 config.setAllowedHeaders(List.of("*"));
-                config.setExposedHeaders(List.of("Authorization"));
+                config.setExposedHeaders(List.of("*"));
                 config.setAllowCredentials(true);
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
