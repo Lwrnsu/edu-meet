@@ -1,8 +1,15 @@
 package com.block_a.edu_meet;
 
+import java.util.UUID;
+
+@Entity
+@Table(name = "students")
 public class Student {
+    private final UUID id = UUID.randomUUID();
     private String username;
     private String name;
+
+    public Student() {}
 
     public Student(String username, String name){
         this.username = username;
@@ -14,5 +21,8 @@ public class Student {
     }
     public String getName(){
         return name;
+    }
+    public UUID getUUID(){
+        return id;
     }
 }
