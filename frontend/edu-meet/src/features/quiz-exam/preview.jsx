@@ -7,6 +7,7 @@ import FacultyActivityBuilder from "./pages/FacultyActivityBuilder.jsx";
 import StudentAssessmentPage from "./pages/StudentAssessmentPage.jsx";
 import StudentScoreHistory from "./pages/StudentScoreHistory.jsx";
 import FacultyEssayGrading from "./pages/FacultyEssayGradingPage.jsx";
+import FacultyScoreOverviewPage from "./pages/FacultyScoreOverviewPage.jsx";
 
 import "./styles/quiz-exam.css";
 
@@ -51,11 +52,34 @@ function getApiError(data, fallback) {
   return data?.error || data?.message || fallback;
 }
 
+function getInitialPreviewRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get("view");
+  const requestedActivityId = params.get("activityId")?.trim();
+
+  if (requestedView === "scores" && requestedActivityId) {
+    return {
+      currentPage: "scores",
+      scoreActivity: {
+        activityId: requestedActivityId,
+        name: `Assessment #${requestedActivityId}`,
+      },
+    };
+  }
+
+  return {
+    currentPage: "dashboard",
+    scoreActivity: null,
+  };
+}
+
 function QuizExamPreview() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [initialRoute] = useState(getInitialPreviewRoute);
+  const [currentPage, setCurrentPage] = useState(initialRoute.currentPage);
   const [pendingDraft, setPendingDraft] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
   const [gradingActivity, setGradingActivity] = useState(null);
+  const [scoreActivity, setScoreActivity] = useState(initialRoute.scoreActivity);
   const [studentView, setStudentView] = useState("assessments");
 
   // CREATE A NEW ASSESSMENT
@@ -195,10 +219,17 @@ function QuizExamPreview() {
     setCurrentPage("essay");
   }
 
+  // OPEN FACULTY SCORE OVERVIEW
+  function handleViewScores(activity) {
+    setScoreActivity(activity);
+    setCurrentPage("scores");
+  }
+
   // RETURN TO THE FACULTY DASHBOARD
   function handleBackToDashboard() {
     setEditingActivity(null);
     setGradingActivity(null);
+    setScoreActivity(null);
     setCurrentPage("dashboard");
   }
 
@@ -227,6 +258,24 @@ function QuizExamPreview() {
 
     return (
       <FacultyEssayGrading
+        activityId={activityId}
+        activityName={activityName}
+        onBack={handleBackToDashboard}
+      />
+    );
+  }
+
+  // FACULTY SCORE OVERVIEW
+  if (currentPage === "scores") {
+    const activityId = scoreActivity?.activityId ?? scoreActivity?.id;
+    const activityName =
+      scoreActivity?.activityName ??
+      scoreActivity?.name ??
+      scoreActivity?.title ??
+      "Assessment Scores";
+
+    return (
+      <FacultyScoreOverviewPage
         activityId={activityId}
         activityName={activityName}
         onBack={handleBackToDashboard}
@@ -321,6 +370,7 @@ function QuizExamPreview() {
         }}
         onEdit={handleEdit}
         onGradeEssays={handleGradeEssays}
+        onViewScores={handleViewScores}
       />
     </div>
   );

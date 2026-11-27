@@ -14,6 +14,7 @@ import {
   Send,
   Archive,
   X,
+  BarChart3,
 } from "lucide-react";
 
 const API_BASE_URL = (
@@ -165,6 +166,7 @@ function QuizCard({
   onPublish,
   onArchive,
   onGradeEssays,
+  onViewScores,
   busy,
 }) {
   const statusStyles = {
@@ -258,6 +260,20 @@ function QuizCard({
             >
               <ClipboardList className="mr-1 size-4" />
               Grade Essays
+            </Button>
+          )}
+
+          {quiz.status !== "Draft" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy || typeof onViewScores !== "function"}
+              onClick={() => onViewScores(quiz)}
+              className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+            >
+              <BarChart3 className="mr-1 size-4" />
+              View Scores
             </Button>
           )}
 
@@ -511,6 +527,7 @@ export default function FacultyQuizDashboard({
   onCreate,
   onEdit,
   onGradeEssays,
+  onViewScores,
 }) {
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState("");
@@ -915,6 +932,7 @@ export default function FacultyQuizDashboard({
                   onView={handleView}
                   onEdit={handleEdit}
                   onGradeEssays={onGradeEssays}
+                  onViewScores={onViewScores}
                   onPublish={(item) =>
                     handleStatusChange(item, "published")
                   }
