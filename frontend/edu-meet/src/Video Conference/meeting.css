@@ -1,0 +1,95 @@
+/* 
+  Supervise by: Sam Gabriel Dayrit (Front End Lead)
+  andrew - prototype lang na css, for VideoRoom layout na rin to nilagyan ko neto just
+  separately or just for video conference lang.
+*/
+
+html,
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.meeting-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+.meeting-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.meeting-grid {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.meeting-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.meeting-chat-panel {
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  border-left: 1px solid #333;
+}
+.meeting-chat-panel .lk-chat {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.meeting-chat-panel .lk-chat * {
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+[data-lk-quality="poor"] {
+  background-color: red;
+}
+[data-lk-quality="unknown"] {
+  background-color: rgb(255, 0, 255);
+}
+[data-lk-quality="good"] {
+  background-color: rgb(58, 114, 62);
+}
+[data-lk-quality="excellent"] {
+  background-color: rgb(21, 255, 0);
+}
+.lk-participant-tile {
+  border-radius: 10px;
+  overflow: hidden;
+  --lk-border-color: #ffffff;
+}
+/*.lk-participant-tile[data-lk-speaking="true"] {
+  outline: 1px solid #5f00f7;
+}*/
+.lk-participant-tile[data-lk-speaking="false"] {
+  outline: 1px solid #696969;
+}
+
+@media (max-width: 768px) {
+  .meeting-chat-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    flex: none;
+    z-index: 10;
+    background: var(--lk-bg, #111);
+  }
+}
