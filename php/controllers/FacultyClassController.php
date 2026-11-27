@@ -41,7 +41,7 @@ class FacultyClassController
 
     private function getClass()
     {
-
+        
     }
 }
 

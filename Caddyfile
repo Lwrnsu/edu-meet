@@ -1,4 +1,4 @@
-edu-meet.app {
+localhost {
 	handle /api/* {
 		reverse_proxy spring:8080
 	}
