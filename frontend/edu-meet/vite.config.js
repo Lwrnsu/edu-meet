@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ["edu-meet.app"],
+    allowedHosts: ['edu-meet.app'],
+    proxy: { '/api': 'http://localhost:8080' },
     watch: {
       usePolling: true,
     },
-  }, 
+  },
 })
