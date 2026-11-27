@@ -129,11 +129,13 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     selectedConversation?.type === "group";
   const showingPinnedMessages =
     activeChatPanelView === "pinned" &&
-    Boolean(selectedConversation) &&
-    (!live || selectedConversation.type === "group");
+    Boolean(selectedConversation);
 
-  const liveGroupId = live && selectedConversation?.type === "group" ? selectedConversationId : null;
-  const pins = usePinnedMessages(liveGroupId, currentUserId, showingPinnedMessages, api);
+  const liveConversationId = live ? selectedConversation?.id : null;
+  const pins = usePinnedMessages(liveConversationId, currentUserId, showingPinnedMessages, api, {
+    pinChanges: chatState.pinChangesByConversation[liveConversationId],
+    connected: chatState.connectionState === "open",
+  });
   const pinnedIds = new Set(live
     ? pins.messages?.map((message) => message.id)
     : selectedPinnedMessageIds);
@@ -303,7 +305,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                         onOpenMedia={openMedia}
                         pinnedIds={pinnedIds}
                         isUpdatingPin={Boolean(pins.pendingMessageId)}
-                        onTogglePin={!live || (liveGroupId && pins.messages)
+                        onTogglePin={!live || (liveConversationId && pins.messages)
                           ? (id) => updatePin(id, !pinnedIds.has(id))
                           : undefined}
                       />

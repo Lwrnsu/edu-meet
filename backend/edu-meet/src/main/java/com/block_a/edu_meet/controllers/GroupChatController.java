@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.handlers.ChatHandler;
 import com.block_a.edu_meet.helpers.ChatIdentity;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
@@ -35,32 +36,38 @@ public class GroupChatController {
     private final ConversationAccess conversationAccess;
     private final MessageRepository messages;
     private final MongoOperations mongo;
+    private final ChatHandler chat;
 
     public GroupChatController(ConversationAccess conversationAccess, MessageRepository messages,
-                               MongoOperations mongo) {
+                               MongoOperations mongo, ChatHandler chat) {
         this.conversationAccess = conversationAccess;
         this.messages = messages;
         this.mongo = mongo;
+        this.chat = chat;
     }
 
     @PatchMapping("/name")
     public Conversation rename(@PathVariable String conversationId,
 
                                Principal principal, @RequestBody RenameRequest request) {
-        String actor = requireGroupMember(conversationId, principal).userId();
+        String actor = ChatIdentity.userId(principal);
+        Conversation group = conversationAccess.requireMember(conversationId, actor);
+        if (group.getType() != ConversationType.BLOCK && group.getType() != ConversationType.SUBJECT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This action is only available in group chats");
+        }
         String name = request.name() == null ? "" : request.name().strip();
         if (name.isEmpty() || name.codePointCount(0, name.length()) > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must be 1–100 characters");
         }
-        return updateGroup(conversationId, actor, new Update().set("name", name));
+        return updateConversation(conversationId, actor, group.getType(), new Update().set("name", name));
     }
 
     @GetMapping("/pinned-messages")
     public List<Message> getPinnedMessages(@PathVariable String conversationId,
 
                                            Principal principal) {
-        Conversation group = requireGroupMember(conversationId, principal).conversation();
-        List<String> ids = group.getPinnedMessageIds();
+        Conversation conversation = conversationAccess.requireMember(conversationId, ChatIdentity.userId(principal));
+        List<String> ids = conversation.getPinnedMessageIds();
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
@@ -73,34 +80,34 @@ public class GroupChatController {
     @PutMapping("/pinned-messages/{messageId}")
     public Message pin(@PathVariable String conversationId, @PathVariable String messageId,
                        Principal principal) {
-        String actor = requireGroupMember(conversationId, principal).userId();
-        Message message = messages.findMetadataById(messageId)
-                .filter(candidate -> conversationId.equals(candidate.getConversationId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message doesn't exist"));
-        updateGroup(conversationId, actor, new Update().addToSet("pinnedMessageIds", messageId));
+        String actor = ChatIdentity.userId(principal);
+        Conversation conversation = conversationAccess.requireMember(conversationId, actor);
+        Message message = requireMessage(conversationId, messageId);
+        chat.publishPinsChanged(updateConversation(conversationId, actor, conversation.getType(),
+                new Update().addToSet("pinnedMessageIds", messageId)));
         return message;
     }
 
     @DeleteMapping("/pinned-messages/{messageId}")
     public UnpinnedMessage unpin(@PathVariable String conversationId, @PathVariable String messageId,
                                Principal principal) {
-        String actor = requireGroupMember(conversationId, principal).userId();
-        updateGroup(conversationId, actor, new Update().pull("pinnedMessageIds", messageId));
+        String actor = ChatIdentity.userId(principal);
+        Conversation conversation = conversationAccess.requireMember(conversationId, actor);
+        requireMessage(conversationId, messageId);
+        chat.publishPinsChanged(updateConversation(conversationId, actor, conversation.getType(),
+                new Update().pull("pinnedMessageIds", messageId)));
         return new UnpinnedMessage(messageId);
     }
 
-    private GroupMember requireGroupMember(String conversationId, Principal principal) {
-        String actor = ChatIdentity.userId(principal);
-        Conversation conversation = conversationAccess.requireMember(conversationId, actor);
-        if (conversation.getType() != ConversationType.BLOCK && conversation.getType() != ConversationType.SUBJECT) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This action is only available in group chats");
-        }
-        return new GroupMember(actor, conversation);
+    private Message requireMessage(String conversationId, String messageId) {
+        return messages.findMetadataById(messageId)
+                .filter(candidate -> conversationId.equals(candidate.getConversationId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message doesn't exist"));
     }
 
-    private Conversation updateGroup(String conversationId, String userId, Update update) {
+    private Conversation updateConversation(String conversationId, String userId, ConversationType type, Update update) {
         Query query = Query.query(Criteria.where("id").is(conversationId)
-                .and("type").in(ConversationType.BLOCK, ConversationType.SUBJECT)
+                .and("type").is(type)
                 .and("participantIds").is(userId));
         Conversation updated = mongo.findAndModify(query, update,
                 FindAndModifyOptions.options().returnNew(true), Conversation.class);
@@ -114,5 +121,4 @@ public class GroupChatController {
 
     public record UnpinnedMessage(String messageId) {}
 
-    private record GroupMember(String userId, Conversation conversation) {}
 }

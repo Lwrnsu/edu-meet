@@ -144,6 +144,14 @@ public class ChatHandler extends TextWebSocketHandler {
         }
         var event = new SavedMessage(saved.getId(), saved.getConversationId(), saved.getSenderId(),
                 saved.getText(), saved.getTimestamp(), saved.getAttachment(), senderName);
+        broadcast(conversation, event);
+    }
+
+    public void publishPinsChanged(Conversation conversation) {
+        broadcast(conversation, Map.of("type", "pins_changed", "conversationId", conversation.getId()));
+    }
+
+    private void broadcast(Conversation conversation, Object event) {
         TextMessage out = new TextMessage(objectMapper.writeValueAsString(event));
         for (String memberId : conversation.getParticipantIds()) {
             Set<WebSocketSession> memberSessions = sessionsByUser.get(memberId);

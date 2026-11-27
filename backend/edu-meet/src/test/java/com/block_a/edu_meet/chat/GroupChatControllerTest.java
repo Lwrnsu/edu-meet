@@ -43,6 +43,7 @@ class GroupChatControllerTest {
     private Conversation other;
     private Message first;
     private Message second;
+    private Message third;
 
     @BeforeEach
     void setUp() {
@@ -53,11 +54,12 @@ class GroupChatControllerTest {
         Instant now = Instant.now();
         first = messages.save(new Message(group.getId(), "php:1", "First message", now));
         second = messages.save(new Message(other.getId(), "php:2", "Different chat", now.minusSeconds(10)));
+        third = messages.save(new Message(other.getId(), "php:1", "Second direct message", now.minusSeconds(5)));
     }
 
     @AfterEach
     void cleanUp() {
-        messages.deleteAll(List.of(first, second));
+        messages.deleteAll(List.of(first, second, third));
         conversations.deleteAll(List.of(group, other));
     }
 
@@ -74,16 +76,38 @@ class GroupChatControllerTest {
     }
 
     @Test
-    void rejectsUnverifiedUserOutsiderPrivateChatAndBlankName() throws Exception {
+    void rejectsUnverifiedUserOutsiderPrivateRenameAndBlankName() throws Exception {
         mvc.perform(get(groupUrl() + "/pinned-messages").param("userId", "php:1"))
                 .andExpect(status().isUnauthorized());
         mvc.perform(put(pinUrl(first)).principal(account(4)).param("userId", "php:1"))
                 .andExpect(status().isNotFound());
-        mvc.perform(get("/api/conversations/" + other.getId() + "/pinned-messages").principal(account(1)))
+        mvc.perform(patch("/api/conversations/" + other.getId() + "/name").principal(account(1))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Private\"}"))
                 .andExpect(status().isBadRequest());
         mvc.perform(patch(groupUrl() + "/name").principal(account(1))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"  \"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void membersCanPinMultipleDirectMessagesAndUnpinIndividually() throws Exception {
+        String pins = "/api/conversations/" + other.getId() + "/pinned-messages";
+        mvc.perform(get(pins).principal(account(3))).andExpect(status().isNotFound());
+        mvc.perform(put(pins + "/" + second.getId()).principal(account(3))).andExpect(status().isNotFound());
+        mvc.perform(delete(pins + "/" + second.getId()).principal(account(3))).andExpect(status().isNotFound());
+        mvc.perform(put(pins + "/" + first.getId()).principal(account(1))).andExpect(status().isNotFound());
+        mvc.perform(delete(pins + "/" + first.getId()).principal(account(1))).andExpect(status().isNotFound());
+        for (Message message : List.of(second, third, second)) {
+            mvc.perform(put(pins + "/" + message.getId()).principal(account(1)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.body.id").value(message.getId()));
+        }
+        mvc.perform(get(pins).principal(account(2))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(2));
+        mvc.perform(delete(pins + "/" + second.getId()).principal(account(2)))
+                .andExpect(status().isOk());
+        mvc.perform(get(pins).principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(1))
+                .andExpect(jsonPath("$.body[0].id").value(third.getId()));
     }
 
     @Test

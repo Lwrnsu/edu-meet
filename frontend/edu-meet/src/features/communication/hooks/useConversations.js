@@ -98,7 +98,7 @@ export default function useConversations({
     if (
       conversation?.id === selectedConversationId &&
       ((action === "view-members" && isGroup) ||
-        (action === "pinned-messages" && (isGroup || !currentUserId)))
+        action === "pinned-messages")
     ) {
       setActiveChatPanelView(
         action === "view-members" ? "members" : "pinned",

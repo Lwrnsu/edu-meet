@@ -27,6 +27,7 @@ export default function useChat({
   const [historyResult, setHistoryResult] = useState(null);
   const [error, setError] = useState(null);
   const [connectionState, setConnectionState] = useState("disconnected");
+  const [pinChangesByConversation, setPinChangesByConversation] = useState({});
   const [paginationByConversationId, setPaginationByConversationId] =
     useState({});
 
@@ -48,6 +49,10 @@ export default function useChat({
         unsubscribe = [
           socket.onStateChange(setConnectionState),
           socket.onError((event) => setError(event.message)),
+          socket.onPinsChanged((id) => setPinChangesByConversation((current) => ({
+            ...current,
+            [id]: (current[id] ?? 0) + 1,
+          }))),
           socket.onSavedMessage((payload) => {
             try {
               const message = adaptMessage(payload, currentUserId, { numericTimestampUnit: "seconds" });
@@ -222,6 +227,7 @@ export default function useChat({
     historyError: historyResult?.conversationId === conversationId ? historyResult?.error : null,
     error,
     connectionState,
+    pinChangesByConversation,
     older,
     loadOlderMessages,
     sendMessage,

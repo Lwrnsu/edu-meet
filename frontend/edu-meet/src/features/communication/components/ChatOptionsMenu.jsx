@@ -38,7 +38,6 @@ export default function ChatOptionsMenu({
     return null;
   }
   const isGroup = conversation.type === "group";
-  const pinsUnavailable = live && !isGroup;
   const visibleActions = menuActions.filter(({ action }) =>
     isGroup ? !live || action !== "leave-group" : action === "pinned-messages",
   );
@@ -140,19 +139,12 @@ export default function ChatOptionsMenu({
             key={item.action}
             type="button"
             role="menuitem"
-            aria-disabled={pinsUnavailable || undefined}
-            aria-describedby={pinsUnavailable ? `${id}-pins-unavailable` : undefined}
-            onClick={pinsUnavailable ? undefined : () => onAction?.(item.action, conversation)}
+            onClick={() => onAction?.(item.action, conversation)}
           >
             <img src={item.icon} alt="" aria-hidden="true" />
             <span>{item.label}</span>
           </button>
         ))}
-        {pinsUnavailable && (
-          <p className="communication-options-unavailable" id={`${id}-pins-unavailable`}>
-            Pinning is available in group chats.
-          </p>
-        )}
       </div>
     </div>
   );
