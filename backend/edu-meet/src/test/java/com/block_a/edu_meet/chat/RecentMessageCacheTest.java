@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,8 +81,11 @@ class RecentMessageCacheTest {
         List<Message> expected = latest50();
         assertIds(expected.stream().limit(20).toList(), controller.getLatestMessages(id(), "member"));
         assertIds(expected, cache.getLatest(id(), ids(expected)).orElseThrow());
-        assertTrue(redis.getExpire(key()) > 0);
-        assertTrue(redis.getExpire(key()) <= 600);
+        long expectedTtl = Duration.ofDays(3).toSeconds();
+        long remainingTtl = redis.getExpire(key());
+        assertTrue(remainingTtl >= expectedTtl - Duration.ofMinutes(1).toSeconds()
+                && remainingTtl <= expectedTtl,
+                "A freshly cached history should expire in three days, got " + remainingTtl + " seconds");
 
         clearInvocations(observed);
         assertIds(expected.stream().limit(20).toList(), controller.getLatestMessages(id(), "member"));
