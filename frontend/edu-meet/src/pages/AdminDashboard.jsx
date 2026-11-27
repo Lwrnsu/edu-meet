@@ -165,7 +165,7 @@ export default function AdminDashboard({ user, onLogout }) {
         <nav className="admin-dash__nav" aria-label="System admin">
           <button
             type="button"
-            className={`admin-dash__nav-item${section === 'dashboard' ? ' is-active' : ''}`}
+            className={`admin-dash__nav-item admin-dash__nav-item--outline${section === 'dashboard' ? ' is-active' : ''}`}
             onClick={() => setSection('dashboard')}
             aria-label="Dashboard"
           >
@@ -317,36 +317,33 @@ export default function AdminDashboard({ user, onLogout }) {
 
       {logoutConfirmOpen ? (
         <div
-          className="admin-schools-modal"
+          className="admin-dash-modal"
           role="presentation"
           onClick={(event) => {
             if (event.target === event.currentTarget) closeLogoutConfirm()
           }}
         >
           <div
-            className="admin-schools-modal__panel"
+            className="admin-dash-modal__panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="logout-confirm-title"
           >
-            <h3 id="logout-confirm-title" className="admin-schools-modal__title">
+            <h3 id="logout-confirm-title" className="admin-dash-modal__title">
               Are you sure you want to logout?
             </h3>
-
-            <div className="admin-schools-modal__divider" />
-            <div className="admin-schools-modal__spacer" aria-hidden="true" />
-
-            <div className="admin-schools-modal__actions">
+            <div className="admin-dash-modal__divider" />
+            <div className="admin-dash-modal__actions">
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                className="admin-dash-modal__btn admin-dash-modal__btn--confirm"
                 onClick={confirmLogout}
               >
                 Confirm
               </button>
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                className="admin-dash-modal__btn admin-dash-modal__btn--secondary"
                 onClick={closeLogoutConfirm}
               >
                 Cancel

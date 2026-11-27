@@ -16,6 +16,9 @@
   display: grid;
   grid-template-columns: var(--sidebar-collapsed) minmax(0, 1fr);
   min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--bg);
   color: var(--ink);
   font-family: 'Poppins', sans-serif;
@@ -31,6 +34,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 0;
   padding: 1.1rem 0.55rem 1rem;
   background: var(--sidebar);
   border-right: 1px solid var(--stroke);
@@ -283,6 +287,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
   padding: 1.5rem 1.75rem 2rem;
 }
 
@@ -677,6 +683,72 @@
   letter-spacing: 0.02em;
 }
 
+.admin-schools__header-filter {
+  position: relative;
+  display: inline-flex;
+}
+
+.admin-schools__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.admin-schools__sort--active {
+  color: var(--accent, #6d28d9);
+}
+
+.admin-schools__header-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem 0;
+  min-width: 10.5rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  border-radius: 0.55rem;
+  box-shadow: 0 10px 24px rgba(33, 0, 70, 0.12);
+}
+
+.admin-schools__header-menu--portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.admin-schools__header-option {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-schools__header-option:hover,
+.admin-schools__header-option.is-active {
+  background: rgba(165, 122, 212, 0.14);
+  color: var(--ink);
+}
+
 .admin-schools__table-body {
   list-style: none;
   margin: 0;
@@ -732,6 +804,66 @@
   color: var(--stroke);
   font-size: 13px;
   font-weight: 500;
+}
+
+.admin-dash-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(17, 24, 39, 0.45);
+}
+
+.admin-dash-modal__panel {
+  width: min(100%, 26rem);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--white);
+  border: 1px solid var(--stroke);
+}
+
+.admin-dash-modal__title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink);
+}
+
+.admin-dash-modal__divider {
+  height: 1px;
+  margin-bottom: 1.25rem;
+  background: #e5e7eb;
+}
+
+.admin-dash-modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.admin-dash-modal__btn {
+  min-width: 7rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.admin-dash-modal__btn--confirm {
+  background: #f04438;
+  color: var(--white);
+}
+
+.admin-dash-modal__btn--secondary {
+  background: var(--white);
+  border-color: var(--stroke);
+  color: var(--ink);
 }
 
 .admin-schools-modal {
@@ -1098,6 +1230,72 @@
   letter-spacing: 0.02em;
 }
 
+.admin-admins__header-filter {
+  position: relative;
+  display: inline-flex;
+}
+
+.admin-admins__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.admin-admins__sort--active {
+  color: var(--accent, #6d28d9);
+}
+
+.admin-admins__header-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem 0;
+  min-width: 10.5rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  border-radius: 0.55rem;
+  box-shadow: 0 10px 24px rgba(33, 0, 70, 0.12);
+}
+
+.admin-admins__header-menu--portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.admin-admins__header-option {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-admins__header-option:hover,
+.admin-admins__header-option.is-active {
+  background: rgba(165, 122, 212, 0.14);
+  color: var(--ink);
+}
+
 .admin-admins__table-body {
   list-style: none;
   margin: 0;
@@ -1334,6 +1532,7 @@
   .admin-dash:has(.admin-dash__sidebar:focus-within),
   .admin-dash:has(.admin-dash__main:hover) {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .admin-dash__sidebar,

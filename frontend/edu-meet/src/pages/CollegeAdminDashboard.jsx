@@ -201,7 +201,7 @@ export default function CollegeAdminDashboard({ user, onLogout }) {
         <nav className="college-dash__nav" aria-label="College admin">
           <button
             type="button"
-            className={`college-dash__nav-item${section === 'dashboard' ? ' is-active' : ''}`}
+            className={`college-dash__nav-item college-dash__nav-item--outline${section === 'dashboard' ? ' is-active' : ''}`}
             onClick={() => setSection('dashboard')}
             aria-label="Dashboard"
           >

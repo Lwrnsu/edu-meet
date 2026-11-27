@@ -19,18 +19,6 @@ function displayName(user) {
   return parts.join(' ') || user.email
 }
 
-function splitName(fullName) {
-  const trimmed = fullName.trim().replace(/\s+/g, ' ')
-  const space = trimmed.indexOf(' ')
-  if (space === -1) {
-    return { firstName: trimmed, lastName: trimmed }
-  }
-  return {
-    firstName: trimmed.slice(0, space),
-    lastName: trimmed.slice(space + 1),
-  }
-}
-
 function generateTempPassword() {
   return `Tmp!${Math.random().toString(36).slice(2, 8)}A1`
 }
@@ -139,9 +127,14 @@ export async function loadAdminsForAdmin() {
     adminsByUserId.set(userId, {
       id: userId,
       name: displayName(user),
+      firstName: (user.first_name || '').trim(),
+      lastName: (user.last_name || '').trim(),
+      middleName: (user.middle_name || '').trim(),
+      suffix: (user.suffix || '').trim(),
       email: user.email,
       role: systemAdmin ? 'System Admin' : 'College Admin',
       school: systemAdmin ? '—' : schoolNameById[Number(membership?.school_id)] || '—',
+      createdAt: user.created_at || null,
       userRoleId: Number(row.user_role_id),
       membershipId: membership ? Number(membership.membership_id) : null,
       schoolId: membership ? Number(membership.school_id) : null,
@@ -158,9 +151,14 @@ export async function loadAdminsForAdmin() {
     adminsByUserId.set(userId, {
       id: userId,
       name: displayName(user),
+      firstName: (user.first_name || '').trim(),
+      lastName: (user.last_name || '').trim(),
+      middleName: (user.middle_name || '').trim(),
+      suffix: (user.suffix || '').trim(),
       email: user.email,
       role: 'College Admin',
       school: schoolNameById[Number(row.school_id)] || '—',
+      createdAt: user.created_at || null,
       userRoleId: null,
       membershipId: Number(row.membership_id),
       schoolId: Number(row.school_id),
@@ -217,9 +215,14 @@ export async function createAdminAccount({
         admin: {
           id: Number(user.user_id),
           name: displayName(user),
+          firstName: givenName,
+          lastName: surname,
+          middleName: middle,
+          suffix: nameSuffix,
           email: user.email,
           role: 'System Admin',
           school: '—',
+          createdAt: user.created_at || null,
         },
         temporaryPassword: tempPassword,
       }
@@ -244,9 +247,14 @@ export async function createAdminAccount({
       admin: {
         id: Number(user.user_id),
         name: displayName(user),
+        firstName: givenName,
+        lastName: surname,
+        middleName: middle,
+        suffix: nameSuffix,
         email: user.email,
         role: 'College Admin',
         school: matchedSchool.name,
+        createdAt: user.created_at || null,
       },
       temporaryPassword: tempPassword,
     }
@@ -260,8 +268,14 @@ export async function createAdminAccount({
   }
 }
 
-export async function updateAdminAccount(admin, { name, role, school }) {
-  const { firstName, lastName } = splitName(name)
+export async function updateAdminAccount(
+  admin,
+  { firstName, lastName, middleName, suffix, role, school }
+) {
+  const givenName = String(firstName || '').trim()
+  const surname = String(lastName || '').trim()
+  const middle = String(middleName || '').trim()
+  const nameSuffix = String(suffix || '').trim()
   const roles = await listRoles()
   const schools = await listSchools()
   const userRoles = await listUserRoles({ user_id: admin.id })
@@ -276,10 +290,13 @@ export async function updateAdminAccount(admin, { name, role, school }) {
     throw new Error('Assigned school was not found. Use an exact school name.')
   }
 
-  await patchUser(admin.id, {
-    first_name: firstName,
-    last_name: lastName,
-  })
+  const patchedUser = {
+    first_name: givenName,
+    middle_name: middle || null,
+    last_name: surname,
+    suffix: nameSuffix || null,
+  }
+  await patchUser(admin.id, patchedUser)
   await upsertAdminUserRole(admin.id, roleId, userRoles)
 
   for (const row of memberships || []) {
@@ -289,13 +306,23 @@ export async function updateAdminAccount(admin, { name, role, school }) {
     }
   }
 
+  const name = displayName({
+    ...patchedUser,
+    email: admin.email,
+  })
+
   if (isSystemAdminRole(role)) {
     return {
       id: admin.id,
       name,
+      firstName: givenName,
+      lastName: surname,
+      middleName: middle,
+      suffix: nameSuffix,
       email: admin.email,
       role: 'System Admin',
       school: '—',
+      createdAt: admin.createdAt || null,
     }
   }
 
@@ -309,9 +336,14 @@ export async function updateAdminAccount(admin, { name, role, school }) {
   return {
     id: admin.id,
     name,
+    firstName: givenName,
+    lastName: surname,
+    middleName: middle,
+    suffix: nameSuffix,
     email: admin.email,
     role: 'College Admin',
     school: matchedSchool.name,
+    createdAt: admin.createdAt || null,
   }
 }
 

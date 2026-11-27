@@ -31,6 +31,7 @@ export function mapSchoolFromApi(school, { totalUsers = 0, departments = 0 } = {
     email: school.email,
     slug: school.slug,
     status: Number(school.status) === 1 ? 'approved' : 'pending',
+    createdAt: school.created_at || null,
     totalUsers,
     departments,
     raw: school,

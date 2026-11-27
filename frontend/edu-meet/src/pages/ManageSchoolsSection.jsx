@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { mapSchoolFromApi } from '../api/schools'
 import { isLettersOnlyName } from '../api/nameValidation'
 import {
@@ -20,6 +21,18 @@ const EMPTY_EDIT_FORM = {
   name: '',
   address: '',
 }
+
+const SCHOOL_SORT_OPTIONS = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'latest', label: 'Latest to Oldest Added' },
+  { key: 'oldest', label: 'Oldest to Latest Added' },
+]
+
+const STATUS_FILTER_OPTIONS = [
+  { key: '', label: 'All statuses' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'pending', label: 'Review' },
+]
 
 function IconSchool() {
   return (
@@ -86,6 +99,14 @@ function IconPlus() {
   )
 }
 
+function IconCaret() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+      <path d="M6 9l6 6 6-6H6z" />
+    </svg>
+  )
+}
+
 function IconMore() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
@@ -131,12 +152,27 @@ function formatCount(value) {
   return Number(value || 0).toLocaleString('en-US')
 }
 
+function createdSortValue(school) {
+  const parsed = Date.parse(school.createdAt || '')
+  if (Number.isFinite(parsed)) return parsed
+  return Number(school.id) || 0
+}
+
 export default function ManageSchoolsSection() {
   const [schools, setSchools] = useState([])
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [sortMode, setSortMode] = useState(null)
+  const [openHeaderMenu, setOpenHeaderMenu] = useState(null)
+  const [headerMenuPos, setHeaderMenuPos] = useState({ top: 0, left: 0, minWidth: 168 })
+  const nameFilterRef = useRef(null)
+  const nameButtonRef = useRef(null)
+  const statusFilterRef = useRef(null)
+  const statusButtonRef = useRef(null)
+  const headerMenuRef = useRef(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [viewSchool, setViewSchool] = useState(null)
   const [editSchool, setEditSchool] = useState(null)
@@ -164,11 +200,105 @@ export default function ManageSchoolsSection() {
     refreshSchools()
   }, [refreshSchools])
 
+  const updateHeaderMenuPosition = useCallback(() => {
+    const button =
+      openHeaderMenu === 'name'
+        ? nameButtonRef.current
+        : openHeaderMenu === 'status'
+          ? statusButtonRef.current
+          : null
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    setHeaderMenuPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, openHeaderMenu === 'status' ? 168 : 220),
+    })
+  }, [openHeaderMenu])
+
+  useLayoutEffect(() => {
+    if (!openHeaderMenu) return undefined
+    updateHeaderMenuPosition()
+
+    function handleReposition() {
+      updateHeaderMenuPosition()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [openHeaderMenu, updateHeaderMenuPosition])
+
+  useEffect(() => {
+    if (!openHeaderMenu) return undefined
+
+    function handlePointerDown(event) {
+      const target = event.target
+      const inName = nameFilterRef.current?.contains(target)
+      const inStatus = statusFilterRef.current?.contains(target)
+      const inMenu = headerMenuRef.current?.contains(target)
+      if (!inName && !inStatus && !inMenu) {
+        setOpenHeaderMenu(null)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpenHeaderMenu(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openHeaderMenu])
+
   const filteredSchools = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return schools
-    return schools.filter((school) => school.name.toLowerCase().includes(q))
-  }, [query, schools])
+    let list = schools
+
+    if (q) {
+      list = list.filter((school) => school.name.toLowerCase().includes(q))
+    }
+
+    if (statusFilter) {
+      list = list.filter((school) => school.status === statusFilter)
+    }
+
+    if (sortMode === 'az') {
+      list = [...list].sort((a, b) =>
+        String(a.name || '')
+          .toLowerCase()
+          .localeCompare(String(b.name || '').toLowerCase())
+      )
+    } else if (sortMode === 'latest') {
+      list = [...list].sort((a, b) => createdSortValue(b) - createdSortValue(a))
+    } else if (sortMode === 'oldest') {
+      list = [...list].sort((a, b) => createdSortValue(a) - createdSortValue(b))
+    }
+
+    return list
+  }, [query, schools, statusFilter, sortMode])
+
+  function toggleHeaderMenu(key) {
+    setOpenHeaderMenu((prev) => (prev === key ? null : key))
+  }
+
+  function selectNameSort(mode) {
+    setSortMode(mode)
+    setOpenHeaderMenu(null)
+  }
+
+  function selectStatusFilter(key) {
+    setStatusFilter(key)
+    setOpenHeaderMenu(null)
+  }
 
   const total = schools.length
   const pending = schools.filter((s) => s.status === 'pending').length
@@ -455,8 +585,40 @@ export default function ManageSchoolsSection() {
 
       <div className="admin-schools__table-wrap">
         <div className="admin-schools__table-head" role="row">
-          <span>School Name</span>
-          <span>Status</span>
+          <span className="admin-schools__header-filter" ref={nameFilterRef}>
+            <button
+              ref={nameButtonRef}
+              type="button"
+              className={
+                sortMode ? 'admin-schools__sort admin-schools__sort--active' : 'admin-schools__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'name'}
+              aria-label="Sort by school name"
+              onClick={() => toggleHeaderMenu('name')}
+            >
+              School Name
+              <IconCaret />
+            </button>
+          </span>
+          <span className="admin-schools__header-filter" ref={statusFilterRef}>
+            <button
+              ref={statusButtonRef}
+              type="button"
+              className={
+                statusFilter
+                  ? 'admin-schools__sort admin-schools__sort--active'
+                  : 'admin-schools__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'status'}
+              aria-label="Filter by status"
+              onClick={() => toggleHeaderMenu('status')}
+            >
+              Status
+              <IconCaret />
+            </button>
+          </span>
           <span>Action</span>
         </div>
 
@@ -510,11 +672,88 @@ export default function ManageSchoolsSection() {
 
           {!loading && filteredSchools.length === 0 ? (
             <li className="admin-schools__empty-row">
-              {query.trim() ? 'No schools match your search.' : 'No schools found.'}
+              {statusFilter
+                ? 'No schools found for this status.'
+                : query.trim()
+                  ? 'No schools match your search.'
+                  : 'No schools found.'}
             </li>
           ) : null}
         </ul>
       </div>
+
+      {openHeaderMenu === 'name'
+        ? createPortal(
+            <ul
+              ref={headerMenuRef}
+              className="admin-schools__header-menu admin-schools__header-menu--portal"
+              role="listbox"
+              aria-label="Sort by school name"
+              style={{
+                top: headerMenuPos.top,
+                left: headerMenuPos.left,
+                minWidth: headerMenuPos.minWidth,
+              }}
+            >
+              {SCHOOL_SORT_OPTIONS.map((option) => {
+                const selected = sortMode === option.key
+                return (
+                  <li key={option.key}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={
+                        selected
+                          ? 'admin-schools__header-option is-active'
+                          : 'admin-schools__header-option'
+                      }
+                      onClick={() => selectNameSort(option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>,
+            document.body
+          )
+        : null}
+
+      {openHeaderMenu === 'status'
+        ? createPortal(
+            <ul
+              ref={headerMenuRef}
+              className="admin-schools__header-menu admin-schools__header-menu--portal"
+              role="listbox"
+              aria-label="Status filter"
+              style={{
+                top: headerMenuPos.top,
+                left: headerMenuPos.left,
+                minWidth: headerMenuPos.minWidth,
+              }}
+            >
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <li key={option.key || 'all'}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={statusFilter === option.key}
+                    className={
+                      statusFilter === option.key
+                        ? 'admin-schools__header-option is-active'
+                        : 'admin-schools__header-option'
+                    }
+                    onClick={() => selectStatusFilter(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body
+          )
+        : null}
 
       {modalOpen ? (
         <div
@@ -780,37 +1019,36 @@ export default function ManageSchoolsSection() {
 
       {deleteSchool ? (
         <div
-          className="admin-schools-modal"
+          className="admin-dash-modal"
           role="presentation"
           onClick={(event) => {
             if (event.target === event.currentTarget) closeDeleteModal()
           }}
         >
           <div
-            className="admin-schools-modal__panel"
+            className="admin-dash-modal__panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-school-title"
           >
-            <h3 id="delete-school-title" className="admin-schools-modal__title">
+            <h3 id="delete-school-title" className="admin-dash-modal__title">
               Delete School
             </h3>
-
-            <div className="admin-schools-modal__divider" />
-            <div className="admin-schools-modal__spacer" aria-hidden="true" />
-
-            <div className="admin-schools-modal__actions">
+            <div className="admin-dash-modal__divider" />
+            <div className="admin-dash-modal__actions">
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                className="admin-dash-modal__btn admin-dash-modal__btn--confirm"
                 onClick={handleConfirmDelete}
+                disabled={busy}
               >
-                Confirm
+                {busy ? 'Deleting…' : 'Confirm'}
               </button>
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                className="admin-dash-modal__btn admin-dash-modal__btn--secondary"
                 onClick={closeDeleteModal}
+                disabled={busy}
               >
                 Cancel
               </button>

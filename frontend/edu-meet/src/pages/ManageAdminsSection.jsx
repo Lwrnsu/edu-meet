@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   createAdminAccount,
   loadAdminsForAdmin,
@@ -18,10 +19,23 @@ const EMPTY_FORM = {
 }
 
 const EMPTY_EDIT_FORM = {
-  name: '',
-  role: '',
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  suffix: '',
   school: '',
 }
+
+const ROLE_FILTER_OPTIONS = [
+  { key: '', label: 'All roles' },
+  { key: 'systemadmin', label: 'System Admin' },
+  { key: 'collegeadmin', label: 'College Admin' },
+]
+
+const SORT_OPTIONS = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'latest', label: 'Latest to Oldest Added' },
+]
 
 function IconUsers() {
   return (
@@ -47,6 +61,14 @@ function IconPlus() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+function IconCaret() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+      <path d="M6 9l6 6 6-6H6z" />
     </svg>
   )
 }
@@ -125,6 +147,12 @@ function schoolChoices(schools, currentSchool) {
   return approved
 }
 
+function createdSortValue(admin) {
+  const parsed = Date.parse(admin.createdAt || '')
+  if (Number.isFinite(parsed)) return parsed
+  return Number(admin.id) || 0
+}
+
 export default function ManageAdminsSection() {
   const [admins, setAdmins] = useState([])
   const [schools, setSchools] = useState([])
@@ -134,6 +162,20 @@ export default function ManageAdminsSection() {
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [sortKey, setSortKey] = useState(null)
+  const [sortMode, setSortMode] = useState('az')
+  const [openHeaderMenu, setOpenHeaderMenu] = useState(null)
+  const [headerMenuPos, setHeaderMenuPos] = useState({ top: 0, left: 0, minWidth: 168 })
+  const nameFilterRef = useRef(null)
+  const nameButtonRef = useRef(null)
+  const emailFilterRef = useRef(null)
+  const emailButtonRef = useRef(null)
+  const roleFilterRef = useRef(null)
+  const roleButtonRef = useRef(null)
+  const schoolFilterRef = useRef(null)
+  const schoolButtonRef = useRef(null)
+  const headerMenuRef = useRef(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editAdmin, setEditAdmin] = useState(null)
   const [deleteAdmin, setDeleteAdmin] = useState(null)
@@ -161,11 +203,118 @@ export default function ManageAdminsSection() {
     refreshAdmins()
   }, [refreshAdmins])
 
+  const updateHeaderMenuPosition = useCallback(() => {
+    const button =
+      openHeaderMenu === 'name'
+        ? nameButtonRef.current
+        : openHeaderMenu === 'email'
+          ? emailButtonRef.current
+          : openHeaderMenu === 'role'
+            ? roleButtonRef.current
+            : openHeaderMenu === 'school'
+              ? schoolButtonRef.current
+              : null
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    setHeaderMenuPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, openHeaderMenu === 'role' ? 168 : 200),
+    })
+  }, [openHeaderMenu])
+
+  useLayoutEffect(() => {
+    if (!openHeaderMenu) return undefined
+    updateHeaderMenuPosition()
+
+    function handleReposition() {
+      updateHeaderMenuPosition()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [openHeaderMenu, updateHeaderMenuPosition])
+
+  useEffect(() => {
+    if (!openHeaderMenu) return undefined
+
+    function handlePointerDown(event) {
+      const target = event.target
+      const inName = nameFilterRef.current?.contains(target)
+      const inEmail = emailFilterRef.current?.contains(target)
+      const inRole = roleFilterRef.current?.contains(target)
+      const inSchool = schoolFilterRef.current?.contains(target)
+      const inMenu = headerMenuRef.current?.contains(target)
+      if (!inName && !inEmail && !inRole && !inSchool && !inMenu) {
+        setOpenHeaderMenu(null)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpenHeaderMenu(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openHeaderMenu])
+
   const filteredAdmins = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return admins
-    return admins.filter((admin) => admin.name.toLowerCase().includes(q))
-  }, [admins, query])
+    let list = admins
+
+    if (q) {
+      list = list.filter((admin) => admin.name.toLowerCase().includes(q))
+    }
+
+    if (roleFilter === 'systemadmin') {
+      list = list.filter((admin) => isSystemAdmin(admin.role))
+    } else if (roleFilter === 'collegeadmin') {
+      list = list.filter((admin) => isCollegeAdmin(admin.role))
+    }
+
+    if (sortKey && sortMode === 'az') {
+      list = [...list].sort((a, b) => {
+        const valueFor = (admin) => {
+          if (sortKey === 'email') return String(admin.email || '')
+          if (sortKey === 'school') {
+            const school = String(admin.school || '').trim()
+            return school === '—' ? '' : school
+          }
+          return String(admin.name || '')
+        }
+        return valueFor(a).toLowerCase().localeCompare(valueFor(b).toLowerCase())
+      })
+    } else if (sortKey && sortMode === 'latest') {
+      list = [...list].sort((a, b) => createdSortValue(b) - createdSortValue(a))
+    }
+
+    return list
+  }, [admins, query, roleFilter, sortKey, sortMode])
+
+  function toggleHeaderMenu(key) {
+    setOpenHeaderMenu((prev) => (prev === key ? null : key))
+  }
+
+  function selectSort(key, mode) {
+    setSortKey(key)
+    setSortMode(mode)
+    setOpenHeaderMenu(null)
+  }
+
+  function selectRoleFilter(key) {
+    setRoleFilter(key)
+    setOpenHeaderMenu(null)
+  }
 
   const total = admins.length
   const collegeAdmins = admins.filter((admin) => isCollegeAdmin(admin.role)).length
@@ -201,8 +350,10 @@ export default function ManageAdminsSection() {
     setEditError('')
     const school = admin.school === '—' ? '' : admin.school || ''
     setEditForm({
-      name: admin.name || '',
-      role: dbRoleNameForLabel(admin.role, roles),
+      firstName: admin.firstName || '',
+      lastName: admin.lastName || '',
+      middleName: admin.middleName || '',
+      suffix: admin.suffix || '',
       school: isSystemAdmin(admin.role) ? '' : school,
     })
     setEditAdmin(admin)
@@ -229,11 +380,7 @@ export default function ManageAdminsSection() {
   function updateEditField(field) {
     return (event) => {
       const value = event.target.value
-      setEditForm((prev) => {
-        const next = { ...prev, [field]: value }
-        if (field === 'role' && isSystemAdmin(value)) next.school = ''
-        return next
-      })
+      setEditForm((prev) => ({ ...prev, [field]: value }))
       if (editError) setEditError('')
     }
   }
@@ -306,20 +453,39 @@ export default function ManageAdminsSection() {
 
     if (!editAdmin) return
 
-    const name = editForm.name.trim()
-    const role = editForm.role.trim()
+    const firstName = editForm.firstName.trim()
+    const lastName = editForm.lastName.trim()
+    const middleName = editForm.middleName.trim()
+    const suffix = editForm.suffix.trim()
+    const role = dbRoleNameForLabel(editAdmin.role, roles)
     let school = editForm.school.trim()
 
-    if (!name || !role) {
-      setEditError('Admin name and role are required.')
+    if (!firstName || !lastName) {
+      setEditError('First name and last name are required.')
       return
     }
-    if (!isLettersOnlyName(name)) {
-      setEditError('Admin name must contain letters only.')
+    if (!role) {
+      setEditError('Could not resolve this admin role.')
+      return
+    }
+    if (!isLettersOnlyName(firstName)) {
+      setEditError('First name must contain letters only.')
+      return
+    }
+    if (!isLettersOnlyName(lastName)) {
+      setEditError('Last name must contain letters only.')
+      return
+    }
+    if (middleName && !isLettersOnlyName(middleName)) {
+      setEditError('Middle name must contain letters only.')
+      return
+    }
+    if (suffix && !isLettersOnlyName(suffix)) {
+      setEditError('Suffix must contain letters only.')
       return
     }
     if (!school) {
-      if (isSystemAdmin(role)) {
+      if (isSystemAdmin(editAdmin.role)) {
         school = '—'
       } else {
         setEditError('Assigned school is required.')
@@ -330,7 +496,14 @@ export default function ManageAdminsSection() {
     setBusy(true)
     setEditError('')
     try {
-      const updated = await updateAdminAccount(editAdmin, { name, role, school })
+      const updated = await updateAdminAccount(editAdmin, {
+        firstName,
+        lastName,
+        middleName,
+        suffix,
+        role,
+        school,
+      })
       setAdmins((prev) =>
         prev.map((admin) => (admin.id === editAdmin.id ? { ...admin, ...updated } : admin))
       )
@@ -438,10 +611,70 @@ export default function ManageAdminsSection() {
 
       <div className="admin-admins__table-wrap">
         <div className="admin-admins__table-head" role="row">
-          <span>Admin</span>
-          <span>Email</span>
-          <span>Role</span>
-          <span>Assigned School</span>
+          <span className="admin-admins__header-filter" ref={nameFilterRef}>
+            <button
+              ref={nameButtonRef}
+              type="button"
+              className={
+                sortKey === 'name' ? 'admin-admins__sort admin-admins__sort--active' : 'admin-admins__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'name'}
+              aria-label="Sort by admin name"
+              onClick={() => toggleHeaderMenu('name')}
+            >
+              Admin
+              <IconCaret />
+            </button>
+          </span>
+          <span className="admin-admins__header-filter" ref={emailFilterRef}>
+            <button
+              ref={emailButtonRef}
+              type="button"
+              className={
+                sortKey === 'email' ? 'admin-admins__sort admin-admins__sort--active' : 'admin-admins__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'email'}
+              aria-label="Sort by email"
+              onClick={() => toggleHeaderMenu('email')}
+            >
+              Email
+              <IconCaret />
+            </button>
+          </span>
+          <span className="admin-admins__header-filter" ref={roleFilterRef}>
+            <button
+              ref={roleButtonRef}
+              type="button"
+              className={
+                roleFilter ? 'admin-admins__sort admin-admins__sort--active' : 'admin-admins__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'role'}
+              aria-label="Filter by role"
+              onClick={() => toggleHeaderMenu('role')}
+            >
+              Role
+              <IconCaret />
+            </button>
+          </span>
+          <span className="admin-admins__header-filter" ref={schoolFilterRef}>
+            <button
+              ref={schoolButtonRef}
+              type="button"
+              className={
+                sortKey === 'school' ? 'admin-admins__sort admin-admins__sort--active' : 'admin-admins__sort'
+              }
+              aria-haspopup="listbox"
+              aria-expanded={openHeaderMenu === 'school'}
+              aria-label="Sort by assigned school"
+              onClick={() => toggleHeaderMenu('school')}
+            >
+              Assigned School
+              <IconCaret />
+            </button>
+          </span>
           <span>Action</span>
         </div>
 
@@ -474,10 +707,91 @@ export default function ManageAdminsSection() {
           ))}
 
           {filteredAdmins.length === 0 ? (
-            <li className="admin-admins__empty-row">No admins match your search.</li>
+            <li className="admin-admins__empty-row">
+              {roleFilter ? 'No admins found for this role.' : 'No admins match your search.'}
+            </li>
           ) : null}
         </ul>
       </div>
+
+      {openHeaderMenu === 'name' || openHeaderMenu === 'email' || openHeaderMenu === 'school'
+        ? createPortal(
+            <ul
+              ref={headerMenuRef}
+              className="admin-admins__header-menu admin-admins__header-menu--portal"
+              role="listbox"
+              aria-label={
+                openHeaderMenu === 'name'
+                  ? 'Sort by admin name'
+                  : openHeaderMenu === 'email'
+                    ? 'Sort by email'
+                    : 'Sort by assigned school'
+              }
+              style={{
+                top: headerMenuPos.top,
+                left: headerMenuPos.left,
+                minWidth: headerMenuPos.minWidth,
+              }}
+            >
+              {SORT_OPTIONS.map((option) => {
+                const selected = sortKey === openHeaderMenu && sortMode === option.key
+                return (
+                  <li key={option.key}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={
+                        selected
+                          ? 'admin-admins__header-option is-active'
+                          : 'admin-admins__header-option'
+                      }
+                      onClick={() => selectSort(openHeaderMenu, option.key)}
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>,
+            document.body
+          )
+        : null}
+
+      {openHeaderMenu === 'role'
+        ? createPortal(
+            <ul
+              ref={headerMenuRef}
+              className="admin-admins__header-menu admin-admins__header-menu--portal"
+              role="listbox"
+              aria-label="Role filter"
+              style={{
+                top: headerMenuPos.top,
+                left: headerMenuPos.left,
+                minWidth: headerMenuPos.minWidth,
+              }}
+            >
+              {ROLE_FILTER_OPTIONS.map((option) => (
+                <li key={option.key || 'all'}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={roleFilter === option.key}
+                    className={
+                      roleFilter === option.key
+                        ? 'admin-admins__header-option is-active'
+                        : 'admin-admins__header-option'
+                    }
+                    onClick={() => selectRoleFilter(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body
+          )
+        : null}
 
       {modalOpen ? (
         <div
@@ -604,42 +918,56 @@ export default function ManageAdminsSection() {
             </h3>
 
             <form className="admin-schools-modal__form" onSubmit={handleEditSave}>
-              <input
-                className="admin-schools-modal__input"
-                type="text"
-                value={editForm.name}
-                onChange={updateEditField('name')}
-                placeholder="Admin Name"
-                aria-label="Admin Name"
-                autoFocus
-              />
-              <select
-                className="admin-schools-modal__input"
-                value={editForm.role}
-                onChange={updateEditField('role')}
-                aria-label="Role"
-              >
-                <option value="">Select role</option>
-                {adminRoleOptions(roles).map((role) => (
-                  <option key={role.role_id} value={role.name}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="admin-schools-modal__input"
-                value={editForm.school}
-                onChange={updateEditField('school')}
-                aria-label="Assigned School"
-                disabled={isSystemAdmin(editForm.role)}
-              >
-                <option value="">Select school</option>
-                {schoolChoices(schools, editForm.school).map((school) => (
-                  <option key={school.school_id} value={school.name}>
-                    {school.name}
-                  </option>
-                ))}
-              </select>
+              <div className="admin-schools-modal__name-grid">
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={editForm.firstName}
+                  onChange={updateEditField('firstName')}
+                  placeholder="First Name"
+                  aria-label="First Name"
+                  autoFocus
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={editForm.lastName}
+                  onChange={updateEditField('lastName')}
+                  placeholder="Last Name"
+                  aria-label="Last Name"
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={editForm.middleName}
+                  onChange={updateEditField('middleName')}
+                  placeholder="Middle Name"
+                  aria-label="Middle Name"
+                />
+                <input
+                  className="admin-schools-modal__input"
+                  type="text"
+                  value={editForm.suffix}
+                  onChange={updateEditField('suffix')}
+                  placeholder="Suffix"
+                  aria-label="Suffix"
+                />
+              </div>
+              {!isSystemAdmin(editAdmin.role) ? (
+                <select
+                  className="admin-schools-modal__input"
+                  value={editForm.school}
+                  onChange={updateEditField('school')}
+                  aria-label="Assigned School"
+                >
+                  <option value="">Select school</option>
+                  {schoolChoices(schools, editForm.school).map((school) => (
+                    <option key={school.school_id} value={school.name}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
 
               {editError ? <p className="admin-schools-modal__error">{editError}</p> : null}
 
@@ -664,37 +992,36 @@ export default function ManageAdminsSection() {
 
       {deleteAdmin ? (
         <div
-          className="admin-schools-modal"
+          className="admin-dash-modal"
           role="presentation"
           onClick={(event) => {
             if (event.target === event.currentTarget) closeDeleteModal()
           }}
         >
           <div
-            className="admin-schools-modal__panel"
+            className="admin-dash-modal__panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-admin-title"
           >
-            <h3 id="delete-admin-title" className="admin-schools-modal__title">
+            <h3 id="delete-admin-title" className="admin-dash-modal__title">
               Delete Admin
             </h3>
-
-            <div className="admin-schools-modal__divider" />
-            <div className="admin-schools-modal__spacer" aria-hidden="true" />
-
-            <div className="admin-schools-modal__actions">
+            <div className="admin-dash-modal__divider" />
+            <div className="admin-dash-modal__actions">
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--reject"
+                className="admin-dash-modal__btn admin-dash-modal__btn--confirm"
                 onClick={handleConfirmDelete}
+                disabled={busy}
               >
-                Confirm
+                {busy ? 'Deleting…' : 'Confirm'}
               </button>
               <button
                 type="button"
-                className="admin-schools-modal__btn admin-schools-modal__btn--secondary"
+                className="admin-dash-modal__btn admin-dash-modal__btn--secondary"
                 onClick={closeDeleteModal}
+                disabled={busy}
               >
                 Cancel
               </button>
