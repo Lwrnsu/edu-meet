@@ -212,7 +212,9 @@ export function adaptConversation(
 ) {
   const source = requireObject(conversation, "conversation");
   const id = requireString(source.id, "conversation.id");
-  const name = requireString(source.name, "conversation.name");
+  const name = source.type === "PRIVATE"
+    ? requireOptionalString(source.name, "conversation.name") || "Private chat"
+    : requireString(source.name, "conversation.name");
   const avatarUrl = requireOptionalString(
     source.avatarUrl,
     "conversation.avatarUrl",
@@ -342,7 +344,10 @@ export function adaptMessage(
     "message.conversationId",
   );
   const senderId = requireString(source.senderId, "message.senderId");
-  const text = requireString(source.text, "message.text");
+  const attachment = source.attachment == null ? null : requireObject(source.attachment, "message.attachment");
+  const text = attachment && typeof source.text === "string"
+    ? source.text
+    : requireString(source.text, "message.text");
 
   const validCurrentUserId = requireCurrentUserId(currentUserId);
 
@@ -378,6 +383,13 @@ export function adaptMessage(
     conversationId,
     senderId,
     text,
+    ...(attachment && {
+      attachment: {
+        name: requireString(attachment.name, "message.attachment.name"),
+        contentType: requireString(attachment.contentType, "message.attachment.contentType"),
+        size: attachment.size,
+      },
+    }),
     direction:
       senderId === validCurrentUserId ? "outgoing" : "incoming",
     senderName,
@@ -455,6 +467,6 @@ export function mergeMessages(existingMessages, additionalMessages) {
     if (!Number.isFinite(secondTime)) {
       return -1;
     }
-    return firstTime - secondTime;
+    return firstTime - secondTime || (first.id < second.id ? -1 : Number(first.id > second.id));
   });
 }

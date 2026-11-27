@@ -38,16 +38,18 @@ export function createCommunicationApi({ baseUrl = "" } = {}) {
     return `${normalizedBaseUrl}${normalizedPath}${queryString ? `?${queryString}` : ""}`;
   }
 
-  async function request(path, query = {}, signal) {
+  async function request(path, query = {}, signal, { method = "GET", body, formData } = {}) {
     let response;
 
     try {
       response = await fetch(buildUrl(path, query), {
-        method: "GET",
+        method,
         headers: {
           Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
         signal,
+        body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
       });
     } catch (error) {
       if (error?.name === "AbortError" || signal?.aborted) {
@@ -173,11 +175,53 @@ export function createCommunicationApi({ baseUrl = "" } = {}) {
     );
   }
 
+  function groupRequest(conversationId, userId, path, { signal, ...options } = {}) {
+    const id = encodeURIComponent(requireText(conversationId, "conversationId"));
+    const actor = requireText(userId, "userId");
+    return request(`/api/conversations/${id}${path}`, { userId: actor }, signal, options);
+  }
+
+  function renameGroup(conversationId, userId, name) {
+    return groupRequest(conversationId, userId, "/name", { method: "PATCH", body: { name } });
+  }
+
+  function getPinnedMessages(conversationId, userId, { signal } = {}) {
+    return groupRequest(conversationId, userId, "/pinned-messages", { signal });
+  }
+
+  function setMessagePinned(conversationId, userId, messageId, pinned) {
+    const id = encodeURIComponent(requireText(messageId, "messageId"));
+    return groupRequest(conversationId, userId, `/pinned-messages/${id}`, {
+      method: pinned ? "PUT" : "DELETE",
+    });
+  }
+
+  function sendAttachment(conversationId, userId, file, text) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("text", text);
+    return groupRequest(conversationId, userId, "/messages/attachments", { method: "POST", formData });
+  }
+
+  function attachmentUrl(conversationId, userId, messageId, inline = false) {
+    const conversation = encodeURIComponent(conversationId);
+    const message = encodeURIComponent(messageId);
+    return buildUrl(`/api/conversations/${conversation}/messages/${message}/attachment`, {
+      userId,
+      inline: inline || undefined,
+    });
+  }
+
   return {
     getConversations,
     getMembers,
     getMessages,
     getOlderMessages,
+    renameGroup,
+    getPinnedMessages,
+    setMessagePinned,
+    sendAttachment,
+    attachmentUrl,
   };
 }
 
@@ -187,3 +231,9 @@ export const getConversations = defaultCommunicationApi.getConversations;
 export const getMembers = defaultCommunicationApi.getMembers;
 export const getMessages = defaultCommunicationApi.getMessages;
 export const getOlderMessages = defaultCommunicationApi.getOlderMessages;
+
+export const renameGroup = defaultCommunicationApi.renameGroup;
+export const getPinnedMessages = defaultCommunicationApi.getPinnedMessages;
+export const setMessagePinned = defaultCommunicationApi.setMessagePinned;
+export const sendAttachment = defaultCommunicationApi.sendAttachment;
+export const attachmentUrl = defaultCommunicationApi.attachmentUrl;

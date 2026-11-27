@@ -7,6 +7,8 @@ export default function ConversationPanel({
   selectedConversationId,
   onSelectConversation,
   searchInputRef,
+  status,
+  error,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -34,6 +36,8 @@ export default function ConversationPanel({
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </label>
+        {error && <p className="communication-chat-notice" role="alert">{error}</p>}
+        {status && <p className="communication-chat-notice" role="status">{status}</p>}
         <ul className="communication-conversation-list">
           {normalizedSearch && filteredConversations.length === 0 ? (
             <li className="communication-conversation-empty" role="status">

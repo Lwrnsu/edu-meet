@@ -591,12 +591,73 @@
 }
 
 .communication-message-input-form {
-  display: flex;
-  flex: 0 0 55px;
-  align-items: center;
-  gap: 14px;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
   min-width: 0;
   margin: 0 33px 28px;
+}
+
+.communication-composer-row,
+.communication-selected-attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.communication-selected-attachment span {
+  overflow-wrap: anywhere;
+}
+
+.communication-composer-feedback,
+.communication-message-attachment {
+  font: 400 14px/1.5 Roboto, sans-serif;
+}
+
+.communication-composer-feedback p {
+  margin: 4px 0;
+}
+
+.communication-composer-feedback [role="alert"] {
+  color: #932222;
+}
+
+.communication-message-attachment {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.communication-message-attachment img {
+  display: block;
+  max-width: min(100%, 280px);
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.communication-message-attachment a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  color: #263043;
+  background: #fffdf8;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 520px) {
+  .communication-message-input-form {
+    margin-inline: 12px;
+  }
+
+  .communication-composer-row {
+    gap: 6px;
+  }
 }
 
 .communication-message-input {
@@ -1234,5 +1295,129 @@
     grid-column: 3;
     grid-row: 1 / span 2;
     align-self: center;
+  }
+}
+
+.communication-chat-notice {
+  margin: 8px 20px;
+  color: #3d4757;
+  font: 400 14px/1.5 Roboto, sans-serif;
+}
+
+.communication-message-send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.communication-action-button {
+  min-height: 44px;
+  padding: 6px 12px;
+  color: #263043;
+  background: #fffdf8;
+  border: 1px solid #3d4757;
+  border-radius: 12px;
+  font: 600 14px/1.4 Roboto, sans-serif;
+  cursor: pointer;
+}
+
+.communication-action-button:focus-visible,
+.communication-rename-dialog input:focus-visible {
+  outline: 2px solid #50359b;
+  outline-offset: 2px;
+}
+
+.communication-action-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.communication-primary-action {
+  background: #50359b;
+  border-color: #50359b;
+  color: #fff;
+}
+
+.communication-rename-dialog {
+  width: min(400px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 24px;
+  color: #1d2430;
+  background: #fffdf8;
+  border: 1px solid #3d4757;
+  border-radius: 24px;
+  font: 400 16px/1.5 Roboto, sans-serif;
+}
+
+.communication-rename-dialog::backdrop {
+  background: rgb(61 71 87 / 55%);
+}
+
+.communication-rename-dialog form {
+  display: grid;
+  gap: 8px;
+}
+
+.communication-rename-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.communication-rename-dialog input {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid #3d4757;
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.communication-rename-dialog p {
+  margin: 0;
+  color: #932222;
+}
+
+.communication-rename-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.communication-options-change-profile {
+  min-height: 44px;
+}
+
+.communication-message-scroll {
+  overflow-anchor: none;
+}
+
+.communication-older-messages {
+  padding: 12px 16px 4px;
+  text-align: center;
+}
+
+.communication-message-pin {
+  margin-top: 6px;
+}
+
+.communication-pinned-message-card--live {
+  grid-template-columns: 60px minmax(0, 1fr) max-content max-content;
+}
+
+.communication-pinned-message-card--live .communication-pinned-message-text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .communication-pinned-message-card--live {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .communication-unpin-button {
+    grid-column: 2;
+    justify-self: start;
   }
 }

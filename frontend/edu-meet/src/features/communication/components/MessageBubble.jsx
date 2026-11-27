@@ -1,6 +1,7 @@
+import MessageAttachment from "./MessageAttachment.jsx";
 import doubleTickIcon from "../assets/double-tick.png";
 
-export default function MessageBubble({ message, isOutgoing, isLast }) {
+export default function MessageBubble({ message, isOutgoing, isLast, isPinned, isUpdatingPin, onTogglePin }) {
   const status = message.status === "double-tick" && !message.isLocal;
 
   return (
@@ -21,7 +22,19 @@ export default function MessageBubble({ message, isOutgoing, isLast }) {
       <div
         className={`communication-message-bubble communication-message-bubble--${isOutgoing ? "outgoing" : "incoming"}`}
       >
-        <p className="communication-message-text">{message.text}</p>
+        {message.attachment && <MessageAttachment attachment={message.attachment} />}
+        {message.text && <p className="communication-message-text">{message.text}</p>}
+        {onTogglePin && (
+          <button
+            className="communication-action-button communication-message-pin"
+            type="button"
+            aria-label={`${isPinned ? "Unpin" : "Pin"} message: ${message.text || message.attachment?.name}`}
+            disabled={isUpdatingPin}
+            onClick={() => onTogglePin(message.id)}
+          >
+            {isPinned ? "Unpin" : "Pin"}
+          </button>
+        )}
       </div>
       {!isOutgoing && isLast && (
         <time

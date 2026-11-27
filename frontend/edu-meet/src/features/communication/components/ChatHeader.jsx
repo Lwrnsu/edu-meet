@@ -10,6 +10,7 @@ export default function ChatHeader({
   onMenuAction,
   onBackToChat,
   triggerRef,
+  live = false,
   view = "chat",
 }) {
   const [openConversationId, setOpenConversationId] = useState(null);
@@ -137,6 +138,7 @@ export default function ChatHeader({
 
   function handleMenuAction(action, selectedConversation) {
     if (
+      action === "rename-group" ||
       action === "leave-group" ||
       action === "view-members" ||
       action === "pinned-messages"
@@ -203,6 +205,7 @@ export default function ChatHeader({
               onAction={handleMenuAction}
               onDismiss={() => setOpenConversationId(null)}
               position={menuPosition}
+              live={live}
             />
           )}
         </div>

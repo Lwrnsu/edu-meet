@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import PinnedMessageItem from "./PinnedMessageItem.jsx";
 
-export default function PinnedMessagesView({ conversation, messages }) {
+export default function PinnedMessagesView({ conversation, messages, isLoading, error, isUpdating, onUnpin }) {
   const headingRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -22,12 +22,14 @@ export default function PinnedMessagesView({ conversation, messages }) {
         >
           Pinned Messages
         </h2>
-        <span
-          className="communication-pinned-messages-count"
-          aria-label={`${messages.length} pinned messages`}
-        >
-          ({messages.length})
-        </span>
+        {!isLoading && (
+          <span
+            className="communication-pinned-messages-count"
+            aria-label={`${messages.length} pinned messages`}
+          >
+            ({messages.length})
+          </span>
+        )}
       </div>
 
       <div
@@ -36,13 +38,15 @@ export default function PinnedMessagesView({ conversation, messages }) {
         aria-label={`${conversation.name} pinned messages`}
         tabIndex={0}
       >
+        {error && <p className="communication-chat-notice" role="alert">{error}</p>}
+        {isLoading && <p className="communication-pinned-messages-empty" role="status">Loading pinned messages…</p>}
         {messages.length > 0 ? (
           <ol className="communication-pinned-message-list">
             {messages.map((message) => (
-              <PinnedMessageItem key={message.id} message={message} />
+              <PinnedMessageItem key={message.id} message={message} onUnpin={onUnpin} isUpdating={isUpdating} />
             ))}
           </ol>
-        ) : (
+        ) : !isLoading && !error && (
           <p className="communication-pinned-messages-empty" role="status">
             No pinned messages.
           </p>

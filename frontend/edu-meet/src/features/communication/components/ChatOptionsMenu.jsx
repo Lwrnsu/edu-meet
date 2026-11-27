@@ -32,6 +32,7 @@ export default function ChatOptionsMenu({
   onAction,
   onDismiss,
   position,
+  live = false,
 }) {
   if (conversation?.type !== "group") {
     return null;
@@ -108,9 +109,9 @@ export default function ChatOptionsMenu({
           className="communication-options-change-profile"
           type="button"
           role="menuitem"
-          onClick={() => onAction?.("change-profile", conversation)}
+          onClick={() => onAction?.(live ? "rename-group" : "change-profile", conversation)}
         >
-          Change name or image
+          {live ? "Rename group" : "Change name or image"}
         </button>
       </div>
 
@@ -122,7 +123,7 @@ export default function ChatOptionsMenu({
       />
 
       <div className="communication-options-actions">
-        {menuActions.map((item) => (
+        {menuActions.filter((item) => !live || item.action !== "leave-group").map((item) => (
           <button
             className={`communication-options-action ${item.className}`}
             key={item.action}

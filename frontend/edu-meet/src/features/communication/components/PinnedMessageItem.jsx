@@ -1,3 +1,4 @@
+import MessageAttachment from "./MessageAttachment.jsx";
 import pushPinIcon from "../assets/push-pin.png";
 import ConversationAvatar from "./ConversationAvatar.jsx";
 
@@ -20,13 +21,13 @@ function getPinnedTimestamp(message) {
   return [weekday, timestamp].filter(Boolean).join(" ").toUpperCase();
 }
 
-export default function PinnedMessageItem({ message }) {
+export default function PinnedMessageItem({ message, onUnpin, isUpdating }) {
   const senderName =
     message.senderName ??
     (message.direction === "outgoing" ? "You" : "Group member");
 
   return (
-    <li className="communication-pinned-message-card">
+    <li className={`communication-pinned-message-card${onUnpin ? " communication-pinned-message-card--live" : ""}`}>
       <ConversationAvatar
         type="individual"
         imageUrl={message.avatarUrl}
@@ -37,9 +38,10 @@ export default function PinnedMessageItem({ message }) {
           {senderName}
         </span>
         <div className="communication-message-bubble communication-message-bubble--incoming communication-pinned-message-bubble">
-          <p className="communication-message-text communication-pinned-message-text">
-            {message.text}
-          </p>
+          {message.attachment && <MessageAttachment attachment={message.attachment} />}
+          {message.text && (
+            <p className="communication-message-text communication-pinned-message-text">{message.text}</p>
+          )}
         </div>
       </div>
       <time
@@ -48,12 +50,24 @@ export default function PinnedMessageItem({ message }) {
       >
         {getPinnedTimestamp(message)}
       </time>
-      <img
-        className="communication-pinned-message-icon"
-        src={pushPinIcon}
-        alt=""
-        aria-hidden="true"
-      />
+      {onUnpin ? (
+        <button
+          className="communication-action-button communication-unpin-button"
+          type="button"
+          aria-label={`Unpin message: ${message.text || message.attachment?.name}`}
+          disabled={isUpdating}
+          onClick={() => onUnpin(message.id)}
+        >
+          Unpin
+        </button>
+      ) : (
+        <img
+          className="communication-pinned-message-icon"
+          src={pushPinIcon}
+          alt=""
+          aria-hidden="true"
+        />
+      )}
     </li>
   );
 }
