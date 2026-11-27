@@ -1,10 +1,14 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import leaveGroupIcon from "../assets/leave-group.png";
 
 export default function LeaveGroupDialog({ onCancel, onConfirm }) {
   const dialogRef = useRef(null);
   const cancelButtonRef = useRef(null);
+  const confirmButtonRef = useRef(null);
+  const leaving = useRef(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useLayoutEffect(() => {
     cancelButtonRef.current?.focus();
@@ -17,11 +21,31 @@ export default function LeaveGroupDialog({ onCancel, onConfirm }) {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    if (error) confirmButtonRef.current?.focus();
+  }, [error]);
+
+  async function handleConfirm() {
+    if (leaving.current) return;
+    leaving.current = true;
+    dialogRef.current?.focus();
+    setIsLeaving(true);
+    setError(null);
+    try {
+      await onConfirm();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      leaving.current = false;
+      setIsLeaving(false);
+    }
+  }
+
   function handleKeyDown(event) {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      onCancel();
+      if (!leaving.current) onCancel();
       return;
     }
 
@@ -57,7 +81,7 @@ export default function LeaveGroupDialog({ onCancel, onConfirm }) {
   }
 
   function handleBackdropClick(event) {
-    if (event.target === event.currentTarget) {
+    if (event.target === event.currentTarget && !leaving.current) {
       onCancel();
     }
   }
@@ -96,19 +120,23 @@ export default function LeaveGroupDialog({ onCancel, onConfirm }) {
           You won’t receive messages from this group unless someone adds you to
           the chat again.
         </p>
+        {error && <p className="communication-leave-dialog-description" role="alert">{error}</p>}
         <div className="communication-leave-dialog-actions">
           <button
             className="communication-leave-dialog-button communication-leave-dialog-confirm"
+            ref={confirmButtonRef}
             type="button"
-            onClick={onConfirm}
+            onClick={handleConfirm}
+            disabled={isLeaving}
           >
-            Leave
+            {isLeaving ? "Leaving…" : "Leave"}
           </button>
           <button
             className="communication-leave-dialog-button communication-leave-dialog-cancel"
             ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
+            disabled={isLeaving}
           >
             Cancel
           </button>

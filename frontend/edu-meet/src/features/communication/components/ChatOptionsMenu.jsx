@@ -32,15 +32,14 @@ export default function ChatOptionsMenu({
   onAction,
   onDismiss,
   position,
-  live = false,
 }) {
   if (!conversation) {
     return null;
   }
   const isGroup = conversation.type === "group";
-  const visibleActions = menuActions.filter(({ action }) =>
-    isGroup ? !live || action !== "leave-group" : action === "pinned-messages",
-  );
+  const visibleActions = isGroup
+    ? menuActions
+    : menuActions.filter(({ action }) => action === "pinned-messages");
 
   function handleKeyDown(event) {
     const items = Array.from(

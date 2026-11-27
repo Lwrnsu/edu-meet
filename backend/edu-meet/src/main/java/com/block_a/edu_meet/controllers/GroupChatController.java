@@ -28,6 +28,7 @@ import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.ConversationMembershipService;
 
 @RestController
 @RequestMapping("/api/conversations/{conversationId}")
@@ -37,13 +38,21 @@ public class GroupChatController {
     private final MessageRepository messages;
     private final MongoOperations mongo;
     private final ChatHandler chat;
+    private final ConversationMembershipService membership;
 
     public GroupChatController(ConversationAccess conversationAccess, MessageRepository messages,
-                               MongoOperations mongo, ChatHandler chat) {
+                               MongoOperations mongo, ChatHandler chat, ConversationMembershipService membership) {
         this.conversationAccess = conversationAccess;
         this.messages = messages;
         this.mongo = mongo;
         this.chat = chat;
+        this.membership = membership;
+    }
+
+    @DeleteMapping("/membership")
+    public LeftConversation leave(@PathVariable String conversationId, Principal principal) {
+        membership.leaveGroupConversation(conversationId, ChatIdentity.userId(principal));
+        return new LeftConversation(conversationId);
     }
 
     @PatchMapping("/name")
@@ -120,5 +129,7 @@ public class GroupChatController {
     public record RenameRequest(String name) {}
 
     public record UnpinnedMessage(String messageId) {}
+
+    public record LeftConversation(String conversationId) {}
 
 }

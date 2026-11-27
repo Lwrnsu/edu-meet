@@ -163,6 +163,10 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
     return conversationRequest(conversationId, "/name", { method: "PATCH", body: { name } });
   }
 
+  function leaveGroup(conversationId) {
+    return conversationRequest(conversationId, "/membership", { method: "DELETE" });
+  }
+
   function getPinnedMessages(conversationId, options) {
     return conversationRequest(conversationId, "/pinned-messages", options);
   }
@@ -199,6 +203,7 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
     getMessages,
     getOlderMessages,
     renameGroup,
+    leaveGroup,
     getPinnedMessages,
     setMessagePinned,
     sendAttachment,

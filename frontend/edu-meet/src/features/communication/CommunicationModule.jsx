@@ -220,7 +220,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
 
   function handleConfirmLeaveGroup() {
     dialogCloseIntentRef.current = "leave";
-    conversationState.handleConfirmLeaveGroup();
+    return conversationState.handleConfirmLeaveGroup();
   }
 
   return (
@@ -247,7 +247,6 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                 <ChatHeader
                   key={selectedConversationId}
                   conversation={selectedConversation}
-                  live={live}
                   onMenuAction={handleMenuAction}
                   view={
                     showingMembers

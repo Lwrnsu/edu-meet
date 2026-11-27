@@ -31,6 +31,7 @@ import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
+import com.block_a.edu_meet.services.ConversationMembershipService;
 
 class DirectPinningTest {
     private final ConversationRepository conversations = mock(ConversationRepository.class);
@@ -38,7 +39,8 @@ class DirectPinningTest {
     private final MongoOperations mongo = mock(MongoOperations.class);
     private final ChatHandler chat = mock(ChatHandler.class);
     private final GroupChatController controller =
-            new GroupChatController(new ConversationAccess(conversations), messages, mongo, chat);
+            new GroupChatController(new ConversationAccess(conversations), messages, mongo, chat,
+                    new ConversationMembershipService(mongo));
     private final Conversation direct = new Conversation(ConversationType.PRIVATE, null, List.of("php:1", "php:2"));
 
     @Test

@@ -10,7 +10,6 @@ export default function ChatHeader({
   onMenuAction,
   onBackToChat,
   triggerRef,
-  live = false,
   view = "chat",
 }) {
   const [openConversationId, setOpenConversationId] = useState(null);
@@ -195,7 +194,6 @@ export default function ChatHeader({
               onAction={handleMenuAction}
               onDismiss={() => setOpenConversationId(null)}
               position={menuPosition}
-              live={live}
             />
           )}
         </div>

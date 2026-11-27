@@ -15,6 +15,8 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -73,6 +75,37 @@ class GroupChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.body[0].id").value(group.getId()))
                 .andExpect(jsonPath("$.body[0].name").value("New name"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ConversationType.class, names = {"BLOCK", "SUBJECT"})
+    void leavingRemovesOnlyTheSignedInMemberAndRevokesAccess(ConversationType type) throws Exception {
+        group.setType(type);
+        conversations.save(group);
+
+        mvc.perform(delete(groupUrl() + "/membership").principal(account(1)).param("userId", "php:2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.conversationId").value(group.getId()));
+
+        mvc.perform(get("/api/conversations").principal(account(1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(1))
+                .andExpect(jsonPath("$.body[0].id").value(other.getId()));
+        mvc.perform(get(groupUrl() + "/members").principal(account(1)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get(groupUrl() + "/members").principal(account(2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(1))
+                .andExpect(jsonPath("$.body[0].id").value("php:2"));
+    }
+
+    @Test
+    void leaveRejectsUnauthenticatedUsersOutsidersAndDirectChats() throws Exception {
+        mvc.perform(delete(groupUrl() + "/membership")).andExpect(status().isUnauthorized());
+        mvc.perform(delete(groupUrl() + "/membership").principal(account(3)))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/conversations/" + other.getId() + "/membership").principal(account(1)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

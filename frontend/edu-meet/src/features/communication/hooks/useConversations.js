@@ -121,12 +121,19 @@ export default function useConversations({
     setLeaveGroupConversationId(null);
   }
 
-  function handleConfirmLeaveGroup() {
-    if (leaveGroupConversationId === null) {
-      return;
+  async function handleConfirmLeaveGroup() {
+    const conversationId = leaveGroupConversationId;
+    if (conversationId === null) return;
+
+    if (currentUserId) {
+      try {
+        await api.leaveGroup(conversationId);
+      } catch (error) {
+        // The chat may already be unavailable if a previous leave succeeded.
+        if (error.status !== 404) throw error;
+      }
     }
 
-    const conversationId = leaveGroupConversationId;
     setLoadedConversations((current) =>
       current.filter((conversation) => conversation.id !== conversationId),
     );
