@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,6 +24,7 @@ class ExtractPdfTextToolTest {
     Path tempDir;
 
     private final PdfAttachment attachment = new PdfAttachment();
+    private int pdfCounter = 0;
 
     @Test
     void extractPdfTextReturnsTheTextOfTheAttachedPdf() throws Exception {
@@ -71,6 +73,20 @@ class ExtractPdfTextToolTest {
     }
 
     @Test
+    void twoAttachmentsAreJoinedWithDocumentHeaders() throws Exception {
+        attachment.set(List.of(
+                writePdf(1, "Photosynthesis converts light into chemical energy."),
+                writePdf(1, "Mitochondria is the powerhouse of the cell.")));
+
+        String text = (String) tool(40, 60_000).execute(Map.of()).get("text");
+
+        assertTrue(text.contains("--- Document 1 ---"));
+        assertTrue(text.contains("--- Document 2 ---"));
+        assertTrue(text.contains("Photosynthesis"));
+        assertTrue(text.contains("Mitochondria"));
+    }
+
+    @Test
     void pageLimitIsReportedBackToTheModel() throws Exception {
         attachment.set(writePdf(3, "Cells are the basic unit of life."));
 
@@ -83,7 +99,7 @@ class ExtractPdfTextToolTest {
     void attachmentCanBeCleared() {
         attachment.set(tempDir.resolve("x.pdf"));
         attachment.clear();
-        assertNull(attachment.get());
+        assertTrue(attachment.get().isEmpty());
     }
 
     private ExtractPdfTextTool tool(int maxPages, int maxChars) {
@@ -92,7 +108,7 @@ class ExtractPdfTextToolTest {
 
     // pageText == null writes a page with no content stream, like a scan.
     private Path writePdf(int pages, String pageText) throws Exception {
-        Path pdf = tempDir.resolve("lecture-" + pages + "-" + (pageText == null ? "blank" : "text") + ".pdf");
+        Path pdf = tempDir.resolve("doc-" + (++pdfCounter) + ".pdf");
 
         try (PDDocument doc = new PDDocument()) {
             for (int i = 0; i < pages; i++) {

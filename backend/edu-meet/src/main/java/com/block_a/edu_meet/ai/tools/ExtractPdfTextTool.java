@@ -5,10 +5,14 @@ import com.block_a.edu_meet.ai.PdfTextService;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 @Component
 public class ExtractPdfTextTool implements Tool {
+
+    // Several documents are joined into one result, so the total is capped too.
+    private static final int MAX_TOTAL_CHARS = 90_000;
 
     private final PdfTextService pdfTextService;
     private final PdfAttachment attachment;
@@ -25,9 +29,9 @@ public class ExtractPdfTextTool implements Tool {
 
     @Override
     public String description() {
-        return "Extract the text of the PDF attached to the current message. Takes no arguments. "
-                + "Use this before answering questions about the PDF's content or before creating "
-                + "a reviewer from it. This is the only way to read a file.";
+        return "Extract the text of the PDFs attached to the current message. Takes no arguments. "
+                + "Use this before answering questions about the documents or before creating a "
+                + "reviewer from them. This is the only way to read a file.";
     }
 
     // No parameters on purpose: the model must not be able to choose what to read.
@@ -38,17 +42,38 @@ public class ExtractPdfTextTool implements Tool {
 
     @Override
     public Map<String, Object> execute(Map<String, Object> arguments) {
-        Path file = attachment.get();
+        List<Path> files = attachment.get();
 
-        if (file == null) {
+        if (files.isEmpty()) {
             return Map.of("error", "No PDF is attached to this message. Ask the user to attach one.");
         }
 
+        StringBuilder text = new StringBuilder();
+
         try {
-            return Map.of("text", pdfTextService.extract(file));
+            for (int i = 0; i < files.size(); i++) {
+                if (files.size() > 1) {
+                    text.append("--- Document ").append(i + 1).append(" ---\n");
+                }
+                text.append(pdfTextService.extract(files.get(i)));
+                if (i < files.size() - 1) {
+                    text.append("\n\n");
+                }
+                if (text.length() >= MAX_TOTAL_CHARS) {
+                    break;
+                }
+            }
         } catch (Exception e) {
             String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             return Map.of("error", message);
         }
+
+        String result = text.length() > MAX_TOTAL_CHARS
+                ? text.substring(0, MAX_TOTAL_CHARS)
+                        + "\n\n[Truncated: the attached documents are longer than "
+                        + MAX_TOTAL_CHARS + " characters.]"
+                : text.toString();
+
+        return Map.of("text", result, "documents", files.size());
     }
 }

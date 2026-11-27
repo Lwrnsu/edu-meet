@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -57,27 +58,28 @@ public class ChatController {
         return respond(sessionId, message, false);
     }
 
-    // Accepts the PDF together with the question in one multipart request: the
-    // chat UI sends the file and the message as parts, the backend stores the
-    // file temporarily and hands it to the extraction tool for this request only.
+    // Accepts one or more PDFs together with the question in a single multipart
+    // request: the chat UI sends the files and the message as parts, the backend
+    // stores them temporarily and hands them to the extraction tool for this
+    // request only.
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ChatResponse chat(@RequestPart("sessionId") String sessionId,
                              @RequestPart("message") String message,
-                             @RequestPart(value = "file", required = false) MultipartFile file) {
+                             @RequestPart(value = "file", required = false) List<MultipartFile> files) {
         String session = requireSessionId(sessionId);
         String text = requireMessage(message);
 
-        Path uploaded = null;
+        List<Path> uploaded = List.of();
         try {
-            uploaded = saveTempFile(file);
-            if (uploaded != null) {
+            uploaded = saveTempFiles(files);
+            if (!uploaded.isEmpty()) {
                 attachment.set(uploaded);
             }
-            return respond(session, text, uploaded != null);
+            return respond(session, text, !uploaded.isEmpty());
         } finally {
-            // Always release the file, whether the model answered or not.
+            // Always release the files, whether the model answered or not.
             attachment.clear();
-            deleteQuietly(uploaded);
+            uploaded.forEach(this::deleteQuietly);
         }
     }
 
@@ -157,24 +159,35 @@ public class ChatController {
         return message;
     }
 
-    private Path saveTempFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
-        if (file.getSize() > maxPdfBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "The PDF must be " + (maxPdfBytes / (1024 * 1024)) + " MB or smaller");
+    private List<Path> saveTempFiles(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return List.of();
         }
 
-        Path target = null;
-        try {
-            target = Files.createTempFile("edu-meet-pdf-", ".pdf");
-            file.transferTo(target);
-            return target;
-        } catch (IOException e) {
-            deleteQuietly(target);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store the uploaded PDF");
+        List<Path> saved = new ArrayList<>(files.size());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            if (file.getSize() > maxPdfBytes) {
+                saved.forEach(this::deleteQuietly);
+                throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                        "Each PDF must be " + (maxPdfBytes / (1024 * 1024)) + " MB or smaller");
+            }
+
+            try {
+                Path target = Files.createTempFile("edu-meet-pdf-", ".pdf");
+                saved.add(target);
+                file.transferTo(target);
+            } catch (IOException e) {
+                saved.forEach(this::deleteQuietly);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Could not store the uploaded PDF");
+            }
         }
+
+        return saved;
     }
 
     private void deleteQuietly(Path file) {

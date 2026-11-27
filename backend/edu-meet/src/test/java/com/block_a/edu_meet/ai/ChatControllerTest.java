@@ -80,10 +80,10 @@ class ChatControllerTest {
                 "%PDF-1.4 test".getBytes(StandardCharsets.UTF_8));
 
         ChatController.ChatResponse response =
-                controller(gemini).chat("mp-1", "make a reviewer", file);
+                controller(gemini).chat("mp-1", "make a reviewer", List.of(file));
 
         assertEquals("Reviewer ready", response.reply());
-        assertNull(attachment.get(), "the attachment must be cleared after the request");
+        assertTrue(attachment.get().isEmpty(), "the attachment must be cleared after the request");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Map<String, Object>>> sent = ArgumentCaptor.forClass(List.class);

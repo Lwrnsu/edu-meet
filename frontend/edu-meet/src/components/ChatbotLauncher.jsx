@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 // Each browser tab gets its own conversation. Before, every client shared the
 // constant 'edu-meet-assistant', so users saw each other's history.
@@ -110,39 +110,311 @@ function downloadReviewer(items) {
 
 const downloadBtnStyle = {
   alignSelf: 'flex-start',
-  marginTop: 4,
-  padding: '5px 12px',
-  fontFamily: 'Inter, sans-serif',
-  fontSize: 12,
-  lineHeight: '16px',
-  color: '#DCCBFF',
-  background: 'rgba(124, 58, 237, 0.25)',
-  border: '1px solid rgba(196, 181, 253, 0.5)',
+  flexShrink: 0,
+  padding: '10px 18px',
+  fontFamily: "'Outfit', sans-serif",
+  fontSize: 18,
+  lineHeight: '24px',
+  color: '#FFFFFF',
+  background: '#A453FD',
+  border: 'none',
   borderRadius: 999,
   cursor: 'pointer',
 }
 
-function MessageContent({ text }) {
-  const reviewer = parseReviewer(text)
-  if (reviewer) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {reviewer.note && (
-          <span style={{ fontStyle: 'italic', opacity: 0.85 }}>{reviewer.note}</span>
-        )}
-        {reviewer.items.map((item, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontWeight: 600 }}>{item.answer}</span>
-            <span>{item.question}</span>
+const userBubbleStyle = {
+  alignSelf: 'flex-end',
+  maxWidth: 521,
+  boxSizing: 'border-box',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: '12px 14px',
+  background: '#A453FD',
+  borderRadius: 40,
+}
+
+const userTextStyle = {
+  fontFamily: "'Outfit', sans-serif",
+  fontSize: 28,
+  lineHeight: '35px',
+  color: '#FFFFFF',
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+}
+
+const fileRowStyle = {
+  alignSelf: 'flex-start',
+  marginLeft: 10,
+  width: '75%',
+  minHeight: 96,
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '6px 14px',
+  background: 'rgba(217, 226, 239, 0.5)',
+  borderRadius: 20,
+}
+
+const fileNameStyle = {
+  fontFamily: "'Outfit', sans-serif",
+  fontSize: 30,
+  lineHeight: '38px',
+  color: '#FFFFFF',
+  overflowWrap: 'anywhere',
+}
+
+const assistantTextStyle = {
+  alignSelf: 'flex-start',
+  width: '100%',
+  maxWidth: 1127,
+  fontFamily: "'Intel One Mono', monospace",
+  fontSize: 30,
+  lineHeight: '41px',
+  color: '#FFFFFF',
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+}
+
+const reviewerCardStyle = {
+  alignSelf: 'flex-start',
+  width: '100%',
+  maxWidth: 760,
+  maxHeight: '58vh',
+  boxSizing: 'border-box',
+  display: 'flex',
+  flexDirection: 'column',
+  padding: '18px 20px',
+  background: 'rgba(217, 226, 239, 0.08)',
+  border: '1px solid rgba(217, 226, 239, 0.22)',
+  borderRadius: 24,
+}
+
+const reviewerHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'baseline',
+  paddingBottom: 10,
+  borderBottom: '1px solid rgba(217, 226, 239, 0.18)',
+  fontFamily: "'Intel One Mono', monospace",
+  fontSize: 18,
+  lineHeight: '26px',
+  color: '#D9E2EF',
+  flexShrink: 0,
+}
+
+const reviewerBodyStyle = {
+  flex: 1,
+  overflowY: 'auto',
+  paddingRight: 8,
+  margin: '12px 0',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+}
+
+const reviewerItemStyle = { display: 'flex', flexDirection: 'column', gap: 2 }
+
+const reviewerTermStyle = {
+  fontFamily: "'Intel One Mono', monospace",
+  fontSize: 22,
+  lineHeight: '30px',
+  fontWeight: 700,
+  color: '#FFFFFF',
+}
+
+const reviewerDefinitionStyle = {
+  fontFamily: "'Intel One Mono', monospace",
+  fontSize: 20,
+  lineHeight: '28px',
+  color: '#D9E2EF',
+}
+
+const reviewerNoteStyle = {
+  fontFamily: "'Intel One Mono', monospace",
+  fontSize: 16,
+  lineHeight: '22px',
+  color: '#C9B8FF',
+  margin: '10px 0 0',
+  flexShrink: 0,
+}
+
+const typingBubbleStyle = {
+  alignSelf: 'flex-start',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  width: 94,
+  height: 56,
+  boxSizing: 'border-box',
+  padding: 8,
+  background: '#3D4757',
+  borderRadius: 16,
+}
+
+const thumbRowStyle = {
+  display: 'flex',
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 10,
+}
+
+const fileThumbStyle = {
+  position: 'relative',
+  width: 180,
+  height: 180,
+  boxSizing: 'border-box',
+  padding: '12px 15px',
+  borderRadius: 30,
+  background: '#555555',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  flexShrink: 0,
+}
+
+const fileThumbTypeStyle = {
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 700,
+  fontSize: 24,
+  lineHeight: '29px',
+  color: '#FFFDF8',
+}
+
+const fileThumbNameStyle = {
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 700,
+  fontSize: 24,
+  lineHeight: '29px',
+  color: '#FFFDF8',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+const fileThumbRemoveStyle = {
+  position: 'absolute',
+  top: 12,
+  right: 12,
+  width: 32,
+  height: 32,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  color: '#FFFDF8',
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 400,
+  fontSize: 24,
+  lineHeight: '30px',
+  textAlign: 'center',
+  cursor: 'pointer',
+}
+
+const fileErrorStyle = {
+  alignSelf: 'flex-end',
+  maxWidth: 521,
+  fontFamily: "'Inter', sans-serif",
+  fontSize: 16,
+  lineHeight: '22px',
+  color: '#FCA5A5',
+  textAlign: 'right',
+}
+
+function PendingFiles({ files, onRemove }) {
+  return (
+    <div style={thumbRowStyle}>
+      {files.map((file, index) => (
+        <div key={`${file.name}-${index}`} style={fileThumbStyle}>
+          <button
+            style={fileThumbRemoveStyle}
+            onClick={() => onRemove(index)}
+            aria-label={`Remove ${file.name}`}
+            title="Remove file"
+          >
+            ✕
+          </button>
+          <span style={fileThumbTypeStyle}>PDF</span>
+          <span style={fileThumbNameStyle}>{file.name}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function UserMessage({ text, fileNames }) {
+  const hasFiles = Array.isArray(fileNames) && fileNames.length > 0
+
+  return (
+    // A file card needs the full width for its attachment rows; a text message
+    // should hug its content instead of stretching to 521px.
+    <div data-role="user" style={{ ...userBubbleStyle, width: hasFiles ? '100%' : 'fit-content' }}>
+      {hasFiles && fileNames.map((name, index) => (
+        <div key={`${name}-${index}`} style={fileRowStyle}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF"
+               strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+          </svg>
+          <span style={fileNameStyle}>{name}</span>
+        </div>
+      ))}
+      <span style={userTextStyle}>{text}</span>
+    </div>
+  )
+}
+
+function TypingBubble() {
+  return (
+    <div style={typingBubbleStyle} role="status" aria-label="ReneBOT is typing">
+      <span className="edu-dot" />
+      <span className="edu-dot" />
+      <span className="edu-dot" />
+    </div>
+  )
+}
+
+function ReviewerCard({ note, items }) {
+  return (
+    <div data-role="assistant" style={reviewerCardStyle}>
+      <div style={reviewerHeaderStyle}>
+        <span>Reviewer</span>
+        <span>{items.length} items</span>
+      </div>
+      {note && <p style={reviewerNoteStyle}>{stripMarkdown(note)}</p>}
+      <div style={reviewerBodyStyle}>
+        {items.map((item, i) => (
+          <div key={i} style={reviewerItemStyle}>
+            <span style={reviewerTermStyle}>{stripMarkdown(item.answer)}</span>
+            <span style={reviewerDefinitionStyle}>{stripMarkdown(item.question)}</span>
           </div>
         ))}
-        <button style={downloadBtnStyle} onClick={() => downloadReviewer(reviewer.items)}>
-          ⤓ Download .json
-        </button>
       </div>
-    )
-  }
+      <button style={downloadBtnStyle} onClick={() => downloadReviewer(items)}>
+        ⤓ Download .json
+      </button>
+    </div>
+  )
+}
+
+// The model sometimes answers in markdown. The design is plain monospace, so
+// the markers are removed rather than rendered.
+function stripMarkdown(text) {
   return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/(^|[^*])\*(\S[^*\n]*?)\*/g, '$1$2')
+    .replace(/^#{1,6}\s+/gm, '')
+}
+
+function AssistantMessage({ text }) {
+  const reviewer = parseReviewer(text)
+  if (reviewer) {
+    return <ReviewerCard note={reviewer.note} items={reviewer.items} />
+  }
+  return <div data-role="assistant" style={assistantTextStyle}>{stripMarkdown(text)}</div>
 }
 
 function ChatbotLauncher() {
@@ -150,6 +422,10 @@ function ChatbotLauncher() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [pendingFiles, setPendingFiles] = useState([])
+  const [fileError, setFileError] = useState('')
+
+  const canSend = Boolean(input.trim()) && !sending
   const fileInputRef = useRef(null)
   const bodyRef = useRef(null)
 
@@ -162,15 +438,28 @@ function ChatbotLauncher() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = bodyRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [messages])
+    if (!el) return
 
-  async function ask(init, label) {
+    const nodes = el.querySelectorAll('[data-role]')
+    const last = nodes[nodes.length - 1]
+
+    // A long answer should be read from its beginning, not from its end.
+    if (last?.dataset.role === 'assistant' && last.offsetHeight > el.clientHeight - 120) {
+      const bodyTop = el.getBoundingClientRect().top
+      const messageTop = last.getBoundingClientRect().top
+      el.scrollTop += messageTop - bodyTop - 8
+      return
+    }
+
+    el.scrollTop = el.scrollHeight
+  }, [messages, sending])
+
+  async function ask(init, label, fileNames) {
     if (sending) return
     setSending(true)
-    setMessages((prev) => [...prev, { role: 'user', text: label }])
+    setMessages((prev) => [...prev, { role: 'user', text: label, fileNames }])
     try {
       const res = await fetch('/api/chat', init)
       const data = await res.json().catch(() => ({}))
@@ -195,10 +484,59 @@ function ChatbotLauncher() {
     }
   }
 
+  // Picked PDFs are only staged: nothing is sent, and no prompt is invented.
+  // The user types what they want done with them.
+  function attachFiles(fileList) {
+    const incoming = Array.from(fileList ?? [])
+    if (incoming.length === 0) return
+
+    const maxBytes = 8 * 1024 * 1024
+    const accepted = []
+    let error = ''
+
+    for (const file of incoming) {
+      if (file.size > maxBytes) {
+        error = `${file.name} is ${(file.size / (1024 * 1024)).toFixed(1)} MB - the limit is 8 MB per file.`
+        continue
+      }
+      accepted.push(file)
+    }
+
+    setFileError(error)
+
+    if (accepted.length > 0) {
+      setPendingFiles((prev) => {
+        const next = [...prev]
+        for (const file of accepted) {
+          if (!next.some((f) => f.name === file.name && f.size === file.size)) {
+            next.push(file)
+          }
+        }
+        return next.slice(0, 5)
+      })
+    }
+  }
+
+  function removePendingFile(index) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
   function sendText() {
+    if (sending) return
+
     const text = input.trim()
-    if (!text || sending) return
+    if (!text) return
+
     setInput('')
+    setFileError('')
+
+    if (pendingFiles.length > 0) {
+      const files = pendingFiles
+      setPendingFiles([])
+      sendWithFiles(files, text)
+      return
+    }
+
     ask(
       {
         method: 'POST',
@@ -209,15 +547,13 @@ function ChatbotLauncher() {
     )
   }
 
-  function sendWithFile(file) {
-    if (!file || sending) return
-    const label = input.trim() || 'Can you create a reviewer for this PDF?'
-    setInput('')
+  function sendWithFiles(files, label) {
+    if (files.length === 0 || sending) return
     const form = new FormData()
     form.append('sessionId', SESSION_ID)
     form.append('message', label)
-    form.append('file', file)
-    ask({ method: 'POST', body: form }, label)
+    files.forEach((file) => form.append('file', file))
+    ask({ method: 'POST', body: form }, label, files.map((file) => file.name))
   }
 
   const overlayStyle = {
@@ -281,7 +617,7 @@ function ChatbotLauncher() {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: messages.length === 0 ? 'center' : 'flex-start',
-    padding: messages.length === 0 ? '0 82px' : '24px 82px',
+    padding: messages.length === 0 ? '0 39px 0 55px' : '24px 39px 24px 55px',
     overflowY: 'auto',
     overflowX: 'hidden',
   }
@@ -289,7 +625,7 @@ function ChatbotLauncher() {
   const emptyStyle = {
     width: '100%',
     maxWidth: 518,
-    marginLeft: 17,
+    marginLeft: 29,
     fontFamily: "'Intel One Mono', monospace",
     fontStyle: 'normal',
     fontWeight: 400,
@@ -300,36 +636,48 @@ function ChatbotLauncher() {
 
   const listStyle = {
     width: '100%',
-    maxWidth: 1261,
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
-    paddingLeft: 17,
-    paddingRight: 17,
+    gap: 28,
   }
 
   const composerWrapStyle = {
-    width: 'calc(100% - 60px)',
-    maxWidth: 1261,
-    minHeight: 63,
+    width: '100%',
     boxSizing: 'border-box',
-    marginBottom: 41,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     display: 'flex',
-    flexDirection: 'row',
+    flexDirection: 'column',
+    gap: 14,
+    padding: '20px 24px 12px',
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    flexShrink: 0,
+  }
+
+  const composerRowStyle = {
+    display: 'flex',
     alignItems: 'center',
     gap: 10,
-    padding: '0 20px 0 37px',
+  }
+
+  const composerAreaStyle = {
+    width: 'calc(100% - 60px)',
+    maxWidth: 1261,
+    marginBottom: 41,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
     flexShrink: 0,
   }
 
   const plusStyle = {
     width: 20,
     height: 33,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     fontFamily: 'Inter, sans-serif',
-    fontStyle: 'normal',
     fontWeight: 400,
     fontSize: 24,
     lineHeight: '29px',
@@ -348,7 +696,6 @@ function ChatbotLauncher() {
     border: 'none',
     outline: 'none',
     fontFamily: 'Inter, sans-serif',
-    fontStyle: 'normal',
     fontWeight: 400,
     fontSize: 24,
     lineHeight: '29px',
@@ -357,17 +704,21 @@ function ChatbotLauncher() {
   }
 
   const sendBtnStyle = {
-    width: 45,
-    height: 45,
-    borderRadius: '50%',
-    background: sending ? 'rgba(124, 58, 237, 0.5)' : '#7C3AED',
-    border: 'none',
-    color: '#FFFFFF',
-    fontSize: 16,
-    cursor: sending ? 'default' : 'pointer',
+    width: 51,
+    height: 56,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 0,
+    background: 'transparent',
+    border: 'none',
+    color: '#000000',
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: 400,
+    fontSize: 30,
+    lineHeight: '36px',
+    cursor: canSend ? 'pointer' : 'default',
+    opacity: canSend ? 1 : 0.35,
     flexShrink: 0,
   }
 
@@ -438,14 +789,21 @@ function ChatbotLauncher() {
   return (
     <>
       <style>{`.edu-composer::placeholder { color: rgba(255, 253, 248, 0.85); }
-        @keyframes edu-spin { to { transform: rotate(360deg); } }
-        .edu-spin {
-          width: 16px;
-          height: 16px;
-          border: 2px solid rgba(255, 255, 255, 0.4);
-          border-top-color: #ffffff;
+        @keyframes edu-typing {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+          30% { transform: translateY(-3px); opacity: 1; }
+        }
+        .edu-dot {
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
-          animation: edu-spin 0.8s linear infinite;
+          background: #D9D9D9;
+          animation: edu-typing 1.2s infinite;
+        }
+        .edu-dot:nth-child(2) { animation-delay: 0.15s; }
+        .edu-dot:nth-child(3) { animation-delay: 0.3s; }
+        @media (prefers-reduced-motion: reduce) {
+          .edu-dot { animation: none; opacity: 1; }
         }`}</style>
       {open && (
         <div style={overlayStyle}>
@@ -462,56 +820,56 @@ function ChatbotLauncher() {
             ) : (
               <div style={listStyle}>
                 {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      backgroundColor: m.role === 'user' ? '#7c3aed' : '#1f2937',
-                      color: '#e5e7eb',
-                      borderRadius: 16,
-                      padding: '10px 14px',
-                      maxWidth: '85%',
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-wrap',
-                    }}
-                  >
-                    {m.text ? <MessageContent text={m.text} /> : null}
-                  </div>
+                  m.role === 'user'
+                    ? <UserMessage key={i} text={m.text} fileNames={m.fileNames} />
+                    : <AssistantMessage key={i} text={m.text} />
                 ))}
+                {sending && <TypingBubble />}
               </div>
             )}
           </div>
-          <div style={composerWrapStyle}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              aria-label="Attach a PDF"
-              style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) sendWithFile(f)
-                e.target.value = ''
-              }}
-            />
-            <button style={plusStyle} onClick={() => fileInputRef.current?.click()} aria-label="Attach PDF">
-              +
-            </button>
-            <input
-              className="edu-composer"
-              style={composerInputStyle}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') sendText()
-              }}
-              placeholder="Ask Edu"
-              aria-label="Ask Edu"
-            />
-            <button style={sendBtnStyle} onClick={sendText} aria-label="Send" disabled={sending}>
-              {sending ? <span className="edu-spin" /> : '➤'}
-            </button>
+          <div style={composerAreaStyle}>
+            {fileError && <div style={fileErrorStyle}>{fileError}</div>}
+            <div style={composerWrapStyle}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                multiple
+                aria-label="Attach PDFs"
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files?.length) attachFiles(e.target.files)
+                  e.target.value = ''
+                }}
+              />
+              {pendingFiles.length > 0 && (
+                <PendingFiles files={pendingFiles} onRemove={removePendingFile} />
+              )}
+              <div style={composerRowStyle}>
+                <button style={plusStyle} onClick={() => fileInputRef.current?.click()} aria-label="Attach PDFs">
+                  +
+                </button>
+                <input
+                  className="edu-composer"
+                  style={composerInputStyle}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') sendText()
+                  }}
+                  placeholder={
+                    pendingFiles.length > 0
+                      ? 'Tell me the contents of these documents'
+                      : 'Ask Edu'
+                  }
+                  aria-label="Ask Edu"
+                />
+                <button style={sendBtnStyle} onClick={sendText} aria-label="Send" disabled={!canSend}>
+                  ➤
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

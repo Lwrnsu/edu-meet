@@ -106,6 +106,83 @@ class ToolCallingTest {
         assertEquals("user", contents.get(2).get("role"));
     }
 
+    @Test
+    void leakedReasoningIsRetriedAndReplacedWithTheCleanAnswer() {
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ToolRegistry registry = new ToolRegistry(List.of(
+                new SearchKnowledgeBaseTool(new KnowledgeBase(), new SourceCollector())
+        ));
+
+        server.expect(requestTo(containsString(":generateContent")))
+                .andRespond(withSuccess("""
+                        {"candidates":[{"content":{"role":"model","parts":[
+                          {"text":"The user asked for a list. Wait, let me check the instructions.\\nMitochondria"}
+                        ]},"finishReason":"STOP"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo(containsString(":generateContent")))
+                .andExpect(content().string(containsString("Do not explain")))
+                .andRespond(withSuccess("""
+                        {"candidates":[{"content":{"role":"model","parts":[
+                          {"text":"Mitochondria, Jillian Carl M. Pascasio, Marlon"}
+                        ]},"finishReason":"STOP"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        GeminiChatService service = new GeminiChatService(
+                builder.build(), registry, "test-key", "gemini-test");
+
+        List<Map<String, Object>> contents = new ArrayList<>();
+        contents.add(Map.of("role", "user",
+                "parts", List.of(Map.of("text", "List the important things in this pdf"))));
+
+        assertEquals("Mitochondria, Jillian Carl M. Pascasio, Marlon", service.chat(contents));
+        server.verify();
+
+        // user turn + the clean model turn; the leaked one was replaced
+        assertEquals(2, contents.size());
+    }
+
+    @Test
+    void leakedReasoningIsStrippedWhenTheRetryAlsoLeaks() {
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ToolRegistry registry = new ToolRegistry(List.of(
+                new SearchKnowledgeBaseTool(new KnowledgeBase(), new SourceCollector())
+        ));
+
+        server.expect(requestTo(containsString(":generateContent")))
+                .andRespond(withSuccess("""
+                        {"candidates":[{"content":{"role":"model","parts":[
+                          {"text":"The user asked for a list.\\nWait, let me check the instructions.\\nMitochondria"}
+                        ]},"finishReason":"STOP"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo(containsString(":generateContent")))
+                .andRespond(withSuccess("""
+                        {"candidates":[{"content":{"role":"model","parts":[
+                          {"text":"Let me think about the system prompt.\\nMitochondria, Marlon"}
+                        ]},"finishReason":"STOP"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        GeminiChatService service = new GeminiChatService(
+                builder.build(), registry, "test-key", "gemini-test");
+
+        List<Map<String, Object>> contents = new ArrayList<>();
+        contents.add(Map.of("role", "user",
+                "parts", List.of(Map.of("text", "List the important things in this pdf"))));
+
+        String reply = service.chat(contents);
+        String lower = reply.toLowerCase();
+
+        assertFalse(lower.contains("wait,"));
+        assertFalse(lower.contains("instructions"));
+        assertFalse(lower.contains("system prompt"));
+        assertTrue(reply.contains("Mitochondria"));
+    }
+
     private static Map<String, Object> byName(List<Map<String, Object>> declarations, String name) {
         return declarations.stream()
                 .filter(declaration -> name.equals(declaration.get("name")))

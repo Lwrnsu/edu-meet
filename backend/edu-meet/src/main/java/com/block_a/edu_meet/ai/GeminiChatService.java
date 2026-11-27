@@ -74,6 +74,26 @@ public class GeminiChatService {
                 .build();
     }
 
+    // Gemini sometimes writes its own deliberation into the text instead of the
+    // answer. These phrases are strong signals of that, and are never part of a
+    // legitimate EduMeet reply.
+    private static final List<String> REASONING_MARKERS = List.of(
+            "the user asked",
+            "the instructions",
+            "system prompt",
+            "let's look",
+            "let me think",
+            "let me check",
+            "the prompt says",
+            "wait,");
+
+    private static final String NO_REASONING =
+            "Do not explain or narrate your reasoning. Reply with only the final answer "
+                    + "to my last request, in plain text.";
+
+    private static final String FALLBACK =
+            "Sorry, I could not put that into words. Please try asking again.";
+
     // Runs one user turn: keep calling tools until the model gives a text answer.
     public String chat(List<Map<String, Object>> contents) {
         for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -86,7 +106,12 @@ public class GeminiChatService {
 
             List<Map<String, Object>> calls = functionCallsIn(content);
             if (calls.isEmpty()) {
-                return textOf(content);
+                String text = textOf(content);
+
+                if (!looksLikeReasoning(text)) {
+                    return text;
+                }
+                return retryWithoutReasoning(contents, content, text);
             }
 
             contents.add(Map.of("role", "user", "parts", functionResponses(calls)));
@@ -94,6 +119,52 @@ public class GeminiChatService {
 
         throw new ModelResponseException(
                 "The model kept requesting tools after " + MAX_TOOL_ROUNDS + " rounds.");
+    }
+
+    // Asks once more for an answer without the narration. On success the leaked
+    // turn is replaced in the history so later requests never replay it.
+    private String retryWithoutReasoning(List<Map<String, Object>> contents,
+                                         Map<String, Object> leaked,
+                                         String leakedText) {
+        List<Map<String, Object>> retryContents = new ArrayList<>(contents);
+        retryContents.add(Map.of("role", "user", "parts", List.of(Map.of("text", NO_REASONING))));
+
+        try {
+            Map<String, Object> retried = contentOf(generate(retryContents));
+            String text = textOf(retried);
+
+            if (!looksLikeReasoning(text)) {
+                contents.set(contents.size() - 1, retried);
+                return text;
+            }
+            return stripReasoning(text);
+        } catch (RuntimeException e) {
+            // The retry failing must not fail the user's request.
+            return stripReasoning(leakedText);
+        }
+    }
+
+    static boolean looksLikeReasoning(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        return REASONING_MARKERS.stream().anyMatch(lower::contains);
+    }
+
+    // Last resort: drop the lines that look like narration. Anything left is
+    // better than showing the user the model's notes.
+    private static String stripReasoning(String text) {
+        if (text == null) {
+            return FALLBACK;
+        }
+
+        String kept = text.lines()
+                .filter(line -> !looksLikeReasoning(line))
+                .reduce("", (a, b) -> a.isEmpty() ? b : a + "\n" + b)
+                .trim();
+
+        return kept.isEmpty() ? FALLBACK : kept;
     }
 
     public static class ModelResponseException extends RuntimeException {
@@ -107,6 +178,8 @@ public class GeminiChatService {
         body.put("systemInstruction",
                 Map.of("parts", List.of(Map.of("text", ChatPrompt.SYSTEM))));
         body.put("contents", contents);
+        // Gemini 3 rejects thinkingBudget, so thinking stays on "low" and the
+        // reasoning guard below removes anything that leaks into the text.
         body.put("generationConfig",
                 Map.of("thinkingConfig", Map.of("thinkingLevel", "low")));
 
