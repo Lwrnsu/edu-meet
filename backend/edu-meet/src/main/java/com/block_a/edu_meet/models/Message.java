@@ -1,6 +1,7 @@
 package com.block_a.edu_meet.models;
 
 import java.time.Instant;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -15,6 +16,9 @@ public class Message {
     private String senderId;
     private String text;
     private Instant timestamp;
+    private Attachment attachment;
+    @JsonIgnore
+    private byte[] attachmentBytes;
 
     public Message() {
     }
@@ -39,6 +43,14 @@ public class Message {
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+
+    public Attachment getAttachment() { return attachment; }
+    public void setAttachment(Attachment attachment) { this.attachment = attachment; }
+
+    public byte[] getAttachmentBytes() { return attachmentBytes; }
+    public void setAttachmentBytes(byte[] attachmentBytes) { this.attachmentBytes = attachmentBytes; }
+
+    public record Attachment(String name, String contentType, long size) {}
 
     public Instant getTimestamp() { return timestamp; }
     public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }

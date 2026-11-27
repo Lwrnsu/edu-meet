@@ -3,6 +3,7 @@ package com.block_a.edu_meet.controllers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -20,7 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.block_a.edu_meet.dtos.ApiResponse;
 
-@RestControllerAdvice(assignableTypes = {ConversationController.class, MessageController.class, GroupChatController.class})
+@RestControllerAdvice(assignableTypes = {ConversationController.class, MessageController.class, GroupChatController.class, AttachmentController.class})
 public class CommunicationApiResponseAdvice extends ResponseEntityExceptionHandler
         implements ResponseBodyAdvice<Object> {
 
@@ -36,6 +37,7 @@ public class CommunicationApiResponseAdvice extends ResponseEntityExceptionHandl
     public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType contentType,
                                   Class<? extends HttpMessageConverter<?>> converterType,
                                   ServerHttpRequest request, ServerHttpResponse response) {
+        if (body instanceof Resource) return body;
         return new ApiResponse<>(true, HttpStatus.OK.value(), "OK", body);
     }
 

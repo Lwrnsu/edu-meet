@@ -77,7 +77,7 @@ class ConversationReadAccessTest {
     void membersCanRead(String endpoint) throws Exception {
         Message message = new Message("chat", "member", "Hello", Instant.parse("2026-11-15T00:00:00Z"));
         message.setId("cursor");
-        when(messages.findById("cursor")).thenReturn(Optional.of(message));
+        when(messages.findMetadataById("cursor")).thenReturn(Optional.of(message));
         when(messages.findByConversationIdOrderByTimestampDescIdDesc(eq("chat"), any()))
                 .thenReturn(List.of(message));
         when(messages.findOlderMessages(eq("chat"), any(), eq("cursor"), any()))
@@ -178,7 +178,7 @@ class ConversationReadAccessTest {
 
     @Test
     void cursorFromAnotherChatIsRejected() throws Exception {
-        when(messages.findById("foreign")).thenReturn(Optional.of(
+        when(messages.findMetadataById("foreign")).thenReturn(Optional.of(
                 new Message("other-chat", "member", "Other chat", Instant.now())));
         mvc.perform(get("/api/conversations/chat/messages/older")
                 .param("userId", "member").param("beforeId", "foreign"))

@@ -60,7 +60,7 @@ public class MessageController {
         if (beforeId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "beforeId is required");
         }
-        Message cursor = messageRepository.findById(beforeId)
+        Message cursor = messageRepository.findMetadataById(beforeId)
                 .filter(message -> conversationId.equals(message.getConversationId()))
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST, "beforeId must refer to a message in this chat"));

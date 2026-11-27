@@ -91,7 +91,8 @@ public class ChatHandler extends TextWebSocketHandler {
 
         incoming.setSenderId(userId);
         incoming.setId(null);
-                incoming.setId(null);
+        incoming.setAttachment(null);
+        incoming.setAttachmentBytes(null);
 
         Conversation conversation = conversationRepository
                 .findById(incoming.getConversationId()).orElse(null);
@@ -113,7 +114,10 @@ public class ChatHandler extends TextWebSocketHandler {
             ))));
             return;
         }
-        System.out.println("Saved: " + saved.getId());
+        publishSavedMessage(conversation, saved);
+    }
+
+    public void publishSavedMessage(Conversation conversation, Message saved) {
         recentMessageCache.invalidate(saved.getConversationId());
 
         TextMessage out = new TextMessage(objectMapper.writeValueAsString(saved));

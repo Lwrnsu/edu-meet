@@ -67,7 +67,7 @@ public class ConversationController {
                     return new ConversationSummary(
                             c.getId(), c.getType(), c.getName(), c.getAvatarUrl(),
                             c.getParticipantIds(),
-                            last == null ? null : last.getText(),
+                            last == null ? null : preview(last),
                             last == null ? null : last.getTimestamp());
                 })
                 .sorted(Comparator.comparing(ConversationSummary::lastMessageTime,
@@ -145,6 +145,12 @@ public class ConversationController {
         return updateParticipants(conversation);
     }
 
+
+    private String preview(Message message) {
+        return (message.getText() == null || message.getText().isEmpty()) && message.getAttachment() != null
+                ? message.getAttachment().name()
+                : message.getText();
+    }
 
     private Conversation updateParticipants(Conversation conversation) {
         Conversation updated = mongoOperations.findAndModify(

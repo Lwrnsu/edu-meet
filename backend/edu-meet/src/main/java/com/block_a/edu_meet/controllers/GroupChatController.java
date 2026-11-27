@@ -78,7 +78,7 @@ public class GroupChatController {
     public Message pin(@PathVariable String conversationId, @PathVariable String messageId,
                        @RequestParam(required = false) String userId, Principal principal) {
         String actor = requireGroupMember(conversationId, userId, principal).userId();
-        Message message = messages.findById(messageId)
+        Message message = messages.findMetadataById(messageId)
                 .filter(candidate -> conversationId.equals(candidate.getConversationId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message doesn't exist"));
         updateGroup(conversationId, actor, new Update().addToSet("pinnedMessageIds", messageId));
