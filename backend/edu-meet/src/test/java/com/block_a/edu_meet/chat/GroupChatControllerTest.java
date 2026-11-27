@@ -48,11 +48,11 @@ class GroupChatControllerTest {
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(groupController, conversationsController)
                 .setControllerAdvice(new CommunicationApiResponseAdvice()).build();
-        group = conversations.save(new Conversation(ConversationType.BLOCK, "Original", List.of("1", "2")));
-        other = conversations.save(new Conversation(ConversationType.PRIVATE, null, List.of("1", "2")));
+        group = conversations.save(new Conversation(ConversationType.BLOCK, "Original", List.of("php:1", "php:2")));
+        other = conversations.save(new Conversation(ConversationType.PRIVATE, null, List.of("php:1", "php:2")));
         Instant now = Instant.now();
-        first = messages.save(new Message(group.getId(), "1", "First message", now));
-        second = messages.save(new Message(other.getId(), "2", "Different chat", now.minusSeconds(10)));
+        first = messages.save(new Message(group.getId(), "php:1", "First message", now));
+        second = messages.save(new Message(other.getId(), "php:2", "Different chat", now.minusSeconds(10)));
     }
 
     @AfterEach
@@ -75,9 +75,9 @@ class GroupChatControllerTest {
 
     @Test
     void rejectsUnverifiedUserOutsiderPrivateChatAndBlankName() throws Exception {
-        mvc.perform(get(groupUrl() + "/pinned-messages").param("userId", "1"))
+        mvc.perform(get(groupUrl() + "/pinned-messages").param("userId", "php:1"))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(put(pinUrl(first)).principal(account(4)).param("userId", "1"))
+        mvc.perform(put(pinUrl(first)).principal(account(4)).param("userId", "php:1"))
                 .andExpect(status().isNotFound());
         mvc.perform(get("/api/conversations/" + other.getId() + "/pinned-messages").principal(account(1)))
                 .andExpect(status().isBadRequest());
@@ -99,7 +99,7 @@ class GroupChatControllerTest {
         }
 
         mvc.perform(put(groupUrl() + "/members").principal(rosterManager()).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userIds\":[\"1\",\"2\",\"3\"]}"))
+                        .content("{\"userIds\":[\"php:1\",\"php:2\",\"php:3\"]}"))
                 .andExpect(status().isOk());
         mvc.perform(get(pins).principal(account(3)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body.length()").value(1))

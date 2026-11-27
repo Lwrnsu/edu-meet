@@ -68,15 +68,8 @@ public final class AuthService {
         }
 
         String key = KEY_PREFIX + token;
-        String value = redisCall(() -> template().opsForValue().get(key));
-        if (value == null) {
-            return null;
-        }
-
-        LogInModel model;
-        try {
-            model = MAPPER.readValue(value, LogInModel.class);
-        } catch (JacksonException ex) {
+        LogInModel model = findSession(token);
+        if (model == null) {
             return null;
         }
 
@@ -86,6 +79,11 @@ public final class AuthService {
             redisCall(() -> template().expire(USER_INDEX_PREFIX + userId, tokenTtl));
         }
         return model;
+    }
+
+    public static LogInModel findSession(String authorizationToken) {
+        String token = normalize(authorizationToken);
+        return token == null ? null : parse(redisCall(() -> template().opsForValue().get(KEY_PREFIX + token)));
     }
 
     public static boolean logOut(String authorizationToken) {

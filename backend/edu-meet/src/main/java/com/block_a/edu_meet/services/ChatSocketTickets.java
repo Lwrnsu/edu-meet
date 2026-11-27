@@ -1,13 +1,12 @@
 package com.block_a.edu_meet.services;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.block_a.edu_meet.security.JwtAccount;
+import com.block_a.edu_meet.security.PhpChatAccount;
 
 @Service
 public class ChatSocketTickets {
@@ -19,21 +18,15 @@ public class ChatSocketTickets {
         this.redis = redis;
     }
 
-    public String issue(JwtAccount account) {
+    public String issue(PhpChatAccount account) {
         String ticket = UUID.randomUUID().toString();
-        redis.opsForValue().set(PREFIX + ticket,
-                account.id() + ":" + account.expiresAt().toEpochMilli(), TTL);
+        redis.opsForValue().set(PREFIX + ticket, account.sessionToken(), TTL);
         return ticket;
     }
 
-    public SocketIdentity redeem(String ticket) {
+    public PhpChatAccount redeem(String ticket) {
         if (ticket == null || !ticket.matches("[0-9a-f-]{36}")) return null;
-        String value = redis.opsForValue().getAndDelete(PREFIX + ticket);
-        if (value == null) return null;
-        String[] parts = value.split(":", 2);
-        Instant expiresAt = Instant.ofEpochMilli(Long.parseLong(parts[1]));
-        return expiresAt.isAfter(Instant.now()) ? new SocketIdentity(parts[0], expiresAt) : null;
+        String token = redis.opsForValue().getAndDelete(PREFIX + ticket);
+        return token == null ? null : PhpChatAccount.fromSession(token);
     }
-
-    public record SocketIdentity(String userId, Instant expiresAt) {}
 }

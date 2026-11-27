@@ -1,34 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import CommunicationModule from "./features/communication/CommunicationModule.jsx";
-import { createCommunicationApi } from "./features/communication/services/communicationApi.js";
-
-const TOKEN_KEY = "edu-meet-chat-preview-jwt";
+import AuthenticatedCommunication from "./features/communication/AuthenticatedCommunication.jsx";
+import { getAuthBearerToken, login, logoutRequest } from "./api/auth.js";
 
 export function ChatPreview() {
-  const [accessToken, setAccessToken] = useState(() => sessionStorage.getItem(TOKEN_KEY));
-  const [account, setAccount] = useState(null);
+  const [accessToken, setAccessToken] = useState(getAuthBearerToken);
   const [error, setError] = useState("");
   const [isSigningIn, setIsSigningIn] = useState(false);
-
-  useEffect(() => {
-    if (!accessToken) return;
-
-    const controller = new AbortController();
-    const { signal } = controller;
-    createCommunicationApi({ accessToken }).getCurrentAccount({ signal })
-      .then((account) => {
-        if (!signal.aborted) setAccount(account);
-      })
-      .catch((error) => {
-        if (signal.aborted) return;
-        sessionStorage.removeItem(TOKEN_KEY);
-        setAccessToken(null);
-        setError(error.message);
-      });
-
-    return () => controller.abort();
-  }, [accessToken]);
 
   async function signIn(event) {
     event.preventDefault();
@@ -36,15 +14,10 @@ export function ChatPreview() {
     setIsSigningIn(true);
     setError("");
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.token) throw new Error(data.message || "Could not sign in.");
-      sessionStorage.setItem(TOKEN_KEY, data.token);
-      setAccessToken(data.token);
+      await login(form.get("email"), form.get("password"), { baseUrl: "" });
+      const token = getAuthBearerToken();
+      if (!token) throw new Error("The school login did not return a session.");
+      setAccessToken(token);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -52,24 +25,21 @@ export function ChatPreview() {
     }
   }
 
-  function signOut() {
-    sessionStorage.removeItem(TOKEN_KEY);
-    setAccount(null);
+  async function signOut() {
+    await logoutRequest({ baseUrl: "" });
     setAccessToken(null);
   }
 
-  if (account) {
+  if (accessToken) {
     return (
       <>
-        <button type="button" onClick={signOut}>Sign out of chat preview</button>
+        <button type="button" onClick={signOut}>Sign out</button>
         <div style={{ height: "calc(100% - 32px)" }}>
-          <CommunicationModule key={account.userId} currentUserId={account.userId} accessToken={accessToken} />
+          <AuthenticatedCommunication accessToken={accessToken} />
         </div>
       </>
     );
   }
-
-  if (accessToken) return <p role="status">Checking your chat session…</p>;
 
   return (
     <form onSubmit={signIn}>

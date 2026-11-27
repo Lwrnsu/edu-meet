@@ -46,7 +46,7 @@ class AttachmentControllerTest {
 
     @BeforeEach
     void setUp() {
-        conversation = conversations.save(new Conversation(ConversationType.BLOCK, "Attachments", List.of("1", "2")));
+        conversation = conversations.save(new Conversation(ConversationType.BLOCK, "Attachments", List.of("php:1", "php:2")));
         path = "/api/conversations/" + conversation.getId() + "/messages";
         mvc = MockMvcBuilders.standaloneSetup(attachments, history)
                 .setControllerAdvice(new CommunicationApiResponseAdvice()).build();
@@ -66,7 +66,7 @@ class AttachmentControllerTest {
                         .file(new MockMultipartFile("file", "../notes.txt", "text/plain", bytes))
                         .principal(account(1)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.senderId").value("1"))
+                .andExpect(jsonPath("$.body.senderId").value("php:1"))
                 .andExpect(jsonPath("$.body.attachment.name").value("notes.txt"))
                 .andExpect(jsonPath("$.body.attachmentBytes").doesNotExist());
 
@@ -83,9 +83,9 @@ class AttachmentControllerTest {
                 .andExpect(content().contentType("application/octet-stream"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment;")))
                 .andExpect(content().bytes(bytes));
-        mvc.perform(get(url).principal(account(4)).param("userId", "2"))
+        mvc.perform(get(url).principal(account(4)).param("userId", "php:2"))
                 .andExpect(status().isNotFound());
-        mvc.perform(get(url).param("userId", "2")).andExpect(status().isUnauthorized());
+        mvc.perform(get(url).param("userId", "php:2")).andExpect(status().isUnauthorized());
     }
 
     @Test

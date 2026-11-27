@@ -1,6 +1,5 @@
 package com.block_a.edu_meet;
 
-import static com.block_a.edu_meet.support.ChatTestPrincipals.jwtAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -9,9 +8,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import java.net.URI;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -30,8 +29,9 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.block_a.edu_meet.models.Conversation;
-import com.block_a.edu_meet.entity.User;
-import com.block_a.edu_meet.repository.UserRepository;
+import com.block_a.edu_meet.models.LogInModel;
+import com.block_a.edu_meet.security.PhpChatAccount;
+import com.block_a.edu_meet.services.AuthService;
 import com.block_a.edu_meet.services.ChatSocketTickets;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
@@ -58,32 +58,46 @@ class ChatHandlerTest {
     @Autowired
     private RecentMessageCache cache;
 
-    @Autowired
-    private UserRepository users;
-
-    private final List<Integer> accountIds = new ArrayList<>();
+    private final Map<String, PhpChatAccount> accounts = new HashMap<>();
 
     @Autowired
     private ChatSocketTickets tickets;
 
     private String createAccount() {
-        User user = new User();
-        user.setEmail(UUID.randomUUID() + "@example.test");
-        user.setFirstName("Socket");
-        user.setLastName("Test");
-        user.setPassword("not-used-for-ticket-tests");
-        Integer id = users.save(user).getId();
-        accountIds.add(id);
-        return id.toString();
+        int id = java.util.concurrent.ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        LogInModel session = new LogInModel(id, "student");
+        session.setSource(LogInModel.PHP_SCHOOL);
+        PhpChatAccount account = new PhpChatAccount(id, AuthService.createAuthToken(session));
+        accounts.put(account.userId(), account);
+        return account.userId();
     }
 
     @AfterEach
     void removeAccounts() {
-        users.deleteAllById(accountIds);
+        accounts.values().forEach(account -> AuthService.logOut(account.sessionToken()));
+    }
+
+    @Test
+    void socketTicketsAreSingleUseAndRequireAnActiveSchoolSession() {
+        PhpChatAccount account = accounts.get(createAccount());
+        String ticket = tickets.issue(account);
+        assertEquals(account, tickets.redeem(ticket));
+        assertNull(tickets.redeem(ticket));
+
+        String revokedTicket = tickets.issue(account);
+        AuthService.logOut(account.sessionToken());
+        assertNull(tickets.redeem(revokedTicket));
+
+        String otherToken = AuthService.createAuthToken(new LogInModel(account.id(), "USER"));
+        try {
+            assertNull(PhpChatAccount.fromSession(otherToken));
+        } finally {
+            AuthService.logOut(otherToken);
+        }
     }
 
     private WebSocketSession connect(String userId, BlockingQueue<String> inbox) throws Exception {
-        String ticket = tickets.issue(jwtAccount(Integer.parseInt(userId)));
+        String ticket = tickets.issue(accounts.get(userId));
 
         return new StandardWebSocketClient().execute(new TextWebSocketHandler() {
             @Override

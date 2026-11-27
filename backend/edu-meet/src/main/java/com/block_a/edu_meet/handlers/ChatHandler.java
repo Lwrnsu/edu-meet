@@ -24,7 +24,8 @@ import com.block_a.edu_meet.repositories.MessageRepository;
 import tools.jackson.databind.ObjectMapper;
 import com.block_a.edu_meet.services.RecentMessageCache;
 import com.block_a.edu_meet.services.ChatSocketTickets;
-import com.block_a.edu_meet.repository.UserRepository;
+import com.block_a.edu_meet.security.PhpChatAccount;
+import com.block_a.edu_meet.exception.ApiException;
 
 @Component
 public class ChatHandler extends TextWebSocketHandler {
@@ -39,17 +40,15 @@ public class ChatHandler extends TextWebSocketHandler {
     private final ConversationRepository conversationRepository;
     private final RecentMessageCache recentMessageCache;
     private final ChatSocketTickets tickets;
-    private final UserRepository users;
 
     public ChatHandler(ObjectMapper objectMapper, MessageRepository messageRepository,
                        ConversationRepository conversationRepository,
-                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets, UserRepository users) {
+                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets) {
         this.objectMapper = objectMapper;
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;
         this.recentMessageCache = recentMessageCache;
         this.tickets = tickets;
-        this.users = users;
     }
 
     @Override
@@ -57,15 +56,14 @@ public class ChatHandler extends TextWebSocketHandler {
         String ticket = UriComponentsBuilder.fromUri(session.getUri())
                 .build().getQueryParams().getFirst("ticket");
         var identity = tickets.redeem(ticket);
-        if (identity == null || users.findByIdAndDeletedAtIsNull(Integer.valueOf(identity.userId()))
-                .filter(com.block_a.edu_meet.entity.User::isActive).isEmpty()) {
+        if (identity == null) {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
 
         String userId = identity.userId();
         session.getAttributes().put("userId", userId);
-        session.getAttributes().put("expiresAt", identity.expiresAt());
+        session.getAttributes().put("chatAccount", identity);
         sessionsByUser.computeIfAbsent(userId, k -> ConcurrentHashMap.newKeySet()).add(session);
         System.out.println("Connected: " + userId);
     }
@@ -148,8 +146,13 @@ public class ChatHandler extends TextWebSocketHandler {
     }
 
     private boolean hasValidSession(WebSocketSession session) {
-        return session.getAttributes().get("expiresAt") instanceof Instant expiry
-                && expiry.isAfter(Instant.now());
+        if (!(session.getAttributes().get("chatAccount") instanceof PhpChatAccount account)) return false;
+        try {
+            return account.equals(PhpChatAccount.fromSession(account.sessionToken()));
+        } catch (ApiException exception) {
+            log.warn("Could not verify the PHP chat session");
+            return false;
+        }
     }
 
     private void send(WebSocketSession session, TextMessage message) throws IOException {

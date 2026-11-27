@@ -60,9 +60,12 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/", "/api/health", "/api/auth/logIn/cached").permitAll()
                                                 .requestMatchers("/api/php/**").permitAll()
+                                                .requestMatchers(PhpChatAuthFilter.CHAT_PATH, PhpChatAuthFilter.CONVERSATION_PATH)
+                                                .hasAuthority(PhpChatAuthFilter.AUTHORITY)
                                                 .requestMatchers("/api/**").authenticated()
                                                 .anyRequest().permitAll())
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(new PhpChatAuthFilter(), JwtAuthFilter.class);
 
                 return http.build();
         }
