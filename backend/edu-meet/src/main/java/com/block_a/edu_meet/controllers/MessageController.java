@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.controllers;
 
+import java.security.Principal;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -12,19 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.helpers.ChatIdentity;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.RecentMessageCache;
 
-/* 
-    Must return API response, not the data instantly. 
-    {
-        response: true / false
-        code: ex. 404
-        message: ex. "Conversation Doesn't Exist"
-        body: the data itself. 
-    }
-*/
 @RestController
 @RequestMapping("/api/conversations")
 public class MessageController {
@@ -45,7 +38,11 @@ public class MessageController {
 
     @GetMapping("/{conversationId}/messages")
     public List<Message> getLatestMessages(@PathVariable String conversationId,
-                                          @RequestParam String userId) {
+                                          Principal principal) {
+        return getLatestMessages(conversationId, ChatIdentity.userId(principal));
+    }
+
+    public List<Message> getLatestMessages(String conversationId, String userId) {
         conversationAccess.requireMember(conversationId, userId);
         List<String> recentIds = messageRepository.findRecentIds(
                         conversationId, PageRequest.of(0, RecentMessageCache.MAX_MESSAGES))
@@ -63,13 +60,17 @@ public class MessageController {
     @GetMapping("/{conversationId}/messages/older")
     public List<Message> getOlderMessages(
             @PathVariable String conversationId,
-            @RequestParam String userId,
+            Principal principal,
             @RequestParam String beforeId) {
+        return getOlderMessages(conversationId, ChatIdentity.userId(principal), beforeId);
+    }
+
+    public List<Message> getOlderMessages(String conversationId, String userId, String beforeId) {
         conversationAccess.requireMember(conversationId, userId);
         if (beforeId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "beforeId is required");
         }
-        Message cursor = messageRepository.findById(beforeId)
+        Message cursor = messageRepository.findMetadataById(beforeId)
                 .filter(message -> conversationId.equals(message.getConversationId()))
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST, "beforeId must refer to a message in this chat"));

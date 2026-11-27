@@ -49,28 +49,28 @@ public class AuthController {
         public ResponseEntity<JsonNode> loginWithPhp(@RequestBody LoginRequest request) {
                 return withRedisAuthorizationHeader(
                                 phpLoginClient.login(request.getEmail(), request.getPassword()),
-                                "USER");
+                                "USER", null);
         }
 
         @PostMapping("/php-system-admin-login")
         public ResponseEntity<JsonNode> systemAdminLoginWithPhp(@RequestBody LoginRequest request) {
                 return withRedisAuthorizationHeader(
                                 phpLoginClient.systemAdminLogin(request.getEmail(), request.getPassword()),
-                                "SYSTEM_ADMIN");
+                                "SYSTEM_ADMIN", null);
         }
 
         @PostMapping("/php-school-login")
         public ResponseEntity<JsonNode> schoolLoginWithPhp(@RequestBody LoginRequest request) {
                 return withRedisAuthorizationHeader(
                                 phpLoginClient.schoolLogin(request.getEmail(), request.getPassword()),
-                                "SCHOOL_ADMIN");
+                                "SCHOOL_ADMIN", LogInModel.PHP_SCHOOL);
         }
 
         @PostMapping("/php-college-admin-login")
         public ResponseEntity<JsonNode> collegeAdminLoginWithPhp(@RequestBody LoginRequest request) {
                 return withRedisAuthorizationHeader(
                                 phpLoginClient.schoolLogin(request.getEmail(), request.getPassword()),
-                                "SCHOOL_ADMIN");
+                                "SCHOOL_ADMIN", LogInModel.PHP_SCHOOL);
         }
 
         @PostMapping("/php-signup")
@@ -151,7 +151,7 @@ public class AuthController {
         }
 
         private ResponseEntity<JsonNode> withRedisAuthorizationHeader(
-                        ResponseEntity<JsonNode> response, String defaultRole) {
+                        ResponseEntity<JsonNode> response, String defaultRole, String source) {
                 if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                         return response;
                 }
@@ -163,8 +163,9 @@ public class AuthController {
                 java.util.Map<String, Object> user = userNode.isObject()
                                 ? com.block_a.edu_meet.services.AuthService.toMap(userNode.toString())
                                 : null;
-                String redisToken = com.block_a.edu_meet.services.AuthService.createAuthToken(
-                                new LogInModel(userId, role, user));
+                LogInModel session = new LogInModel(userId, role, user);
+                session.setSource(source);
+                String redisToken = com.block_a.edu_meet.services.AuthService.createAuthToken(session);
 
                 return ResponseEntity.status(response.getStatusCode())
                                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + redisToken)

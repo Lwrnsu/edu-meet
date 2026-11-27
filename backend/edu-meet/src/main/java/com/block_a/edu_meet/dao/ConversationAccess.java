@@ -22,12 +22,9 @@ public class ConversationAccess {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
 
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!conversation.getParticipantIds().contains(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "you are not a member of this chat");
-        }
-        return conversation;
+        return conversationRepository.findById(conversationId)
+                .filter(conversation -> conversation.getParticipantIds().contains(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
     }
 }
 

@@ -1,23 +1,25 @@
 package com.block_a.edu_meet.controllers;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.HexFormat;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +29,7 @@ import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.helpers.MemberLookup;
+import com.block_a.edu_meet.helpers.ChatIdentity;
 import com.block_a.edu_meet.helpers.ConversationSummary;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.models.Conversation;
@@ -34,20 +37,7 @@ import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.dtos.MemberDto;
 import com.block_a.edu_meet.helpers.CreateConversationRequest;
 import com.block_a.edu_meet.helpers.MemberChangeRequest;
-
-/* 
-    Must return API response, not the data instantly. 
-    {
-        response: true / false
-        code: ex. 404
-        message: ex. "Conversation Doesn't Exist"
-        body: the data itself. 
-    }
-    explaination: so that in front-end, it must verify if the
-                api succedded or not before using the provided data.
-
-
-*/
+import com.block_a.edu_meet.services.ConversationCreationService;
 
 @RestController
 @RequestMapping("/api/conversations")
@@ -57,118 +47,127 @@ public class ConversationController {
     private final MemberLookup memberLookup;
     private final MessageRepository messageRepository;
     private final ConversationAccess conversationAccess;
-    // unnecessary.
+    private final ConversationCreationService conversationCreationService;
+    private final MongoOperations mongoOperations;
     public ConversationController(ConversationRepository conversationRepository,
-                                  MemberLookup memberLookup,
+                                  @Qualifier("accountMemberLookup") MemberLookup memberLookup,
                                   MessageRepository messageRepository,
-                                  ConversationAccess conversationAccess) {
+                                  ConversationAccess conversationAccess,
+                                  ConversationCreationService conversationCreationService,
+                                  MongoOperations mongoOperations) {
         this.conversationRepository = conversationRepository;
         this.memberLookup = memberLookup;
         this.messageRepository = messageRepository;
         this.conversationAccess = conversationAccess;
+        this.conversationCreationService = conversationCreationService;
+        this.mongoOperations = mongoOperations;
     }
 
     @GetMapping
-    public List<ConversationSummary> getMyConversations(@RequestParam String userId) {
-        return conversationRepository.findByParticipantIdsContaining(userId).stream()
+    public List<ConversationSummary> getMyConversations(Principal principal) {
+        return getMyConversations(ChatIdentity.userId(principal));
+    }
+
+    public List<ConversationSummary> getMyConversations(String userId) {
+        List<Conversation> conversations = conversationRepository.findByParticipantIdsContaining(userId);
+        var latestByConversation = new HashMap<String, Message>();
+        var directPeers = new HashMap<String, String>();
+        var memberIds = new LinkedHashSet<String>();
+        for (Conversation conversation : conversations) {
+            Message latest = messageRepository.findFirstByConversationIdOrderByTimestampDescIdDesc(conversation.getId());
+            if (latest != null) {
+                latestByConversation.put(conversation.getId(), latest);
+                if (latest.getSenderId() != null) memberIds.add(latest.getSenderId());
+            }
+            if (conversation.getType() == ConversationType.PRIVATE) {
+                conversation.getParticipantIds().stream().filter(id -> !id.equals(userId)).findFirst()
+                        .ifPresent(peer -> {
+                            directPeers.put(conversation.getId(), peer);
+                            memberIds.add(peer);
+                        });
+            }
+        }
+        var memberNames = new HashMap<String, String>();
+        if (!memberIds.isEmpty()) {
+            memberLookup.findMembers(List.copyOf(memberIds))
+                    .forEach(member -> memberNames.put(member.id(), member.fullName()));
+        }
+
+        return conversations.stream()
                 .map(c -> {
-                    Message last = messageRepository
-                            .findFirstByConversationIdOrderByTimestampDescIdDesc(c.getId());
+                    Message last = latestByConversation.get(c.getId());
+                    String name = memberNames.getOrDefault(directPeers.get(c.getId()), c.getName());
                     return new ConversationSummary(
-                            c.getId(), c.getType(), c.getName(), c.getAvatarUrl(),
+                            c.getId(), c.getType(), name, c.getAvatarUrl(),
                             c.getParticipantIds(),
-                            last == null ? null : last.getText(),
-                            last == null ? null : last.getTimestamp());
+                            c.isArchivedBy(userId),
+                            last == null ? null : preview(last),
+                            last == null ? null : last.getTimestamp(),
+                            last == null ? null : last.getId(),
+                            last == null ? null : last.getSenderId(),
+                            last == null ? null : memberNames.get(last.getSenderId()),
+                            last == null || last.getAttachment() == null ? null : last.getAttachment().contentType());
                 })
                 .sorted(Comparator.comparing(ConversationSummary::lastMessageTime,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
+    @PutMapping("/{conversationId}/archive")
+    public ArchiveState archive(@PathVariable String conversationId, Principal principal) {
+        return updateArchive(conversationId, ChatIdentity.userId(principal), true);
+    }
+
+    @DeleteMapping("/{conversationId}/archive")
+    public ArchiveState restore(@PathVariable String conversationId, Principal principal) {
+        return updateArchive(conversationId, ChatIdentity.userId(principal), false);
+    }
+
+    private ArchiveState updateArchive(String conversationId, String actor, boolean archived) {
+        Query membership = Query.query(Criteria.where("id").is(conversationId).and("participantIds").is(actor));
+        Update update = archived ? new Update().addToSet("archivedBy", actor) : new Update().pull("archivedBy", actor);
+        if (mongoOperations.updateFirst(membership, update, Conversation.class).getMatchedCount() == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist");
+        }
+        return new ArchiveState(conversationId, archived);
+    }
+
+    public record ArchiveState(String conversationId, boolean archived) {}
+
     @GetMapping("/{conversationId}/members")
     public List<MemberDto> getMembers(@PathVariable String conversationId,
-                                      @RequestParam String userId) {
-        Conversation conversation = conversationAccess.requireMember(conversationId, userId);
+                                      Principal principal) {
+        Conversation conversation = conversationAccess.requireMember(conversationId, ChatIdentity.userId(principal));
         return memberLookup.findMembers(conversation.getParticipantIds());
     }
 
-        @PostMapping
-    public Conversation createConversation(@RequestBody CreateConversationRequest request) {
-        if (request.type() == null
-                || request.participantIds() == null
-                || request.participantIds().isEmpty()
-                || request.participantIds().stream().anyMatch(id -> id == null || id.isBlank())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type and participantIds are required");
-        }
-        if (request.type() == ConversationType.PRIVATE
-                && (request.participantIds().size() != 2 || new HashSet<>(request.participantIds()).size() != 2)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats need 2 distinct participants");
-        }
-        if (request.type() != ConversationType.PRIVATE
-                && (request.name() == null || request.name().isBlank())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "group chats need a name");
-        }
-
-
-        // return the existing chat instead of creating a duplicate
+    @PostMapping
+    public Conversation createConversation(@RequestBody CreateConversationRequest request, Principal principal) {
+        String actor = ChatIdentity.userId(principal);
         if (request.type() == ConversationType.PRIVATE) {
-            String first = request.participantIds().get(0);
-            String second = request.participantIds().get(1);
-            for (Conversation existing : conversationRepository
-                    .findByTypeAndParticipantIdsContaining(ConversationType.PRIVATE, first)) {
-                if (existing.getParticipantIds().contains(second)) {
-                    return existing;
-                }
+            if (request.participantIds() == null || !request.participantIds().contains(actor)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A private chat must include your account");
             }
-        } else if (request.type() == ConversationType.BLOCK && request.blockId() != null) {
-            Conversation existing = conversationRepository
-                    .findFirstByTypeAndBlockId(ConversationType.BLOCK, request.blockId());
-            if (existing != null) {
-                return existing;
+            var participants = new java.util.LinkedHashSet<>(request.participantIds());
+            if (memberLookup.findMembers(new ArrayList<>(participants)).size() != participants.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown participant");
             }
-        } else if (request.type() == ConversationType.SUBJECT && request.classId() != null) {
-            Conversation existing = conversationRepository
-                    .findFirstByTypeAndClassId(ConversationType.SUBJECT, request.classId());
-            if (existing != null) {
-                return existing;
-            }
+        } else {
+            requireRosterManager(principal);
         }
-
-        Conversation conversation = new Conversation(
-                request.type(), request.name(), request.participantIds());
-        conversation.setBlockId(request.blockId());
-        conversation.setClassId(request.classId());
-        conversation.setId(creationId(request));
-        try {
-            return conversationRepository.insert(conversation);
-        } catch (DuplicateKeyException e) {
-            // Another request created this chat after our lookup. Keep its data intact.
-            return conversationRepository.findById(conversation.getId()).orElseThrow(() -> e);
-        }
+        return createConversation(request);
     }
 
-    private String creationId(CreateConversationRequest request) {
-        String key = switch (request.type()) {
-            case PRIVATE -> "PRIVATE:" + request.participantIds().stream().sorted()
-                    .map(id -> id.length() + ":" + id).collect(Collectors.joining());
-            case BLOCK -> request.blockId() == null ? null : "BLOCK:" + request.blockId();
-            case SUBJECT -> request.classId() == null ? null : "SUBJECT:" + request.classId();
-        };
-        if (key == null) return null;
-
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
-            return "chat_" + HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
+    public Conversation createConversation(CreateConversationRequest request) {
+        return conversationCreationService.createConversation(request);
     }
 
     @PostMapping("/{conversationId}/members")
     public Conversation addMembers(@PathVariable String conversationId,
-                                   @RequestBody MemberChangeRequest request) {
+                                   @RequestBody MemberChangeRequest request, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
@@ -184,15 +183,16 @@ public class ConversationController {
             }
         }
         conversation.setParticipantIds(members);
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
     @DeleteMapping("/{conversationId}/members/{userId}")
     public Conversation removeMember(@PathVariable String conversationId,
-                                     @PathVariable String userId) {
+                                     @PathVariable String userId, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
@@ -201,15 +201,16 @@ public class ConversationController {
         List<String> members = new ArrayList<>(conversation.getParticipantIds());
         members.remove(userId);
         conversation.setParticipantIds(members);
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
         @PutMapping("/{conversationId}/members")
     public Conversation replaceMembers(@PathVariable String conversationId,
-                                       @RequestBody MemberChangeRequest request) {
+                                       @RequestBody MemberChangeRequest request, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
         if (conversation.getType() == ConversationType.PRIVATE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "private chats can't change members");
@@ -219,8 +220,33 @@ public class ConversationController {
         }
 
         conversation.setParticipantIds(new ArrayList<>(new java.util.LinkedHashSet<>(request.userIds())));
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
+    private void requireRosterManager(Principal principal) {
+        ChatIdentity.require(principal);
+        Authentication authentication = (Authentication) principal;
+        if (authentication.getAuthorities().stream().noneMatch(
+                authority -> "CHAT_ROSTER_ADMIN".equals(authority.getAuthority()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Roster management permission required");
+        }
+    }
+
+    private String preview(Message message) {
+        return (message.getText() == null || message.getText().isEmpty()) && message.getAttachment() != null
+                ? message.getAttachment().name()
+                : message.getText();
+    }
+
+    private Conversation updateParticipants(Conversation conversation) {
+        Conversation updated = mongoOperations.findAndModify(
+                Query.query(Criteria.where("id").is(conversation.getId())),
+                new Update().set("participantIds", conversation.getParticipantIds()),
+                FindAndModifyOptions.options().returnNew(true), Conversation.class);
+        if (updated == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist");
+        }
+        return updated;
+    }
 }

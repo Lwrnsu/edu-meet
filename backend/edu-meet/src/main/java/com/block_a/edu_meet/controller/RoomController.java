@@ -10,6 +10,7 @@ import io.livekit.server.RoomAdmin;
 import io.livekit.server.RoomCreate;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +36,7 @@ public class RoomController {
             @Value("${livekit.api-secret}") String apiSecret,
             @Value("${livekit.url:}") String livekitUrl,
             Meeting meeting,
-            MemberLookup memberLookup) {
+            @Qualifier("defaultMemberLookup") MemberLookup memberLookup) {
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.livekitUrl = livekitUrl;
