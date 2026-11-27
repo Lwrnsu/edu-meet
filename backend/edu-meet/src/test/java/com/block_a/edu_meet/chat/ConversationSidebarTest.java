@@ -10,6 +10,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.data.mongodb.core.MongoOperations;
+
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.helpers.ConversationSummary;
@@ -29,7 +31,7 @@ class ConversationSidebarTest {
         MessageRepository messages = mock(MessageRepository.class);
         ConversationController controller = new ConversationController(
                 conversations, mock(MemberLookup.class), messages, mock(ConversationAccess.class),
-                new ConversationCreationService(conversations));
+                new ConversationCreationService(conversations), mock(MongoOperations.class));
 
         Conversation empty = conversation("empty");
         Conversation older = conversation("older");

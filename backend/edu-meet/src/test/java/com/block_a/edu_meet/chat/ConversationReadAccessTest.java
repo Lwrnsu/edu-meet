@@ -25,6 +25,8 @@ import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import org.springframework.data.mongodb.core.MongoOperations;
+
 import com.block_a.edu_meet.controllers.CommunicationApiResponseAdvice;
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.controllers.MessageController;
@@ -65,7 +67,7 @@ class ConversationReadAccessTest {
         mvc = MockMvcBuilders.standaloneSetup(
                 new MessageController(messages, access, cache),
                 new ConversationController(conversations, members, messages, access,
-                        new ConversationCreationService(conversations)))
+                        new ConversationCreationService(conversations), mock(MongoOperations.class)))
                 .setControllerAdvice(new CommunicationApiResponseAdvice())
                 .build();
     }

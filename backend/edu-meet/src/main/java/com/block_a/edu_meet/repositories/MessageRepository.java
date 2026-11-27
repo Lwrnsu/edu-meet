@@ -21,5 +21,7 @@ public interface MessageRepository extends MongoRepository<Message, String> {
             sort = "{'timestamp': -1, '_id': -1}")
     List<Message> findOlderMessages(String conversationId, Instant before, String beforeId, Pageable pageable);
 
+    List<Message> findByConversationIdAndIdIn(String conversationId, List<String> ids);
+
     Message findFirstByConversationIdOrderByTimestampDescIdDesc(String conversationId);
 }

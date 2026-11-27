@@ -19,6 +19,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import org.springframework.data.mongodb.core.MongoOperations;
+
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.helpers.CreateConversationRequest;
@@ -73,7 +75,7 @@ class ConcurrentConversationCreationTest {
 
         ConversationController controller = new ConversationController(racingRepository,
                 mock(MemberLookup.class), mock(MessageRepository.class), mock(ConversationAccess.class),
-                new ConversationCreationService(racingRepository));
+                new ConversationCreationService(racingRepository), mock(MongoOperations.class));
         CreateConversationRequest request = new CreateConversationRequest(type, "Concurrent test",
                 List.of(first, second), first, first);
         CreateConversationRequest other = new CreateConversationRequest(type, "Other request name",

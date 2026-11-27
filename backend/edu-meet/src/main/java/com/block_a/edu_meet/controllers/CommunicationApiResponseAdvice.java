@@ -20,7 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.block_a.edu_meet.dtos.ApiResponse;
 
-@RestControllerAdvice(assignableTypes = {ConversationController.class, MessageController.class})
+@RestControllerAdvice(assignableTypes = {ConversationController.class, MessageController.class, GroupChatController.class})
 public class CommunicationApiResponseAdvice extends ResponseEntityExceptionHandler
         implements ResponseBodyAdvice<Object> {
 

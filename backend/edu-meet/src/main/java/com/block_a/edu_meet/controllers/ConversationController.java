@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,17 +43,19 @@ public class ConversationController {
     private final MessageRepository messageRepository;
     private final ConversationAccess conversationAccess;
     private final ConversationCreationService conversationCreationService;
-    // unnecessary.
+    private final MongoOperations mongoOperations;
     public ConversationController(ConversationRepository conversationRepository,
                                   MemberLookup memberLookup,
                                   MessageRepository messageRepository,
                                   ConversationAccess conversationAccess,
-                                  ConversationCreationService conversationCreationService) {
+                                  ConversationCreationService conversationCreationService,
+                                  MongoOperations mongoOperations) {
         this.conversationRepository = conversationRepository;
         this.memberLookup = memberLookup;
         this.messageRepository = messageRepository;
         this.conversationAccess = conversationAccess;
         this.conversationCreationService = conversationCreationService;
+        this.mongoOperations = mongoOperations;
     }
 
     @GetMapping
@@ -100,7 +107,7 @@ public class ConversationController {
             }
         }
         conversation.setParticipantIds(members);
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
@@ -117,7 +124,7 @@ public class ConversationController {
         List<String> members = new ArrayList<>(conversation.getParticipantIds());
         members.remove(userId);
         conversation.setParticipantIds(members);
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
@@ -135,8 +142,18 @@ public class ConversationController {
         }
 
         conversation.setParticipantIds(new ArrayList<>(new java.util.LinkedHashSet<>(request.userIds())));
-        return conversationRepository.save(conversation);
+        return updateParticipants(conversation);
     }
 
 
+    private Conversation updateParticipants(Conversation conversation) {
+        Conversation updated = mongoOperations.findAndModify(
+                Query.query(Criteria.where("id").is(conversation.getId())),
+                new Update().set("participantIds", conversation.getParticipantIds()),
+                FindAndModifyOptions.options().returnNew(true), Conversation.class);
+        if (updated == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist");
+        }
+        return updated;
+    }
 }
