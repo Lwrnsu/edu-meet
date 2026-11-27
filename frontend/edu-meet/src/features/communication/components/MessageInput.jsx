@@ -85,8 +85,17 @@ export default function MessageInput({ onSendMessage, onSendAttachment, sendDisa
         {onSendAttachment && (
           <>
             <input type="file" ref={picker} hidden onChange={selectFile} />
-            <button className="communication-action-button" type="button" disabled={isUploading} onClick={() => picker.current.click()}>
-              Attach file
+            <button
+              className="communication-attach-button"
+              type="button"
+              aria-label="Attach file"
+              aria-busy={isUploading || undefined}
+              disabled={sendDisabled || isUploading}
+              onClick={() => picker.current.click()}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+              </svg>
             </button>
           </>
         )}

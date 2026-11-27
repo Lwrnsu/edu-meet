@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import PinnedMessageItem from "./PinnedMessageItem.jsx";
 
-export default function PinnedMessagesView({ conversation, messages, isLoading, error, isUpdating, onUnpin }) {
+export default function PinnedMessagesView({ conversation, messages, isLoading, error, isUpdating, onUnpin, onOpenMedia }) {
   const headingRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -43,7 +43,13 @@ export default function PinnedMessagesView({ conversation, messages, isLoading, 
         {messages.length > 0 ? (
           <ol className="communication-pinned-message-list">
             {messages.map((message) => (
-              <PinnedMessageItem key={message.id} message={message} onUnpin={onUnpin} isUpdating={isUpdating} />
+              <PinnedMessageItem
+                key={message.id}
+                message={message}
+                onUnpin={onUnpin}
+                isUpdating={isUpdating}
+                onOpenMedia={onOpenMedia}
+              />
             ))}
           </ol>
         ) : !isLoading && !error && (

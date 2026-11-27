@@ -1,4 +1,5 @@
 import MessageAttachment from "./MessageAttachment.jsx";
+import MessageText from "./MessageText.jsx";
 import pushPinIcon from "../assets/push-pin.png";
 import ConversationAvatar from "./ConversationAvatar.jsx";
 
@@ -21,7 +22,7 @@ function getPinnedTimestamp(message) {
   return [weekday, timestamp].filter(Boolean).join(" ").toUpperCase();
 }
 
-export default function PinnedMessageItem({ message, onUnpin, isUpdating }) {
+export default function PinnedMessageItem({ message, onUnpin, isUpdating, onOpenMedia }) {
   const senderName =
     message.senderName ??
     (message.direction === "outgoing" ? "You" : "Group member");
@@ -38,10 +39,8 @@ export default function PinnedMessageItem({ message, onUnpin, isUpdating }) {
           {senderName}
         </span>
         <div className="communication-message-bubble communication-message-bubble--incoming communication-pinned-message-bubble">
-          {message.attachment && <MessageAttachment attachment={message.attachment} />}
-          {message.text && (
-            <p className="communication-message-text communication-pinned-message-text">{message.text}</p>
-          )}
+          {message.attachment && <MessageAttachment attachment={message.attachment} onOpenMedia={onOpenMedia} />}
+          <MessageText text={message.text} />
         </div>
       </div>
       <time

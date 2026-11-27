@@ -6,6 +6,7 @@ import RenameGroupDialog from "./components/RenameGroupDialog.jsx";
 import LeaveGroupDialog from "./components/LeaveGroupDialog.jsx";
 import MessageInput from "./components/MessageInput.jsx";
 import MessageList from "./components/MessageList.jsx";
+import MediaViewer from "./components/MediaViewer.jsx";
 import ConversationPanel from "./components/ConversationPanel.jsx";
 import mockCommunicationProvider from "./data/mockCommunicationProvider.js";
 import useConversations from "./hooks/useConversations.js";
@@ -24,6 +25,7 @@ export default function CommunicationModule({ currentUserId }) {
   const [membersByConversationId, setMembersByConversationId] = useState({});
   const [memberError, setMemberError] = useState(null);
   const [renameConversationId, setRenameConversationId] = useState(null);
+  const [viewingMedia, setViewingMedia] = useState(null);
   const conversationState = useConversations({
     initialConversations: initialMockData?.conversations ?? [],
     currentUserId,
@@ -46,6 +48,16 @@ export default function CommunicationModule({ currentUserId }) {
   const selectedMembers = live
     ? membersByConversationId[selectedConversationId] ?? []
     : initialMockData.members.filter((member) => member.conversationId === selectedConversationId);
+
+  const mediaConversationId = selectedConversation?.id;
+  if (viewingMedia && viewingMedia.conversationId !== mediaConversationId) {
+    setViewingMedia(null);
+  }
+
+  function openMedia(attachment, trigger) {
+    setViewingMedia({ attachment, trigger, conversationId: selectedConversationId });
+  }
+
   function withSender(message) {
     if (!live) return message;
     const sender = selectedMembers.find((member) => member.id === message.senderId);
@@ -243,6 +255,7 @@ export default function CommunicationModule({ currentUserId }) {
                 ) : showingPinnedMessages ? (
                   <PinnedMessagesView
                     conversation={selectedConversation}
+                    onOpenMedia={openMedia}
                     messages={live ? (pins.messages ?? []).map(withSender) : selectedPinnedMessages}
                     isLoading={live && !pins.messages && !pins.error}
                     error={pins.error}
@@ -273,6 +286,7 @@ export default function CommunicationModule({ currentUserId }) {
                         lastSentMessageId={lastSentMessageId}
                         older={chatState.older}
                         onLoadOlder={chatState.loadOlderMessages}
+                        onOpenMedia={openMedia}
                         pinnedIds={pinnedIds}
                         isUpdatingPin={Boolean(pins.pendingMessageId)}
                         onTogglePin={!live || (liveGroupId && pins.messages)
@@ -304,6 +318,13 @@ export default function CommunicationModule({ currentUserId }) {
           </div>
         </section>
       </main>
+      {viewingMedia && viewingMedia.conversationId === mediaConversationId && (
+        <MediaViewer
+          attachment={viewingMedia.attachment}
+          trigger={viewingMedia.trigger}
+          onClose={() => setViewingMedia(null)}
+        />
+      )}
       {renameConversationId !== null && renameConversationId === selectedConversation?.id && (
         <RenameGroupDialog
           name={selectedConversation.name}

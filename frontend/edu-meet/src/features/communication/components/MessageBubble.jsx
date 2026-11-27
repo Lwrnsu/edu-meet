@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MessageAttachment from "./MessageAttachment.jsx";
+import MessageText from "./MessageText.jsx";
 import doubleTickIcon from "../assets/double-tick.png";
 import menuIcon from "../assets/menu-vertical.png";
 import pushPinIcon from "../assets/push-pin.png";
 
 export default function MessageBubble({
-  message, isOutgoing, isLast, isPinned, isUpdatingPin, onTogglePin, isMenuOpen, setOpenMessageMenuId,
+  message, isOutgoing, isLast, isPinned, isUpdatingPin, onTogglePin, isMenuOpen, setOpenMessageMenuId, onOpenMedia,
 }) {
   const status = message.status === "double-tick" && !message.isLocal;
   const triggerRef = useRef(null);
@@ -80,8 +81,8 @@ export default function MessageBubble({
     <div
       className={`communication-message-bubble communication-message-bubble--${isOutgoing ? "outgoing" : "incoming"}`}
     >
-      {message.attachment && <MessageAttachment attachment={message.attachment} />}
-      {message.text && <p className="communication-message-text">{message.text}</p>}
+      {message.attachment && <MessageAttachment attachment={message.attachment} onOpenMedia={onOpenMedia} />}
+      <MessageText text={message.text} />
     </div>
   );
 

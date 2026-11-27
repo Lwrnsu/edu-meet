@@ -31,6 +31,8 @@
 }
 
 .communication-chat-panel {
+  --communication-composer-inset: 33px;
+  --communication-send-size: 55px;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -450,6 +452,7 @@
 }
 
 .communication-chat-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -590,12 +593,40 @@
   overflow-y: auto;
 }
 
+.communication-scroll-to-bottom {
+  --communication-scroll-button-size: 36px;
+  position: absolute;
+  right: calc(var(--communication-composer-inset) + (var(--communication-send-size) - var(--communication-scroll-button-size)) / 2);
+  bottom: 24px;
+  z-index: 1;
+  display: grid;
+  width: var(--communication-scroll-button-size);
+  height: var(--communication-scroll-button-size);
+  place-items: center;
+  padding: 0;
+  color: #50359b;
+  background: rgba(255, 255, 255, 0.25);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgb(61 71 87 / 22%);
+  cursor: pointer;
+}
+
+.communication-scroll-to-bottom:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.communication-scroll-to-bottom:focus-visible {
+  outline: 2px solid #50359b;
+  outline-offset: 2px;
+}
+
 .communication-message-input-form {
   display: grid;
   flex: 0 0 auto;
   gap: 8px;
   min-width: 0;
-  margin: 0 33px 28px;
+  margin: 0 var(--communication-composer-inset) 28px;
 }
 
 .communication-composer-row,
@@ -608,6 +639,34 @@
 
 .communication-selected-attachment span {
   overflow-wrap: anywhere;
+}
+
+.communication-attach-button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  color: #3d4757;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.communication-attach-button:hover:not(:disabled),
+.communication-attach-button:focus-visible {
+  background: rgb(156 131 246 / 20%);
+}
+
+.communication-attach-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.communication-attach-button[aria-busy="true"] {
+  cursor: wait;
 }
 
 .communication-composer-feedback,
@@ -631,28 +690,159 @@
   overflow-wrap: anywhere;
 }
 
-.communication-message-attachment img {
+.communication-attachment-preview {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.communication-attachment-preview img {
   display: block;
   max-width: min(100%, 280px);
   max-height: 200px;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: inherit;
 }
 
-.communication-message-attachment a {
-  min-height: 44px;
+.communication-attachment-download {
   display: flex;
   align-items: center;
-  padding: 4px 10px;
-  color: #263043;
-  background: #fffdf8;
-  border-radius: 8px;
-  box-sizing: border-box;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.communication-attachment-download svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.communication-attachment-filename {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.communication-attachment-preview:focus-visible,
+.communication-attachment-download:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.communication-media-viewer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  color: #fffdf8;
+  background: transparent;
+  font: 400 15px/1.5 Roboto, sans-serif;
+}
+
+.communication-media-viewer::backdrop {
+  background: rgb(12 17 26 / 90%);
+}
+
+.communication-media-viewer-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px clamp(12px, 3vw, 28px);
+  pointer-events: none;
+}
+
+.communication-media-viewer-header h2 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 600 15px/20px Poppins, sans-serif;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.communication-media-viewer-header button {
+  display: grid;
+  flex: 0 0 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  color: inherit;
+  background: rgb(255 255 255 / 10%);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.communication-media-viewer-header button:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
+.communication-media-viewer-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  padding: 64px clamp(12px, 3vw, 28px);
+}
+
+.communication-media-viewer-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.communication-media-viewer-loading {
+  position: absolute;
+  visibility: hidden;
+}
+
+.communication-media-viewer-stage a,
+.communication-message-text a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.communication-message-text a,
+.communication-attachment-download,
+.communication-media-viewer-stage a {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 @media (max-width: 520px) {
-  .communication-message-input-form {
-    margin-inline: 12px;
+  .communication-chat-panel {
+    --communication-composer-inset: 12px;
   }
 
   .communication-composer-row {
@@ -695,10 +885,10 @@
 
 .communication-message-send-button {
   display: grid;
-  flex: 0 0 55px;
+  flex: 0 0 var(--communication-send-size);
   place-items: center;
-  width: 55px;
-  height: 55px;
+  width: var(--communication-send-size);
+  height: var(--communication-send-size);
   padding: 0;
   background: #9c83f6;
   border: 0;
@@ -950,21 +1140,33 @@
 
 .communication-message-text {
   margin: 0;
-  color: #fffdf8;
   font-family: Roboto, sans-serif;
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
   letter-spacing: 0.15px;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
   text-align: left;
 }
 
-.communication-message-bubble--outgoing .communication-message-text {
+.communication-message-text,
+.communication-message-attachment {
+  color: #fffdf8;
+}
+
+.communication-message-text a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.communication-message-bubble--outgoing .communication-message-text,
+.communication-message-bubble--outgoing .communication-message-attachment {
   color: rgb(17 24 39 / 100%);
 }
 
-.communication-message-bubble--incoming .communication-message-text {
+.communication-message-bubble--incoming .communication-message-text,
+.communication-message-bubble--incoming .communication-message-attachment {
   color: rgb(255 253 248 / 100%);
 }
 
@@ -1330,13 +1532,6 @@
   min-height: 50px;
 }
 
-.communication-pinned-message-text {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow-wrap: normal;
-}
-
 .communication-pinned-message-time {
   align-self: end;
   margin-bottom: 7px;
@@ -1554,11 +1749,6 @@
 
 .communication-pinned-message-card--live {
   grid-template-columns: 60px minmax(0, 1fr) max-content max-content;
-}
-
-.communication-pinned-message-card--live .communication-pinned-message-text {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 @media (max-width: 640px) {

@@ -1,8 +1,13 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import groupMessages from "../data/groupMessages.js";
 import MessageGroup from "./MessageGroup.jsx";
 
 const NEAR_BOTTOM_DISTANCE = 80;
+const JUMP_BUTTON_DISTANCE = 200;
+
+function getBottomDistance(container) {
+  return container.scrollHeight - container.scrollTop - container.clientHeight;
+}
 
 function readViewport(container) {
   const { top, bottom } = container.getBoundingClientRect();
@@ -13,7 +18,7 @@ function readViewport(container) {
     });
   return {
     scrollTop: container.scrollTop,
-    bottomDistance: container.scrollHeight - container.scrollTop - container.clientHeight,
+    bottomDistance: getBottomDistance(container),
     messageId: firstVisible?.dataset.messageId,
     offset: firstVisible ? firstVisible.getBoundingClientRect().top - top : 0,
   };
@@ -30,9 +35,11 @@ function restoreAnchor(container, viewport) {
   if (Math.abs(delta) > 0.5) container.scrollTop += delta;
 }
 
-function scrollToLatest(container) {
+function scrollToLatest(container, behavior = "instant") {
   const bottom = Math.max(0, container.scrollHeight - container.clientHeight);
-  if (Math.abs(container.scrollTop - bottom) > 0.5) container.scrollTop = bottom;
+  if (Math.abs(container.scrollTop - bottom) > 0.5) {
+    container.scrollTo({ top: bottom, behavior });
+  }
 }
 
 export default function MessageList({
@@ -45,14 +52,22 @@ export default function MessageList({
   pinnedIds,
   isUpdatingPin,
   onTogglePin,
+  onOpenMedia,
 }) {
   const [openMessageMenuId, setOpenMessageMenuId] = useState(null);
+  const [showJumpButton, setShowJumpButton] = useState(false);
   const scrollContainerRef = useRef(null);
   const messageContentRef = useRef(null);
   const previousMessagesRef = useRef(null);
   const viewportRef = useRef(null);
   const messageGroups = groupMessages(messages);
   const hasMessages = messageGroups.length > 0;
+
+  const recordViewport = useCallback((container) => {
+    const viewport = readViewport(container);
+    viewportRef.current = viewport;
+    setShowJumpButton(viewport.bottomDistance > JUMP_BUTTON_DISTANCE);
+  }, []);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -78,14 +93,14 @@ export default function MessageList({
     if (!previous || sentNewMessage ||
       (!prepended && incomingAppended && viewport?.bottomDistance <= NEAR_BOTTOM_DISTANCE)) {
       scrollToLatest(container);
-      viewportRef.current = readViewport(container);
+      recordViewport(container);
     } else if (messagesChanged) {
       restoreAnchor(container, viewport);
-      viewportRef.current = readViewport(container);
+      recordViewport(container);
     }
 
     previousMessagesRef.current = { ids, firstId, lastId: latest?.id, sentId: lastSentMessageId };
-  }, [historyReady, lastSentMessageId, messageGroups]);
+  }, [historyReady, lastSentMessageId, messageGroups, recordViewport]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -95,7 +110,10 @@ export default function MessageList({
     let height = content.getBoundingClientRect().height;
     const observer = new ResizeObserver(() => {
       const nextHeight = content.getBoundingClientRect().height;
-      if (nextHeight === height) return;
+      if (nextHeight === height) {
+        setShowJumpButton(getBottomDistance(container) > JUMP_BUTTON_DISTANCE);
+        return;
+      }
       height = nextHeight;
 
       const viewport = viewportRef.current;
@@ -109,54 +127,73 @@ export default function MessageList({
           restoreAnchor(container, viewport);
         }
       }
-      viewportRef.current = readViewport(container);
+      recordViewport(container);
     });
     observer.observe(content);
+    observer.observe(container);
     return () => observer.disconnect();
-  }, [hasMessages]);
+  }, [hasMessages, recordViewport]);
 
   if (!conversation) {
     return null;
   }
 
   return (
-    <div
-      className="communication-message-scroll"
-      ref={scrollContainerRef}
-      role="region"
-      aria-label={`${conversation.name} messages`}
-      tabIndex={0}
-      onScroll={(event) => {
-        viewportRef.current = readViewport(event.currentTarget);
-      }}
-    >
-      {older?.hasMore && (
-        <div className="communication-older-messages">
-          <button className="communication-action-button" type="button" onClick={onLoadOlder} disabled={older.isLoading}>
-            {older.isLoading ? "Loading older messages…" : "Load older messages"}
-          </button>
-          {older.error && <p role="alert">{older.error}</p>}
-        </div>
+    <>
+      <div
+        className="communication-message-scroll"
+        ref={scrollContainerRef}
+        role="region"
+        aria-label={`${conversation.name} messages`}
+        tabIndex={0}
+        onScroll={(event) => recordViewport(event.currentTarget)}
+      >
+        {older?.hasMore && (
+          <div className="communication-older-messages">
+            <button className="communication-action-button" type="button" onClick={onLoadOlder} disabled={older.isLoading}>
+              {older.isLoading ? "Loading older messages…" : "Load older messages"}
+            </button>
+            {older.error && <p role="alert">{older.error}</p>}
+          </div>
+        )}
+        {messageGroups.length === 0 ? (
+          <p className="communication-message-empty" role="status">
+            No messages yet.
+          </p>
+        ) : (
+          <ol className="communication-message-list" ref={messageContentRef}>
+            {messageGroups.map((group) => (
+              <MessageGroup
+                key={group.id}
+                group={group}
+                pinnedIds={pinnedIds}
+                isUpdatingPin={isUpdatingPin}
+                onTogglePin={onTogglePin}
+                onOpenMedia={onOpenMedia}
+                openMessageMenuId={openMessageMenuId}
+                setOpenMessageMenuId={setOpenMessageMenuId}
+              />
+            ))}
+          </ol>
+        )}
+      </div>
+      {historyReady && showJumpButton && (
+        <button
+          className="communication-scroll-to-bottom"
+          type="button"
+          aria-label="Scroll to latest message"
+          onClick={() => {
+            const container = scrollContainerRef.current;
+            container.focus({ preventScroll: true });
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            scrollToLatest(container, reduceMotion ? "instant" : "smooth");
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 5v14m-6-6 6 6 6-6" />
+          </svg>
+        </button>
       )}
-      {messageGroups.length === 0 ? (
-        <p className="communication-message-empty" role="status">
-          No messages yet.
-        </p>
-      ) : (
-        <ol className="communication-message-list" ref={messageContentRef}>
-          {messageGroups.map((group) => (
-            <MessageGroup
-              key={group.id}
-              group={group}
-              pinnedIds={pinnedIds}
-              isUpdatingPin={isUpdatingPin}
-              onTogglePin={onTogglePin}
-              openMessageMenuId={openMessageMenuId}
-              setOpenMessageMenuId={setOpenMessageMenuId}
-            />
-          ))}
-        </ol>
-      )}
-    </div>
+    </>
   );
 }
