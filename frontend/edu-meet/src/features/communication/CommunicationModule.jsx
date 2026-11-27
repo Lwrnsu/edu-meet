@@ -83,9 +83,16 @@ export default function CommunicationModule({ currentUserId }) {
   const conversations = conversationState.conversations.map((conversation) => {
     const messages = chatState.messagesByConversationId[conversation.id];
     const latest = messages?.at(-1);
-    if (!latest || (live && latest.createdAt < conversation.lastMessageTime)) return conversation;
-    const sender = latest.direction === "outgoing" ? "You" : latest.senderName;
-    const preview = latest.text || latest.attachment?.name;
+    if (!latest || (live && latest.createdAt < conversation.lastMessageTime)) {
+      return { ...conversation, preview: conversation.preview ?? "No messages yet." };
+    }
+    const member = membersByConversationId[conversation.id]?.find(({ id }) => id === latest.senderId);
+    const senderName = member?.name || latest.senderName;
+    const sender = latest.direction === "outgoing" ? "You" : senderName?.trim().split(/\s+/, 1)[0];
+    let preview = latest.text;
+    if (latest.attachment) {
+      preview = latest.attachment.contentType?.startsWith("image/") ? "Sent an image" : "Sent a file";
+    }
     return {
       ...conversation,
       preview: sender ? `${sender}: ${preview}` : preview,

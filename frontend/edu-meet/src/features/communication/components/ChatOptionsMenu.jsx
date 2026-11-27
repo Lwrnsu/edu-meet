@@ -109,7 +109,9 @@ export default function ChatOptionsMenu({
           imageUrl={conversation.avatarUrl}
           size={80}
         />
-        <h3 className="communication-options-name">{conversation.name}</h3>
+        <h3 className={`communication-options-name${isGroup ? " communication-options-name--group" : ""}`}>
+          {conversation.name}
+        </h3>
         {isGroup && (
           <button
             className="communication-options-change-profile"
@@ -117,7 +119,7 @@ export default function ChatOptionsMenu({
             role="menuitem"
             onClick={() => onAction?.("rename-group", conversation)}
           >
-            Change Group Name
+            Change group name
           </button>
         )}
       </div>

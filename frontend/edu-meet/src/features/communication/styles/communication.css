@@ -223,19 +223,32 @@
   text-align: center;
 }
 
+.communication-options-name--group {
+  height: auto;
+  min-height: 24px;
+  font-size: 18px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
 .communication-options-change-profile {
-  min-height: 20px;
-  margin: 4px 0 0;
-  padding: 0;
+  min-height: 40px;
+  margin: 6px 0 0;
+  padding: 6px 16px;
   color: #fffdf8;
   font-family: Inter, sans-serif;
-  font-size: 9px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 20px;
   text-align: center;
-  background: transparent;
+  background: #694cae;
   border: 0;
+  border-radius: 999px;
   cursor: pointer;
+}
+
+.communication-options-change-profile:hover {
+  background: #7356b7;
 }
 
 .communication-options-divider {
@@ -1721,10 +1734,6 @@
 .communication-rename-cancel {
   color: #3d4757;
   background: #e9eef6;
-}
-
-.communication-options-change-profile {
-  min-height: 44px;
 }
 
 .communication-message-scroll {

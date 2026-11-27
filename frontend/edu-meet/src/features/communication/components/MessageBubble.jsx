@@ -19,19 +19,39 @@ export default function MessageBubble({
   useLayoutEffect(() => {
     if (!menuOpen) return;
 
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    const messageArea = trigger?.closest(".communication-message-scroll");
+    if (!trigger || !menu || !messageArea) return;
+
+    function dismissMenu() {
+      setOpenMessageMenuId(null);
+    }
+
     function updatePosition() {
-      const trigger = triggerRef.current?.getBoundingClientRect();
-      const menu = menuRef.current?.getBoundingClientRect();
-      if (!trigger || !menu) return;
+      const anchor = trigger.getBoundingClientRect();
+      const bounds = messageArea.getBoundingClientRect();
+      const { width, height } = menu.getBoundingClientRect();
       const padding = 8;
-      const left = Math.max(padding, Math.min(
-        isOutgoing ? trigger.left - menu.width : trigger.right,
-        window.innerWidth - menu.width - padding,
+      const minLeft = Math.max(0, bounds.left) + padding;
+      const maxRight = Math.min(window.innerWidth, bounds.right) - padding;
+      const minTop = Math.max(0, bounds.top) + padding;
+      const maxBottom = Math.min(window.innerHeight, bounds.bottom) - padding;
+
+      if (maxRight - minLeft < width || maxBottom - minTop < height ||
+        anchor.bottom <= bounds.top || anchor.top >= bounds.bottom) {
+        dismissMenu();
+        return;
+      }
+
+      const left = Math.max(minLeft, Math.min(
+        isOutgoing ? anchor.left - width : anchor.right,
+        maxRight - width,
       ));
-      const top = Math.max(padding, Math.min(
-        trigger.bottom + 4,
-        window.innerHeight - menu.height - padding,
-      ));
+      const below = anchor.bottom + 4;
+      const above = anchor.top - 4 - height;
+      const preferredTop = below + height <= maxBottom ? below : above;
+      const top = Math.max(minTop, Math.min(preferredTop, maxBottom - height));
 
       setMenuPosition((current) =>
         current?.left === left && current?.top === top ? current : { left, top },
@@ -39,13 +59,18 @@ export default function MessageBubble({
     }
 
     updatePosition();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updatePosition);
+    observer?.observe(messageArea);
     window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("scroll", dismissMenu);
+    messageArea.addEventListener("scroll", dismissMenu);
     return () => {
+      observer?.disconnect();
       window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("scroll", dismissMenu);
+      messageArea.removeEventListener("scroll", dismissMenu);
     };
-  }, [menuOpen, isOutgoing]);
+  }, [menuOpen, isOutgoing, setOpenMessageMenuId]);
 
   useLayoutEffect(() => {
     if (menuOpen && menuPositioned) {
