@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   createCollegeDepartment,
   loadCollegeDepartments,
@@ -11,6 +12,12 @@ const EMPTY_FORM = {
   name: '',
   deanMembershipId: '',
 }
+
+const DEPT_SORT_OPTIONS = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'latest', label: 'Latest to Oldest Added' },
+  { key: 'oldest', label: 'Oldest to Latest Added' },
+]
 
 function IconSearch() {
   return (
@@ -76,6 +83,20 @@ function IconFaculty() {
   )
 }
 
+function IconCaret() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+      <path d="M6 9l6 6 6-6H6z" />
+    </svg>
+  )
+}
+
+function createdSortValue(row) {
+  const parsed = Date.parse(row.createdAt || '')
+  if (Number.isFinite(parsed)) return parsed
+  return Number(row.id) || 0
+}
+
 export default function ManageCollegeDepartmentsSection({ schoolId }) {
   const [rows, setRows] = useState([])
   const [deanOptions, setDeanOptions] = useState([])
@@ -83,6 +104,12 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
   const [listError, setListError] = useState('')
   const [busy, setBusy] = useState(false)
   const [query, setQuery] = useState('')
+  const [deptSortMode, setDeptSortMode] = useState(null)
+  const [deptMenuOpen, setDeptMenuOpen] = useState(false)
+  const [deptMenuPos, setDeptMenuPos] = useState({ top: 0, left: 0, minWidth: 200 })
+  const deptFilterRef = useRef(null)
+  const deptButtonRef = useRef(null)
+  const deptMenuRef = useRef(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [viewRow, setViewRow] = useState(null)
   const [editRow, setEditRow] = useState(null)
@@ -110,17 +137,89 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
     refresh()
   }, [refresh])
 
+  const updateDeptMenuPosition = useCallback(() => {
+    const button = deptButtonRef.current
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    setDeptMenuPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 200),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!deptMenuOpen) return undefined
+    updateDeptMenuPosition()
+
+    function handleReposition() {
+      updateDeptMenuPosition()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [deptMenuOpen, updateDeptMenuPosition])
+
+  useEffect(() => {
+    if (!deptMenuOpen) return undefined
+
+    function handlePointerDown(event) {
+      const target = event.target
+      const inTrigger = deptFilterRef.current?.contains(target)
+      const inMenu = deptMenuRef.current?.contains(target)
+      if (!inTrigger && !inMenu) {
+        setDeptMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setDeptMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [deptMenuOpen])
+
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter(
-      (row) =>
-        row.slug.toLowerCase().includes(q) ||
-        row.name.toLowerCase().includes(q) ||
-        String(row.dean).toLowerCase().includes(q) ||
-        String(row.id).includes(q)
-    )
-  }, [rows, query])
+    let list = rows
+    if (q) {
+      list = list.filter(
+        (row) =>
+          row.slug.toLowerCase().includes(q) ||
+          row.name.toLowerCase().includes(q) ||
+          String(row.dean).toLowerCase().includes(q) ||
+          String(row.id).includes(q)
+      )
+    }
+    if (deptSortMode === 'az') {
+      list = [...list].sort((a, b) =>
+        String(a.name || a.slug || '')
+          .toLowerCase()
+          .localeCompare(String(b.name || b.slug || '').toLowerCase())
+      )
+    } else if (deptSortMode === 'latest') {
+      list = [...list].sort((a, b) => createdSortValue(b) - createdSortValue(a))
+    } else if (deptSortMode === 'oldest') {
+      list = [...list].sort((a, b) => createdSortValue(a) - createdSortValue(b))
+    }
+    return list
+  }, [rows, query, deptSortMode])
+
+  function selectDeptSort(mode) {
+    setDeptSortMode(mode)
+    setDeptMenuOpen(false)
+  }
 
   function closeModal() {
     setModalOpen(false)
@@ -330,7 +429,26 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
         <table className="college-depts__table">
           <thead>
             <tr>
-              <th scope="col">DEPARTMENT</th>
+              <th scope="col">
+                <div className="college-users__role-filter" ref={deptFilterRef}>
+                  <button
+                    ref={deptButtonRef}
+                    type="button"
+                    className={
+                      deptSortMode
+                        ? 'college-users__sort college-users__sort--active'
+                        : 'college-users__sort'
+                    }
+                    aria-haspopup="listbox"
+                    aria-expanded={deptMenuOpen}
+                    aria-label="Sort by department name"
+                    onClick={() => setDeptMenuOpen((open) => !open)}
+                  >
+                    DEPARTMENT
+                    <IconCaret />
+                  </button>
+                </div>
+              </th>
               <th scope="col">DEAN</th>
               <th scope="col">ID</th>
               <th scope="col">FACULTY</th>
@@ -341,7 +459,7 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
           <tbody>
             {filteredRows.map((row) => (
               <tr key={row.id}>
-                <td>{row.slug}</td>
+                <td>{row.name || row.slug}</td>
                 <td>{row.dean}</td>
                 <td>{row.id}</td>
                 <td>{row.facultyCount.toLocaleString('en-US')}</td>
@@ -390,6 +508,41 @@ export default function ManageCollegeDepartmentsSection({ schoolId }) {
           </tbody>
         </table>
       </div>
+
+      {deptMenuOpen
+        ? createPortal(
+            <ul
+              ref={deptMenuRef}
+              className="college-users__role-menu college-users__role-menu--portal"
+              role="listbox"
+              aria-label="Sort by department name"
+              style={{
+                top: deptMenuPos.top,
+                left: deptMenuPos.left,
+                minWidth: deptMenuPos.minWidth,
+              }}
+            >
+              {DEPT_SORT_OPTIONS.map((option) => (
+                <li key={option.key}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={deptSortMode === option.key}
+                    className={
+                      deptSortMode === option.key
+                        ? 'college-users__role-option is-active'
+                        : 'college-users__role-option'
+                    }
+                    onClick={() => selectDeptSort(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body
+          )
+        : null}
 
       {viewRow ? (
         <div

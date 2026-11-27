@@ -2,12 +2,14 @@ package com.block_a.edu_meet.configs;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 import com.block_a.edu_meet.handlers.ChatHandler;
 
+@Profile("chat")
 @Configuration
 @EnableWebSocket
 public class CommunicationWSConfig implements WebSocketConfigurer {

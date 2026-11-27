@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.dao;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -7,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 
+@Profile("chat")
 @Component
 public class ConversationAccess {
 

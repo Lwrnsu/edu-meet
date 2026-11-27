@@ -35,6 +35,7 @@ const ROLE_FILTER_OPTIONS = [
 const SORT_OPTIONS = [
   { key: 'az', label: 'A-Z' },
   { key: 'latest', label: 'Latest to Oldest Added' },
+  { key: 'oldest', label: 'Oldest to Latest Added' },
 ]
 
 function IconUsers() {
@@ -169,8 +170,6 @@ export default function ManageAdminsSection() {
   const [headerMenuPos, setHeaderMenuPos] = useState({ top: 0, left: 0, minWidth: 168 })
   const nameFilterRef = useRef(null)
   const nameButtonRef = useRef(null)
-  const emailFilterRef = useRef(null)
-  const emailButtonRef = useRef(null)
   const roleFilterRef = useRef(null)
   const roleButtonRef = useRef(null)
   const schoolFilterRef = useRef(null)
@@ -207,13 +206,11 @@ export default function ManageAdminsSection() {
     const button =
       openHeaderMenu === 'name'
         ? nameButtonRef.current
-        : openHeaderMenu === 'email'
-          ? emailButtonRef.current
-          : openHeaderMenu === 'role'
-            ? roleButtonRef.current
-            : openHeaderMenu === 'school'
-              ? schoolButtonRef.current
-              : null
+        : openHeaderMenu === 'role'
+          ? roleButtonRef.current
+          : openHeaderMenu === 'school'
+            ? schoolButtonRef.current
+            : null
     if (!button) return
     const rect = button.getBoundingClientRect()
     setHeaderMenuPos({
@@ -245,11 +242,10 @@ export default function ManageAdminsSection() {
     function handlePointerDown(event) {
       const target = event.target
       const inName = nameFilterRef.current?.contains(target)
-      const inEmail = emailFilterRef.current?.contains(target)
       const inRole = roleFilterRef.current?.contains(target)
       const inSchool = schoolFilterRef.current?.contains(target)
       const inMenu = headerMenuRef.current?.contains(target)
-      if (!inName && !inEmail && !inRole && !inSchool && !inMenu) {
+      if (!inName && !inRole && !inSchool && !inMenu) {
         setOpenHeaderMenu(null)
       }
     }
@@ -285,7 +281,6 @@ export default function ManageAdminsSection() {
     if (sortKey && sortMode === 'az') {
       list = [...list].sort((a, b) => {
         const valueFor = (admin) => {
-          if (sortKey === 'email') return String(admin.email || '')
           if (sortKey === 'school') {
             const school = String(admin.school || '').trim()
             return school === '—' ? '' : school
@@ -296,6 +291,8 @@ export default function ManageAdminsSection() {
       })
     } else if (sortKey && sortMode === 'latest') {
       list = [...list].sort((a, b) => createdSortValue(b) - createdSortValue(a))
+    } else if (sortKey && sortMode === 'oldest') {
+      list = [...list].sort((a, b) => createdSortValue(a) - createdSortValue(b))
     }
 
     return list
@@ -627,22 +624,7 @@ export default function ManageAdminsSection() {
               <IconCaret />
             </button>
           </span>
-          <span className="admin-admins__header-filter" ref={emailFilterRef}>
-            <button
-              ref={emailButtonRef}
-              type="button"
-              className={
-                sortKey === 'email' ? 'admin-admins__sort admin-admins__sort--active' : 'admin-admins__sort'
-              }
-              aria-haspopup="listbox"
-              aria-expanded={openHeaderMenu === 'email'}
-              aria-label="Sort by email"
-              onClick={() => toggleHeaderMenu('email')}
-            >
-              Email
-              <IconCaret />
-            </button>
-          </span>
+          <span>Email</span>
           <span className="admin-admins__header-filter" ref={roleFilterRef}>
             <button
               ref={roleButtonRef}
@@ -714,18 +696,14 @@ export default function ManageAdminsSection() {
         </ul>
       </div>
 
-      {openHeaderMenu === 'name' || openHeaderMenu === 'email' || openHeaderMenu === 'school'
+      {openHeaderMenu === 'name' || openHeaderMenu === 'school'
         ? createPortal(
             <ul
               ref={headerMenuRef}
               className="admin-admins__header-menu admin-admins__header-menu--portal"
               role="listbox"
               aria-label={
-                openHeaderMenu === 'name'
-                  ? 'Sort by admin name'
-                  : openHeaderMenu === 'email'
-                    ? 'Sort by email'
-                    : 'Sort by assigned school'
+                openHeaderMenu === 'name' ? 'Sort by admin name' : 'Sort by assigned school'
               }
               style={{
                 top: headerMenuPos.top,

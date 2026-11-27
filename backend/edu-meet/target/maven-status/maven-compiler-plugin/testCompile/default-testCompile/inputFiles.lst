@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 C:\Users\jayla\Desktop\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\attendance\AttendanceCalculatorTest.java
 C:\Users\jayla\Desktop\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\attendance\AttendanceServiceTest.java
 C:\Users\jayla\Desktop\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\chat\AttachmentControllerTest.java
@@ -26,3 +27,9 @@ C:\Users\admin\Documents\VScode\edu-meet\backend\edu-meet\src\test\java\com\bloc
 C:\Users\admin\Documents\VScode\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\client\PhpLoginClientTest.java
 C:\Users\admin\Documents\VScode\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\EduMeetApplicationTests.java
 >>>>>>> origin/MACARAEG
+=======
+C:\xampp\htdocs\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\attendance\AttendanceCalculatorTest.java
+C:\xampp\htdocs\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\attendance\AttendanceServiceTest.java
+C:\xampp\htdocs\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\client\PhpLoginClientTest.java
+C:\xampp\htdocs\edu-meet\backend\edu-meet\src\test\java\com\block_a\edu_meet\EduMeetApplicationTests.java
+>>>>>>> origin/CERICO
