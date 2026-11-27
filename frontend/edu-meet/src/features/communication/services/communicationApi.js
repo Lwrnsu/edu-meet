@@ -21,7 +21,7 @@ function requireText(value, name) {
   return value;
 }
 
-export function createCommunicationApi({ baseUrl = "" } = {}) {
+export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
   const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, "");
 
   function buildUrl(path, query = {}) {
@@ -46,6 +46,7 @@ export function createCommunicationApi({ baseUrl = "" } = {}) {
         method,
         headers: {
           Accept: "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
         signal,
@@ -136,80 +137,60 @@ export function createCommunicationApi({ baseUrl = "" } = {}) {
     return payload.body;
   }
 
-  function getConversations(userId, { signal } = {}) {
-    const validUserId = requireText(userId, "userId");
-    return request("/api/conversations", { userId: validUserId }, signal);
-  }
-
-  function getMembers(conversationId, userId, { signal } = {}) {
-    const validConversationId = requireText(conversationId, "conversationId");
-    const validUserId = requireText(userId, "userId");
-    return request(
-      `/api/conversations/${encodeURIComponent(validConversationId)}/members`,
-      { userId: validUserId },
-      signal,
-    );
-  }
-
-  function getMessages(conversationId, userId, { signal } = {}) {
-    const validConversationId = requireText(conversationId, "conversationId");
-    const validUserId = requireText(userId, "userId");
-    return request(
-      `/api/conversations/${encodeURIComponent(validConversationId)}/messages`,
-      { userId: validUserId },
-      signal,
-    );
-  }
-
-  function getOlderMessages(conversationId, userId, beforeId, { signal } = {}) {
-    const validConversationId = requireText(conversationId, "conversationId");
-    const validUserId = requireText(userId, "userId");
-    const validBeforeId = requireText(beforeId, "beforeId");
-    return request(
-      `/api/conversations/${encodeURIComponent(validConversationId)}/messages/older`,
-      {
-        userId: validUserId,
-        beforeId: validBeforeId,
-      },
-      signal,
-    );
-  }
-
-  function groupRequest(conversationId, userId, path, { signal, ...options } = {}) {
+  function conversationRequest(conversationId, path, { signal, query, ...options } = {}) {
     const id = encodeURIComponent(requireText(conversationId, "conversationId"));
-    const actor = requireText(userId, "userId");
-    return request(`/api/conversations/${id}${path}`, { userId: actor }, signal, options);
+    return request(`/api/conversations/${id}${path}`, query, signal, options);
   }
 
-  function renameGroup(conversationId, userId, name) {
-    return groupRequest(conversationId, userId, "/name", { method: "PATCH", body: { name } });
+  function getConversations({ signal } = {}) {
+    return request("/api/conversations", {}, signal);
   }
 
-  function getPinnedMessages(conversationId, userId, { signal } = {}) {
-    return groupRequest(conversationId, userId, "/pinned-messages", { signal });
+  function getMembers(conversationId, options) {
+    return conversationRequest(conversationId, "/members", options);
   }
 
-  function setMessagePinned(conversationId, userId, messageId, pinned) {
+  function getMessages(conversationId, options) {
+    return conversationRequest(conversationId, "/messages", options);
+  }
+
+  function getOlderMessages(conversationId, beforeId, { signal } = {}) {
+    const cursor = requireText(beforeId, "beforeId");
+    return conversationRequest(conversationId, "/messages/older", { query: { beforeId: cursor }, signal });
+  }
+
+  function renameGroup(conversationId, name) {
+    return conversationRequest(conversationId, "/name", { method: "PATCH", body: { name } });
+  }
+
+  function getPinnedMessages(conversationId, options) {
+    return conversationRequest(conversationId, "/pinned-messages", options);
+  }
+
+  function setMessagePinned(conversationId, messageId, pinned) {
     const id = encodeURIComponent(requireText(messageId, "messageId"));
-    return groupRequest(conversationId, userId, `/pinned-messages/${id}`, {
-      method: pinned ? "PUT" : "DELETE",
-    });
+    return conversationRequest(conversationId, `/pinned-messages/${id}`, { method: pinned ? "PUT" : "DELETE" });
   }
 
-  function sendAttachment(conversationId, userId, file, text) {
+  function sendAttachment(conversationId, file, text) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("text", text);
-    return groupRequest(conversationId, userId, "/messages/attachments", { method: "POST", formData });
+    return conversationRequest(conversationId, "/messages/attachments", { method: "POST", formData });
   }
 
-  function attachmentUrl(conversationId, userId, messageId, inline = false) {
+  function attachmentUrl(conversationId, messageId) {
     const conversation = encodeURIComponent(conversationId);
     const message = encodeURIComponent(messageId);
-    return buildUrl(`/api/conversations/${conversation}/messages/${message}/attachment`, {
-      userId,
-      inline: inline || undefined,
-    });
+    return buildUrl(`/api/conversations/${conversation}/messages/${message}/attachment`);
+  }
+
+  function getSocketTicket({ signal } = {}) {
+    return request("/api/chat/socket-ticket", {}, signal, { method: "POST" });
+  }
+
+  function getCurrentAccount({ signal } = {}) {
+    return request("/api/chat/me", {}, signal);
   }
 
   return {
@@ -222,18 +203,7 @@ export function createCommunicationApi({ baseUrl = "" } = {}) {
     setMessagePinned,
     sendAttachment,
     attachmentUrl,
+    getSocketTicket,
+    getCurrentAccount,
   };
 }
-
-const defaultCommunicationApi = createCommunicationApi();
-
-export const getConversations = defaultCommunicationApi.getConversations;
-export const getMembers = defaultCommunicationApi.getMembers;
-export const getMessages = defaultCommunicationApi.getMessages;
-export const getOlderMessages = defaultCommunicationApi.getOlderMessages;
-
-export const renameGroup = defaultCommunicationApi.renameGroup;
-export const getPinnedMessages = defaultCommunicationApi.getPinnedMessages;
-export const setMessagePinned = defaultCommunicationApi.setMessagePinned;
-export const sendAttachment = defaultCommunicationApi.sendAttachment;
-export const attachmentUrl = defaultCommunicationApi.attachmentUrl;

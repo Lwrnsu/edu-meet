@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.controllers;
 
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,7 @@ import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.helpers.MemberLookup;
+import com.block_a.edu_meet.helpers.ChatIdentity;
 import com.block_a.edu_meet.helpers.ConversationSummary;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.models.Conversation;
@@ -59,7 +61,11 @@ public class ConversationController {
     }
 
     @GetMapping
-    public List<ConversationSummary> getMyConversations(@RequestParam String userId) {
+    public List<ConversationSummary> getMyConversations(Principal principal) {
+        return getMyConversations(ChatIdentity.userId(principal));
+    }
+
+    public List<ConversationSummary> getMyConversations(String userId) {
         return conversationRepository.findByParticipantIdsContaining(userId).stream()
                 .map(c -> {
                     Message last = messageRepository
@@ -77,19 +83,36 @@ public class ConversationController {
 
     @GetMapping("/{conversationId}/members")
     public List<MemberDto> getMembers(@PathVariable String conversationId,
-                                      @RequestParam String userId) {
-        Conversation conversation = conversationAccess.requireMember(conversationId, userId);
+                                      Principal principal) {
+        Conversation conversation = conversationAccess.requireMember(conversationId, ChatIdentity.userId(principal));
         return memberLookup.findMembers(conversation.getParticipantIds());
     }
 
     @PostMapping
-    public Conversation createConversation(@RequestBody CreateConversationRequest request) {
+    public Conversation createConversation(@RequestBody CreateConversationRequest request, Principal principal) {
+        String actor = ChatIdentity.userId(principal);
+        if (request.type() == ConversationType.PRIVATE) {
+            if (request.participantIds() == null || !request.participantIds().contains(actor)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A private chat must include your account");
+            }
+            var participants = new java.util.LinkedHashSet<>(request.participantIds());
+            if (memberLookup.findMembers(new ArrayList<>(participants)).size() != participants.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown participant");
+            }
+        } else {
+            requireRosterManager(principal);
+        }
+        return createConversation(request);
+    }
+
+    public Conversation createConversation(CreateConversationRequest request) {
         return conversationCreationService.createConversation(request);
     }
 
     @PostMapping("/{conversationId}/members")
     public Conversation addMembers(@PathVariable String conversationId,
-                                   @RequestBody MemberChangeRequest request) {
+                                   @RequestBody MemberChangeRequest request, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
@@ -113,7 +136,8 @@ public class ConversationController {
 
     @DeleteMapping("/{conversationId}/members/{userId}")
     public Conversation removeMember(@PathVariable String conversationId,
-                                     @PathVariable String userId) {
+                                     @PathVariable String userId, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
@@ -130,7 +154,8 @@ public class ConversationController {
 
         @PutMapping("/{conversationId}/members")
     public Conversation replaceMembers(@PathVariable String conversationId,
-                                       @RequestBody MemberChangeRequest request) {
+                                       @RequestBody MemberChangeRequest request, Principal principal) {
+        requireRosterManager(principal);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
 
@@ -145,6 +170,15 @@ public class ConversationController {
         return updateParticipants(conversation);
     }
 
+
+    private void requireRosterManager(Principal principal) {
+        ChatIdentity.require(principal);
+        Authentication authentication = (Authentication) principal;
+        if (authentication.getAuthorities().stream().noneMatch(
+                authority -> "CHAT_ROSTER_ADMIN".equals(authority.getAuthority()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Roster management permission required");
+        }
+    }
 
     private String preview(Message message) {
         return (message.getText() == null || message.getText().isEmpty()) && message.getAttachment() != null

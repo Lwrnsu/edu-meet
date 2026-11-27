@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.chat;
 
+import static com.block_a.edu_meet.support.ChatTestPrincipals.rosterManager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -63,7 +64,7 @@ class ConversationMembershipTest {
     @EnumSource(value = ConversationType.class, names = {"BLOCK", "SUBJECT"})
     void addsOnlyNewMembers(ConversationType type) throws Exception {
         setType(type);
-        mvc.perform(request(HttpMethod.POST, membersUrl())
+        mvc.perform(request(HttpMethod.POST, membersUrl()).principal(rosterManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"userIds\":[\"bob\",\"charlie\",\"charlie\"]}"))
                 .andExpect(status().isOk());
@@ -75,7 +76,7 @@ class ConversationMembershipTest {
     @EnumSource(value = ConversationType.class, names = {"BLOCK", "SUBJECT"})
     void removesOnlyTheRequestedMember(ConversationType type) throws Exception {
         setType(type);
-        mvc.perform(request(HttpMethod.DELETE, membersUrl() + "/alice"))
+        mvc.perform(request(HttpMethod.DELETE, membersUrl() + "/alice").principal(rosterManager()))
                 .andExpect(status().isOk());
 
         assertMembers(List.of("bob"));
@@ -85,7 +86,7 @@ class ConversationMembershipTest {
     @EnumSource(value = ConversationType.class, names = {"BLOCK", "SUBJECT"})
     void replacesMembersAndRemovesDuplicates(ConversationType type) throws Exception {
         setType(type);
-        mvc.perform(request(HttpMethod.PUT, membersUrl())
+        mvc.perform(request(HttpMethod.PUT, membersUrl()).principal(rosterManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"userIds\":[\"charlie\",\"dana\",\"charlie\"]}"))
                 .andExpect(status().isOk());
@@ -98,7 +99,7 @@ class ConversationMembershipTest {
     void privateChatsRejectMemberChanges(String method) throws Exception {
         setType(ConversationType.PRIVATE);
         String url = membersUrl() + (method.equals("DELETE") ? "/alice" : "");
-        mvc.perform(request(HttpMethod.valueOf(method), url)
+        mvc.perform(request(HttpMethod.valueOf(method), url).principal(rosterManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"userIds\":[\"charlie\"]}"))
                 .andExpect(status().isBadRequest());
@@ -111,7 +112,7 @@ class ConversationMembershipTest {
     void missingChatsReturnNotFound(String method) throws Exception {
         String url = "/api/conversations/missing-chat/members"
                 + (method.equals("DELETE") ? "/alice" : "");
-        mvc.perform(request(HttpMethod.valueOf(method), url)
+        mvc.perform(request(HttpMethod.valueOf(method), url).principal(rosterManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"userIds\":[\"charlie\"]}"))
                 .andExpect(status().isNotFound());
@@ -123,7 +124,7 @@ class ConversationMembershipTest {
     @ValueSource(strings = {"{}", "{\"userIds\":null}", "{\"userIds\":[]}"})
     void addAndReplaceRejectMissingOrEmptyLists(String body) throws Exception {
         for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
-            mvc.perform(request(method, membersUrl())
+            mvc.perform(request(method, membersUrl()).principal(rosterManager())
                     .contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest());
             assertMembers(List.of("alice", "bob"));

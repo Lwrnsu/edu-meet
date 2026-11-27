@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { getPinnedMessages, setMessagePinned } from "../services/communicationApi.js";
 import { adaptMessage } from "../utils/communicationAdapters.js";
 
-export default function usePinnedMessages(conversationId, userId, showingPins) {
+export default function usePinnedMessages(conversationId, userId, showingPins, api) {
   const [byConversation, setByConversation] = useState({});
   const [pending, setPending] = useState({});
   const writes = useRef(new Set());
@@ -13,7 +12,7 @@ export default function usePinnedMessages(conversationId, userId, showingPins) {
     const controller = new AbortController();
     const { signal } = controller;
     activeRead.current = { conversationId, controller };
-    getPinnedMessages(conversationId, userId, { signal })
+    api.getPinnedMessages(conversationId, { signal })
       .then((payload) => {
         if (signal.aborted || writes.current.has(conversationId)) return;
         const messages = payload.map((message) =>
@@ -29,7 +28,7 @@ export default function usePinnedMessages(conversationId, userId, showingPins) {
         }));
       });
     return () => controller.abort();
-  }, [conversationId, userId, showingPins]);
+  }, [api, conversationId, userId, showingPins]);
 
   async function updatePin(messageId, pinned) {
     if (!conversationId || writes.current.has(conversationId)) return;
@@ -39,7 +38,7 @@ export default function usePinnedMessages(conversationId, userId, showingPins) {
     }
     setPending((current) => ({ ...current, [conversationId]: messageId }));
     try {
-      const response = await setMessagePinned(conversationId, userId, messageId, pinned);
+      const response = await api.setMessagePinned(conversationId, messageId, pinned);
       const updated = pinned ? adaptMessage(response, userId, { numericTimestampUnit: "seconds" }) : null;
       setByConversation((current) => {
         const messages = current[conversationId]?.messages ?? [];

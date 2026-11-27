@@ -1,5 +1,7 @@
 package com.block_a.edu_meet.chat;
 
+import static com.block_a.edu_meet.support.ChatTestPrincipals.rosterManager;
+import static com.block_a.edu_meet.support.ChatTestPrincipals.account;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -28,7 +30,7 @@ import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
 
-@SpringBootTest(properties = "communication.allow-test-user-id=false")
+@SpringBootTest
 class GroupChatControllerTest {
 
     @Autowired private GroupChatController groupController;
@@ -46,11 +48,11 @@ class GroupChatControllerTest {
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(groupController, conversationsController)
                 .setControllerAdvice(new CommunicationApiResponseAdvice()).build();
-        group = conversations.save(new Conversation(ConversationType.BLOCK, "Original", List.of("alice", "bob")));
-        other = conversations.save(new Conversation(ConversationType.PRIVATE, null, List.of("alice", "bob")));
+        group = conversations.save(new Conversation(ConversationType.BLOCK, "Original", List.of("1", "2")));
+        other = conversations.save(new Conversation(ConversationType.PRIVATE, null, List.of("1", "2")));
         Instant now = Instant.now();
-        first = messages.save(new Message(group.getId(), "alice", "First message", now));
-        second = messages.save(new Message(other.getId(), "bob", "Different chat", now.minusSeconds(10)));
+        first = messages.save(new Message(group.getId(), "1", "First message", now));
+        second = messages.save(new Message(other.getId(), "2", "Different chat", now.minusSeconds(10)));
     }
 
     @AfterEach
@@ -61,11 +63,11 @@ class GroupChatControllerTest {
 
     @Test
     void renameUsesVerifiedMemberAndUpdatesSidebar() throws Exception {
-        mvc.perform(patch(groupUrl() + "/name").principal(() -> "alice")
+        mvc.perform(patch(groupUrl() + "/name").principal(account(1))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" New name \"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body.name").value("New name"));
 
-        mvc.perform(get("/api/conversations").param("userId", "bob"))
+        mvc.perform(get("/api/conversations").principal(account(2)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.body[0].id").value(group.getId()))
                 .andExpect(jsonPath("$.body[0].name").value("New name"));
@@ -73,13 +75,13 @@ class GroupChatControllerTest {
 
     @Test
     void rejectsUnverifiedUserOutsiderPrivateChatAndBlankName() throws Exception {
-        mvc.perform(get(groupUrl() + "/pinned-messages").param("userId", "alice"))
+        mvc.perform(get(groupUrl() + "/pinned-messages").param("userId", "1"))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(put(pinUrl(first)).principal(() -> "outsider").param("userId", "alice"))
+        mvc.perform(put(pinUrl(first)).principal(account(4)).param("userId", "1"))
                 .andExpect(status().isNotFound());
-        mvc.perform(get("/api/conversations/" + other.getId() + "/pinned-messages").principal(() -> "alice"))
+        mvc.perform(get("/api/conversations/" + other.getId() + "/pinned-messages").principal(account(1)))
                 .andExpect(status().isBadRequest());
-        mvc.perform(patch(groupUrl() + "/name").principal(() -> "alice")
+        mvc.perform(patch(groupUrl() + "/name").principal(account(1))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"  \"}"))
                 .andExpect(status().isBadRequest());
     }
@@ -87,26 +89,26 @@ class GroupChatControllerTest {
     @Test
     void pinAndUnpinAreIdempotentAndOnlyAcceptMessagesInTheGroup() throws Exception {
         String pins = groupUrl() + "/pinned-messages";
-        mvc.perform(get(pins).principal(() -> "bob"))
+        mvc.perform(get(pins).principal(account(2)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body").isEmpty());
-        mvc.perform(put(pinUrl(second)).principal(() -> "alice"))
+        mvc.perform(put(pinUrl(second)).principal(account(1)))
                 .andExpect(status().isNotFound());
         for (int attempt = 0; attempt < 2; attempt++) {
-            mvc.perform(put(pinUrl(first)).principal(() -> "alice"))
+            mvc.perform(put(pinUrl(first)).principal(account(1)))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.body.id").value(first.getId()));
         }
 
-        mvc.perform(put(groupUrl() + "/members").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userIds\":[\"alice\",\"bob\",\"charlie\"]}"))
+        mvc.perform(put(groupUrl() + "/members").principal(rosterManager()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userIds\":[\"1\",\"2\",\"3\"]}"))
                 .andExpect(status().isOk());
-        mvc.perform(get(pins).principal(() -> "charlie"))
+        mvc.perform(get(pins).principal(account(3)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body.length()").value(1))
                 .andExpect(jsonPath("$.body[0].id").value(first.getId()));
 
         for (int attempt = 0; attempt < 2; attempt++) {
-            mvc.perform(delete(pinUrl(first)).principal(() -> "bob")).andExpect(status().isOk());
+            mvc.perform(delete(pinUrl(first)).principal(account(2))).andExpect(status().isOk());
         }
-        mvc.perform(get(pins).principal(() -> "alice"))
+        mvc.perform(get(pins).principal(account(1)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.body").isEmpty());
     }
 

@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.chat;
 
+import static com.block_a.edu_meet.support.ChatTestPrincipals.account;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -60,7 +61,7 @@ class ConversationReadAccessTest {
         messages = mock(MessageRepository.class);
         members = mock(MemberLookup.class);
         cache = mock(RecentMessageCache.class);
-        conversation = new Conversation(ConversationType.BLOCK, "Test block", List.of("member"));
+        conversation = new Conversation(ConversationType.BLOCK, "Test block", List.of("1"));
         when(conversations.findById("chat")).thenReturn(Optional.of(conversation));
 
         ConversationAccess access = new ConversationAccess(conversations);
@@ -75,18 +76,18 @@ class ConversationReadAccessTest {
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void membersCanRead(String endpoint) throws Exception {
-        Message message = new Message("chat", "member", "Hello", Instant.parse("2026-11-15T00:00:00Z"));
+        Message message = new Message("chat", "1", "Hello", Instant.parse("2026-11-15T00:00:00Z"));
         message.setId("cursor");
         when(messages.findMetadataById("cursor")).thenReturn(Optional.of(message));
         when(messages.findByConversationIdOrderByTimestampDescIdDesc(eq("chat"), any()))
                 .thenReturn(List.of(message));
         when(messages.findOlderMessages(eq("chat"), any(), eq("cursor"), any()))
                 .thenReturn(List.of(message));
-        when(members.findMembers(List.of("member")))
-                .thenReturn(List.of(new MemberDto("member", "Test member", "2024-00001", null)));
+        when(members.findMembers(List.of("1")))
+                .thenReturn(List.of(new MemberDto("1", "Test member", "2024-00001", null)));
 
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", "member").param("beforeId", "cursor"))
+                .principal(account(1)).param("beforeId", "cursor"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.response").value(true))
                 .andExpect(jsonPath("$.code").value(200))
@@ -99,7 +100,7 @@ class ConversationReadAccessTest {
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void outsidersSeeNotFound(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", "outsider").param("beforeId", "cursor"))
+                .principal(account(3)).param("userId", "1").param("beforeId", "cursor"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);
@@ -107,21 +108,21 @@ class ConversationReadAccessTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
-    void missingUserIdIsRejected(String endpoint) throws Exception {
+    void missingAuthenticationIsRejected(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
                 .param("beforeId", "cursor"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.response").value(false))
-                .andExpect(jsonPath("$.code").value(400));
+                .andExpect(jsonPath("$.code").value(401));
         verifyNoInteractions(conversations, messages, members, cache);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
-    void blankUserIdIsRejected(String endpoint) throws Exception {
+    void queryUserIdDoesNotAuthenticate(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/chat" + endpoint)
-                .param("userId", " ").param("beforeId", "cursor"))
-                .andExpect(status().isBadRequest());
+                .param("userId", "1").param("beforeId", "cursor"))
+                .andExpect(status().isUnauthorized());
         verifyNoInteractions(messages, members, cache);
     }
 
@@ -129,7 +130,7 @@ class ConversationReadAccessTest {
     @ValueSource(strings = {"/messages", "/messages/older", "/members"})
     void missingConversationReturnsNotFound(String endpoint) throws Exception {
         mvc.perform(get("/api/conversations/missing" + endpoint)
-                .param("userId", "member").param("beforeId", "cursor"))
+                .principal(account(1)).param("beforeId", "cursor"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);
@@ -137,14 +138,17 @@ class ConversationReadAccessTest {
 
     @Test
     void creatingAnExistingPrivateChatReturnsItInTheResponseBody() throws Exception {
-        Conversation existing = new Conversation(ConversationType.PRIVATE, null, List.of("member", "other"));
+        Conversation existing = new Conversation(ConversationType.PRIVATE, null, List.of("1", "2"));
         existing.setId("existing");
-        when(conversations.findByTypeAndParticipantIdsContaining(ConversationType.PRIVATE, "member"))
+        when(conversations.findByTypeAndParticipantIdsContaining(ConversationType.PRIVATE, "1"))
                 .thenReturn(List.of(existing));
 
-        mvc.perform(post("/api/conversations").contentType(MediaType.APPLICATION_JSON)
+        when(members.findMembers(List.of("1", "2")))
+                .thenReturn(List.of(new MemberDto("1", "Test member", null, null),
+                        new MemberDto("2", "Other member", null, null)));
+        mvc.perform(post("/api/conversations").principal(account(1)).contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"type":"PRIVATE","participantIds":["member","other"]}
+                        {"type":"PRIVATE","participantIds":["1","2"]}
                         """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.response").value(true))
@@ -163,7 +167,7 @@ class ConversationReadAccessTest {
 
     @Test
     void olderMessagesRequireACursor() throws Exception {
-        mvc.perform(get("/api/conversations/chat/messages/older").param("userId", "member"))
+        mvc.perform(get("/api/conversations/chat/messages/older").principal(account(1)))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(messages);
     }
@@ -172,27 +176,27 @@ class ConversationReadAccessTest {
     @ValueSource(strings = {"", " ", "missing"})
     void invalidCursorsAreRejected(String beforeId) throws Exception {
         mvc.perform(get("/api/conversations/chat/messages/older")
-                .param("userId", "member").param("beforeId", beforeId))
+                .principal(account(1)).param("beforeId", beforeId))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void cursorFromAnotherChatIsRejected() throws Exception {
         when(messages.findMetadataById("foreign")).thenReturn(Optional.of(
-                new Message("other-chat", "member", "Other chat", Instant.now())));
+                new Message("other-chat", "1", "Other chat", Instant.now())));
         mvc.perform(get("/api/conversations/chat/messages/older")
-                .param("userId", "member").param("beforeId", "foreign"))
+                .principal(account(1)).param("beforeId", "foreign"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void removedMemberCannotReadHistory() throws Exception {
-        mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
+        mvc.perform(get("/api/conversations/chat/messages").principal(account(1)))
                 .andExpect(status().isOk());
 
         conversation.setParticipantIds(List.of("someone-else"));
         clearInvocations(messages, cache);
-        mvc.perform(get("/api/conversations/chat/messages").param("userId", "member"))
+        mvc.perform(get("/api/conversations/chat/messages").principal(account(1)))
                 .andExpect(status().isNotFound())
                 .andExpect(content().json(NOT_FOUND_RESPONSE, JsonCompareMode.STRICT));
         verifyNoInteractions(messages, members, cache);

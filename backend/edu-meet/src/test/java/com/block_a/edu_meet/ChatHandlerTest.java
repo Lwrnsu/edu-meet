@@ -1,5 +1,6 @@
 package com.block_a.edu_meet;
 
+import static com.block_a.edu_meet.support.ChatTestPrincipals.jwtAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -8,11 +9,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +30,9 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.entity.User;
+import com.block_a.edu_meet.repository.UserRepository;
+import com.block_a.edu_meet.services.ChatSocketTickets;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.models.ConversationType;
@@ -51,26 +58,55 @@ class ChatHandlerTest {
     @Autowired
     private RecentMessageCache cache;
 
+    @Autowired
+    private UserRepository users;
+
+    private final List<Integer> accountIds = new ArrayList<>();
+
+    @Autowired
+    private ChatSocketTickets tickets;
+
+    private String createAccount() {
+        User user = new User();
+        user.setEmail(UUID.randomUUID() + "@example.test");
+        user.setFirstName("Socket");
+        user.setLastName("Test");
+        user.setPassword("not-used-for-ticket-tests");
+        Integer id = users.save(user).getId();
+        accountIds.add(id);
+        return id.toString();
+    }
+
+    @AfterEach
+    void removeAccounts() {
+        users.deleteAllById(accountIds);
+    }
+
     private WebSocketSession connect(String userId, BlockingQueue<String> inbox) throws Exception {
+        String ticket = tickets.issue(jwtAccount(Integer.parseInt(userId)));
+
         return new StandardWebSocketClient().execute(new TextWebSocketHandler() {
             @Override
             protected void handleTextMessage(WebSocketSession s, TextMessage m) {
                 inbox.add(m.getPayload());
             }
-        }, null, URI.create("ws://localhost:" + port + "/chat?userId=" + userId)).get(5, TimeUnit.SECONDS);
+        }, null, URI.create("ws://localhost:" + port + "/chat?ticket=" + ticket)).get(5, TimeUnit.SECONDS);
     }
 
     @Test
     void onlyMembersCanSendAndReceive() throws Exception {
+        String firstId = createAccount();
+        String secondId = createAccount();
+        String outsiderId = createAccount();
         Conversation convo = conversationRepository.save(
-                new Conversation(ConversationType.SUBJECT, "membership-test", List.of("member1", "member2")));
+                new Conversation(ConversationType.SUBJECT, "membership-test", List.of(firstId, secondId)));
         String convoId = convo.getId();
 
         BlockingQueue<String> member2Inbox = new LinkedBlockingQueue<>();
         BlockingQueue<String> outsiderInbox = new LinkedBlockingQueue<>();
-        WebSocketSession member1 = connect("member1", new LinkedBlockingQueue<>());
-        WebSocketSession member2 = connect("member2", member2Inbox);
-        WebSocketSession outsider = connect("outsider", outsiderInbox);
+        WebSocketSession member1 = connect(firstId, new LinkedBlockingQueue<>());
+        WebSocketSession member2 = connect(secondId, member2Inbox);
+        WebSocketSession outsider = connect(outsiderId, outsiderInbox);
 
         try {
             cache.putLatest(convoId, List.of());
@@ -104,14 +140,16 @@ class ChatHandlerTest {
 
     @Test
     void failedSaveNotifiesOnlyTheSender() throws Exception {
+        String senderId = createAccount();
+        String recipientId = createAccount();
         Conversation conversation = conversationRepository.save(
-                new Conversation(ConversationType.SUBJECT, "failed-save-test", List.of("sender", "recipient")));
+                new Conversation(ConversationType.SUBJECT, "failed-save-test", List.of(senderId, recipientId)));
         String conversationId = conversation.getId();
         BlockingQueue<String> senderInbox = new LinkedBlockingQueue<>();
         BlockingQueue<String> recipientInbox = new LinkedBlockingQueue<>();
 
-        try (WebSocketSession recipient = connect("recipient", recipientInbox);
-             WebSocketSession sender = connect("sender", senderInbox)) {
+        try (WebSocketSession recipient = connect(recipientId, recipientInbox);
+             WebSocketSession sender = connect(senderId, senderInbox)) {
             cache.putLatest(conversationId, List.of());
             doThrow(new DataAccessResourceFailureException("Simulated save failure"))
                     .when(messageRepository).save(any(Message.class));

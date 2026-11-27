@@ -1,11 +1,13 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { downloadChatAttachment } from "../services/attachmentDownload.js";
 
 export default function MediaViewer({ attachment, trigger, onClose }) {
   const dialogRef = useRef(null);
   const closeRef = useRef(null);
   const titleId = useId();
   const [status, setStatus] = useState("loading");
+  const [downloadError, setDownloadError] = useState(null);
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -50,7 +52,9 @@ export default function MediaViewer({ attachment, trigger, onClose }) {
         {status === "error" ? (
           <p role="status">
             Image preview unavailable.{" "}
-            <a href={attachment.downloadUrl} download>Download file</a>
+            <button type="button" onClick={() =>
+              downloadChatAttachment(attachment).catch((error) => setDownloadError(error.message))
+            }>Download file</button>
           </p>
         ) : (
           <>
@@ -64,6 +68,7 @@ export default function MediaViewer({ attachment, trigger, onClose }) {
             />
           </>
         )}
+        {downloadError && <p role="alert">{downloadError}</p>}
       </div>
     </dialog>,
     document.body,

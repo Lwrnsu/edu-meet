@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getConversations, renameGroup } from "../services/communicationApi.js";
 import { adaptConversations } from "../utils/communicationAdapters.js";
 
 export default function useConversations({
   initialConversations,
   currentUserId,
+  api,
   membersByConversationId,
 }) {
   const [selectedConversationId, setSelectedConversationId] = useState(
@@ -24,7 +24,7 @@ export default function useConversations({
 
     const controller = new AbortController();
     const { signal } = controller;
-    getConversations(currentUserId, { signal })
+    api.getConversations({ signal })
       .then((payload) => {
         if (signal.aborted) return;
         const next = adaptConversations(payload, { numericTimestampUnit: "seconds" });
@@ -38,7 +38,7 @@ export default function useConversations({
         if (!signal.aborted) setIsLoading(false);
       });
     return () => controller.abort();
-  }, [currentUserId, refreshCount]);
+  }, [api, currentUserId, refreshCount]);
 
   const handleConversationUnavailable = useCallback((id, message) => {
     setAccessError(message);
@@ -67,7 +67,7 @@ export default function useConversations({
 
   async function renameConversation(conversationId, name) {
     const updated = currentUserId
-      ? await renameGroup(conversationId, currentUserId, name)
+      ? await api.renameGroup(conversationId, name)
       : { id: conversationId, name };
     setLoadedConversations((current) => current.map((conversation) =>
       conversation.id === updated.id ? { ...conversation, name: updated.name } : conversation,

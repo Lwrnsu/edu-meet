@@ -76,12 +76,12 @@ function isBackendError(payload) {
 
 export function createChatSocket({
   endpoint,
-  userId,
+  ticket,
   WebSocketImpl = globalThis.WebSocket,
 } = {}) {
-  const validUserId = requireString(userId, "userId");
+  const validTicket = requireString(ticket, "ticket");
   const socketUrl = normalizeEndpoint(endpoint);
-  socketUrl.searchParams.set("userId", validUserId);
+  socketUrl.searchParams.set("ticket", validTicket);
 
   let socket = null;
   let state = "disconnected";

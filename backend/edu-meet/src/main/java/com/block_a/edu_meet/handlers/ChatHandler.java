@@ -23,6 +23,8 @@ import com.block_a.edu_meet.repositories.MessageRepository;
 
 import tools.jackson.databind.ObjectMapper;
 import com.block_a.edu_meet.services.RecentMessageCache;
+import com.block_a.edu_meet.services.ChatSocketTickets;
+import com.block_a.edu_meet.repository.UserRepository;
 
 @Component
 public class ChatHandler extends TextWebSocketHandler {
@@ -36,27 +38,34 @@ public class ChatHandler extends TextWebSocketHandler {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final RecentMessageCache recentMessageCache;
+    private final ChatSocketTickets tickets;
+    private final UserRepository users;
 
     public ChatHandler(ObjectMapper objectMapper, MessageRepository messageRepository,
                        ConversationRepository conversationRepository,
-                       RecentMessageCache recentMessageCache) {
+                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets, UserRepository users) {
         this.objectMapper = objectMapper;
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;
         this.recentMessageCache = recentMessageCache;
+        this.tickets = tickets;
+        this.users = users;
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String userId = UriComponentsBuilder.fromUri(session.getUri())
-                .build().getQueryParams().getFirst("userId");
-
-        if (userId == null || userId.isBlank()) {
+        String ticket = UriComponentsBuilder.fromUri(session.getUri())
+                .build().getQueryParams().getFirst("ticket");
+        var identity = tickets.redeem(ticket);
+        if (identity == null || users.findByIdAndDeletedAtIsNull(Integer.valueOf(identity.userId()))
+                .filter(com.block_a.edu_meet.entity.User::isActive).isEmpty()) {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
 
+        String userId = identity.userId();
         session.getAttributes().put("userId", userId);
+        session.getAttributes().put("expiresAt", identity.expiresAt());
         sessionsByUser.computeIfAbsent(userId, k -> ConcurrentHashMap.newKeySet()).add(session);
         System.out.println("Connected: " + userId);
     }
@@ -75,7 +84,11 @@ public class ChatHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-               String userId = (String) session.getAttributes().get("userId");
+        if (!hasValidSession(session)) {
+            session.close(CloseStatus.POLICY_VIOLATION);
+            return;
+        }
+        String userId = (String) session.getAttributes().get("userId");
 
         Message incoming;
         try {
@@ -134,11 +147,19 @@ public class ChatHandler extends TextWebSocketHandler {
         }
     }
 
+    private boolean hasValidSession(WebSocketSession session) {
+        return session.getAttributes().get("expiresAt") instanceof Instant expiry
+                && expiry.isAfter(Instant.now());
+    }
+
     private void send(WebSocketSession session, TextMessage message) throws IOException {
         // The underlying WebSocket session only supports one write at a time.
         synchronized (session) {
-            if (session.isOpen()) {
+            if (!session.isOpen()) return;
+            if (hasValidSession(session)) {
                 session.sendMessage(message);
+            } else {
+                session.close(CloseStatus.POLICY_VIOLATION);
             }
         }
     }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ChatHeader from "./components/ChatHeader.jsx";
 import ChatMembersView from "./components/ChatMembersView.jsx";
 import PinnedMessagesView from "./components/PinnedMessagesView.jsx";
@@ -12,12 +12,13 @@ import mockCommunicationProvider from "./data/mockCommunicationProvider.js";
 import useConversations from "./hooks/useConversations.js";
 import usePinnedMessages from "./hooks/usePinnedMessages.js";
 import useChat from "./hooks/useChat.js";
-import { attachmentUrl, getMembers } from "./services/communicationApi.js";
+import { createCommunicationApi } from "./services/communicationApi.js";
 import { adaptMembers } from "./utils/communicationAdapters.js";
 import "./styles/communication.css";
 
-export default function CommunicationModule({ currentUserId }) {
-  const live = Boolean(currentUserId);
+export default function CommunicationModule({ currentUserId, accessToken }) {
+  const live = Boolean(currentUserId && accessToken);
+  const api = useMemo(() => createCommunicationApi({ accessToken }), [accessToken]);
   const [initialMockData] = useState(() => live ? null : mockCommunicationProvider.getInitialState());
   const [mockPinsByConversation, setMockPinsByConversation] = useState(
     () => initialMockData?.pinnedMessageIdsByConversationId ?? {},
@@ -28,7 +29,8 @@ export default function CommunicationModule({ currentUserId }) {
   const [viewingMedia, setViewingMedia] = useState(null);
   const conversationState = useConversations({
     initialConversations: initialMockData?.conversations ?? [],
-    currentUserId,
+    currentUserId: live ? currentUserId : undefined,
+    api,
     membersByConversationId,
   });
   const {
@@ -40,7 +42,8 @@ export default function CommunicationModule({ currentUserId }) {
   } = conversationState;
   const chatState = useChat({
     initialMessagesByConversationId: initialMockData?.messagesByConversationId ?? {},
-    currentUserId,
+    currentUserId: live ? currentUserId : undefined,
+    api,
     live,
     conversationId: selectedConversation?.id,
     onConversationUnavailable: handleConversationUnavailable,
@@ -70,10 +73,8 @@ export default function CommunicationModule({ currentUserId }) {
       ...(attachment && {
         attachment: {
           ...attachment,
-          downloadUrl: attachmentUrl(message.conversationId, currentUserId, message.id),
-          previewUrl: attachment.contentType.startsWith("image/")
-            ? attachmentUrl(message.conversationId, currentUserId, message.id, true)
-            : null,
+          downloadUrl: api.attachmentUrl(message.conversationId, message.id),
+          accessToken,
         },
       }),
     };
@@ -126,7 +127,7 @@ export default function CommunicationModule({ currentUserId }) {
     (!live || selectedConversation.type === "group");
 
   const liveGroupId = live && selectedConversation?.type === "group" ? selectedConversationId : null;
-  const pins = usePinnedMessages(liveGroupId, currentUserId, showingPinnedMessages);
+  const pins = usePinnedMessages(liveGroupId, currentUserId, showingPinnedMessages, api);
   const pinnedIds = new Set(live
     ? pins.messages?.map((message) => message.id)
     : selectedPinnedMessageIds);
@@ -153,7 +154,7 @@ export default function CommunicationModule({ currentUserId }) {
 
     const controller = new AbortController();
     const { signal } = controller;
-    getMembers(memberConversationId, currentUserId, { signal })
+    api.getMembers(memberConversationId, { signal })
       .then((payload) => {
         if (signal.aborted) return;
         const members = adaptMembers(payload);
@@ -169,7 +170,7 @@ export default function CommunicationModule({ currentUserId }) {
         }
       });
     return () => controller.abort();
-  }, [live, currentUserId, memberConversationId, showingMembers, handleConversationUnavailable]);
+  }, [api, live, currentUserId, memberConversationId, showingMembers, handleConversationUnavailable]);
 
   useLayoutEffect(() => {
     if (

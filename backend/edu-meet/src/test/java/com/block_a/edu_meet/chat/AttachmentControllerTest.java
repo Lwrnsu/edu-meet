@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.chat;
 
+import static com.block_a.edu_meet.support.ChatTestPrincipals.account;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -30,7 +31,7 @@ import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.RecentMessageCache;
 
-@SpringBootTest(properties = "communication.allow-test-user-id=false")
+@SpringBootTest
 class AttachmentControllerTest {
 
     @Autowired private AttachmentController attachments;
@@ -45,7 +46,7 @@ class AttachmentControllerTest {
 
     @BeforeEach
     void setUp() {
-        conversation = conversations.save(new Conversation(ConversationType.BLOCK, "Attachments", List.of("alice", "bob")));
+        conversation = conversations.save(new Conversation(ConversationType.BLOCK, "Attachments", List.of("1", "2")));
         path = "/api/conversations/" + conversation.getId() + "/messages";
         mvc = MockMvcBuilders.standaloneSetup(attachments, history)
                 .setControllerAdvice(new CommunicationApiResponseAdvice()).build();
@@ -63,39 +64,39 @@ class AttachmentControllerTest {
         byte[] bytes = "A chat file".getBytes(StandardCharsets.UTF_8);
         mvc.perform(multipart(path + "/attachments")
                         .file(new MockMultipartFile("file", "../notes.txt", "text/plain", bytes))
-                        .principal(() -> "alice"))
+                        .principal(account(1)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.senderId").value("alice"))
+                .andExpect(jsonPath("$.body.senderId").value("1"))
                 .andExpect(jsonPath("$.body.attachment.name").value("notes.txt"))
                 .andExpect(jsonPath("$.body.attachmentBytes").doesNotExist());
 
         var summary = messages.findFirstByConversationIdOrderByTimestampDescIdDesc(conversation.getId());
         assertNull(summary.getAttachmentBytes());
-        mvc.perform(get(path).param("userId", "bob"))
+        mvc.perform(get(path).principal(account(2)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.body[0].attachment.name").value("notes.txt"))
                 .andExpect(jsonPath("$.body[0].attachmentBytes").doesNotExist());
 
         String url = path + "/" + summary.getId() + "/attachment";
-        mvc.perform(get(url).principal(() -> "bob").param("inline", "true"))
+        mvc.perform(get(url).principal(account(2)).param("inline", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/octet-stream"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment;")))
                 .andExpect(content().bytes(bytes));
-        mvc.perform(get(url).principal(() -> "outsider").param("userId", "bob"))
+        mvc.perform(get(url).principal(account(4)).param("userId", "2"))
                 .andExpect(status().isNotFound());
-        mvc.perform(get(url).param("userId", "bob")).andExpect(status().isUnauthorized());
+        mvc.perform(get(url).param("userId", "2")).andExpect(status().isUnauthorized());
     }
 
     @Test
     void rejectsEmptyAndOversizedUploads() throws Exception {
         mvc.perform(multipart(path + "/attachments")
                         .file(new MockMultipartFile("file", "empty.txt", "text/plain", new byte[0]))
-                        .principal(() -> "alice"))
+                        .principal(account(1)))
                 .andExpect(status().isBadRequest());
         mvc.perform(multipart(path + "/attachments")
                         .file(new MockMultipartFile("file", "large.txt", "text/plain", new byte[5 * 1024 * 1024 + 1]))
-                        .principal(() -> "alice"))
+                        .principal(account(1)))
                 .andExpect(status().isPayloadTooLarge());
     }
 }

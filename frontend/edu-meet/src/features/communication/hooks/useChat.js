@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { getMessages, getOlderMessages, sendAttachment as uploadAttachment } from "../services/communicationApi.js";
 import { createChatSocket } from "../services/chatSocket.js";
 import { adaptMessage, adaptMessages, mergeMessages } from "../utils/communicationAdapters.js";
 import { validateMessageText } from "../utils/communicationValidation.js";
@@ -10,6 +9,7 @@ export default function useChat({
   initialMessagesByConversationId,
   currentUserId = "current-user",
   live = false,
+  api,
   conversationId,
   onConversationUnavailable,
 }) {
@@ -36,39 +36,53 @@ export default function useChat({
   useEffect(() => {
     if (!live) return;
 
-    const socket = createChatSocket({ endpoint: "/chat", userId: currentUserId });
-    socketRef.current = socket;
-    const unsubscribeState = socket.onStateChange(setConnectionState);
-    const unsubscribeError = socket.onError((event) => setError(event.message));
-    const unsubscribeMessages = socket.onSavedMessage((payload) => {
-      try {
-        const message = adaptMessage(payload, currentUserId, { numericTimestampUnit: "seconds" });
-        setMessagesByConversationId((current) => ({
-          ...current,
-          [message.conversationId]: mergeMessages(current[message.conversationId] ?? [], [message]),
-        }));
-        if (message.direction === "outgoing") setLastSentMessageId(message.id);
-      } catch (error) {
+    const controller = new AbortController();
+    const { signal } = controller;
+    let socket;
+    let unsubscribe = [];
+    api.getSocketTicket({ signal })
+      .then(({ ticket }) => {
+        if (signal.aborted) return;
+        socket = createChatSocket({ endpoint: "/chat", ticket });
+        socketRef.current = socket;
+        unsubscribe = [
+          socket.onStateChange(setConnectionState),
+          socket.onError((event) => setError(event.message)),
+          socket.onSavedMessage((payload) => {
+            try {
+              const message = adaptMessage(payload, currentUserId, { numericTimestampUnit: "seconds" });
+              setMessagesByConversationId((current) => ({
+                ...current,
+                [message.conversationId]: mergeMessages(current[message.conversationId] ?? [], [message]),
+              }));
+              if (message.direction === "outgoing") setLastSentMessageId(message.id);
+            } catch (error) {
+              setError(error.message);
+            }
+          }),
+        ];
+        socket.connect();
+      })
+      .catch((error) => {
+        if (signal.aborted) return;
         setError(error.message);
-      }
-    });
-    socket.connect();
+        setConnectionState("error");
+      });
 
     return () => {
-      unsubscribeMessages();
-      unsubscribeError();
-      unsubscribeState();
-      socket.disconnect();
+      controller.abort();
+      unsubscribe.forEach((stop) => stop());
+      socket?.disconnect();
       socketRef.current = null;
     };
-  }, [live, currentUserId]);
+  }, [api, live, currentUserId]);
 
   useEffect(() => {
     if (!live || !conversationId || connectionState !== "open") return;
 
     const controller = new AbortController();
     const { signal } = controller;
-    getMessages(conversationId, currentUserId, { signal })
+    api.getMessages(conversationId, { signal })
       .then((payload) => {
         if (signal.aborted) return;
         const history = adaptMessages(payload, currentUserId, { numericTimestampUnit: "seconds" });
@@ -102,7 +116,7 @@ export default function useChat({
       });
 
     return () => controller.abort();
-  }, [live, conversationId, connectionState, currentUserId, onConversationUnavailable]);
+  }, [api, live, conversationId, connectionState, currentUserId, onConversationUnavailable]);
 
   function sendMessage(selectedConversationId, text) {
     if (!selectedConversationId) {
@@ -154,7 +168,7 @@ export default function useChat({
   }
 
   async function sendAttachment(conversationId, file, text) {
-    const saved = await uploadAttachment(conversationId, currentUserId, file, text);
+    const saved = await api.sendAttachment(conversationId, file, text);
     const message = adaptMessage(saved, currentUserId, { numericTimestampUnit: "seconds" });
     setMessagesByConversationId((current) => ({
       ...current,
@@ -174,7 +188,7 @@ export default function useChat({
       [conversationId]: { ...older, isLoading: true },
     }));
     try {
-      const payload = await getOlderMessages(conversationId, currentUserId, older.beforeId);
+      const payload = await api.getOlderMessages(conversationId, older.beforeId);
       const history = adaptMessages(payload, currentUserId, { numericTimestampUnit: "seconds" });
       setMessagesByConversationId((current) => ({
         ...current,

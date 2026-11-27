@@ -1,6 +1,7 @@
 package com.block_a.edu_meet.security;
 
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,9 +22,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
         private final JwtAuthFilter jwtAuthFilter;
+        private final List<String> frontendOrigins;
 
-        public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                              @Value("${app.frontend.allowed-origins}") List<String> frontendOrigins) {
                 this.jwtAuthFilter = jwtAuthFilter;
+                this.frontendOrigins = frontendOrigins;
         }
 
         @Bean
@@ -66,7 +70,7 @@ public class SecurityConfig {
         @Bean
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173", "http://edu-meet.app", "https://edu-meet.app"));
+                config.setAllowedOrigins(frontendOrigins);
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setExposedHeaders(List.of("Authorization"));

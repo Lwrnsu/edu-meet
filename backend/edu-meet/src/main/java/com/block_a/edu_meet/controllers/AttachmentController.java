@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Instant;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -23,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.helpers.ChatIdentity;
 import com.block_a.edu_meet.handlers.ChatHandler;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.Message;
@@ -36,22 +36,19 @@ public class AttachmentController {
     private final ConversationAccess access;
     private final MessageRepository messages;
     private final ChatHandler chat;
-    private final boolean allowTestUserId;
 
-    public AttachmentController(ConversationAccess access, MessageRepository messages, ChatHandler chat,
-                                @Value("${communication.allow-test-user-id:false}") boolean allowTestUserId) {
+    public AttachmentController(ConversationAccess access, MessageRepository messages, ChatHandler chat) {
         this.access = access;
         this.messages = messages;
         this.chat = chat;
-        this.allowTestUserId = allowTestUserId;
     }
 
     @PostMapping(path = "/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Message sendAttachment(@PathVariable String conversationId,
-                                  @RequestParam(required = false) String userId,
+
                                   Principal principal, @RequestParam MultipartFile file,
                                   @RequestParam(defaultValue = "") String text) throws IOException {
-        String actor = requireActor(principal, userId);
+        String actor = ChatIdentity.userId(principal);
         Conversation conversation = access.requireMember(conversationId, actor);
         String caption = text.strip();
         if (caption.length() > 2000) {
@@ -76,10 +73,10 @@ public class AttachmentController {
     @GetMapping("/{messageId}/attachment")
     public ResponseEntity<Resource> downloadAttachment(@PathVariable String conversationId,
                                                        @PathVariable String messageId,
-                                                       @RequestParam(required = false) String userId,
+
                                                        @RequestParam(defaultValue = "false") boolean inline,
                                                        Principal principal) {
-        access.requireMember(conversationId, requireActor(principal, userId));
+        access.requireMember(conversationId, ChatIdentity.userId(principal));
         Message message = messages.findByIdAndConversationId(messageId, conversationId)
                 .filter(candidate -> candidate.getAttachment() != null && candidate.getAttachmentBytes() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment doesn't exist"));
@@ -96,14 +93,6 @@ public class AttachmentController {
                 .contentType(MediaType.parseMediaType(attachment.contentType()))
                 .contentLength(attachment.size())
                 .body(new ByteArrayResource(message.getAttachmentBytes()));
-    }
-
-    private String requireActor(Principal principal, String userId) {
-        String actor = principal != null ? principal.getName() : (allowTestUserId ? userId : null);
-        if (actor == null || actor.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in to access chat attachments");
-        }
-        return actor;
     }
 
     private static String cleanName(String original) {
