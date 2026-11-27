@@ -20,13 +20,24 @@ function getPinnedTimestamp(message) {
   return [weekday, timestamp].filter(Boolean).join(" ").toUpperCase();
 }
 
-export default function PinnedMessageItem({ message }) {
+export default function PinnedMessageItem({ message, onNavigate, onUnpin }) {
   const senderName =
     message.senderName ??
     (message.direction === "outgoing" ? "You" : "Group member");
 
   return (
-    <li className="communication-pinned-message-card">
+    <li
+      className="communication-pinned-message-card"
+      role="button"
+      tabIndex={0}
+      onClick={onNavigate}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onNavigate?.();
+        }
+      }}
+    >
       <ConversationAvatar
         type="individual"
         imageUrl={message.avatarUrl}
@@ -48,12 +59,22 @@ export default function PinnedMessageItem({ message }) {
       >
         {getPinnedTimestamp(message)}
       </time>
-      <img
-        className="communication-pinned-message-icon"
-        src={pushPinIcon}
-        alt=""
-        aria-hidden="true"
-      />
+      <button
+        className="communication-pinned-message-unpin"
+        type="button"
+        aria-label="Unpin message"
+        onClick={(event) => {
+          event.stopPropagation();
+          onUnpin?.();
+        }}
+      >
+        <img
+          className="communication-pinned-message-icon"
+          src={pushPinIcon}
+          alt=""
+          aria-hidden="true"
+        />
+      </button>
     </li>
   );
 }

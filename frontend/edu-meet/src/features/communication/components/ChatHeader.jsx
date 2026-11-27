@@ -18,10 +18,9 @@ export default function ChatHeader({
   const internalMenuTriggerRef = useRef(null);
   const menuTriggerRef = triggerRef ?? internalMenuTriggerRef;
   const menuRef = useRef(null);
-  const isGroupConversation = conversation?.type === "group";
   const isMenuOpen =
     view === "chat" &&
-    isGroupConversation &&
+    conversation &&
     openConversationId === conversation?.id;
   const previousViewRef = useRef(view);
   const menuId = conversation
@@ -128,10 +127,6 @@ export default function ChatHeader({
   }
 
   function handleMenuToggle() {
-    if (!isGroupConversation) {
-      return;
-    }
-
     setOpenConversationId(isMenuOpen ? null : conversation.id);
   }
 
@@ -173,14 +168,12 @@ export default function ChatHeader({
             type="button"
             ref={menuTriggerRef}
             aria-label={
-              isGroupConversation
-                ? "Conversation options"
-                : "Group options unavailable for this conversation"
+              "Conversation options"
             }
-            aria-haspopup={isGroupConversation ? "menu" : undefined}
-            aria-expanded={isGroupConversation ? isMenuOpen : undefined}
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
             aria-controls={isMenuOpen ? menuId : undefined}
-            aria-disabled={!isGroupConversation}
+            aria-disabled={undefined}
             onClick={handleMenuToggle}
           >
             <img

@@ -6,6 +6,11 @@ export default function MessageList({
   conversation,
   messages = [],
   lastSentMessageId,
+  pinnedMessageIds = [],
+  openMessageMenuId,
+  onOpenMessageMenu,
+  onCloseMessageMenu,
+  onTogglePin,
 }) {
   const scrollContainerRef = useRef(null);
   const hasOpenedRef = useRef(false);
@@ -80,6 +85,11 @@ export default function MessageList({
             <MessageGroup
               key={group.id}
               group={group}
+              pinnedMessageIds={pinnedMessageIds}
+              openMessageMenuId={openMessageMenuId}
+              onOpenMessageMenu={onOpenMessageMenu}
+              onCloseMessageMenu={onCloseMessageMenu}
+              onTogglePin={onTogglePin}
             />
           ))}
         </ol>

@@ -15,10 +15,13 @@ export default function useConversations({
     useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [conversationNamesById, setConversationNamesById] = useState({});
 
   const conversations = initialConversations
     .filter((conversation) => visibleConversationIds.has(conversation.id))
     .map((conversation) => {
+      const displayName =
+        conversationNamesById[conversation.id] ?? conversation.name;
       const conversationMessages =
         messagesByConversationId[conversation.id] ?? [];
       const latestMessage =
@@ -31,6 +34,7 @@ export default function useConversations({
 
       return {
         ...conversation,
+        name: displayName,
         preview: latestMessage
           ? `${sender}: ${latestMessage.text}`
           : "No messages yet.",
@@ -45,9 +49,11 @@ export default function useConversations({
   function handleMenuAction(action, conversation) {
     if (
       (action === "view-members" || action === "pinned-messages") &&
-      conversation?.type === "group" &&
       conversation.id === selectedConversationId
     ) {
+      if (action === "view-members" && conversation?.type !== "group") {
+        return;
+      }
       setActiveChatPanelView(
         action === "view-members" ? "members" : "pinned",
       );
@@ -85,6 +91,19 @@ export default function useConversations({
     setLeaveGroupConversationId(null);
   }
 
+  function changeConversationName(conversationId, name) {
+    const normalizedName = name.trim();
+    if (!normalizedName || normalizedName.length > 50) {
+      return false;
+    }
+
+    setConversationNamesById((current) => ({
+      ...current,
+      [conversationId]: normalizedName,
+    }));
+    return true;
+  }
+
   return {
     selectedConversationId,
     activeChatPanelView,
@@ -101,5 +120,6 @@ export default function useConversations({
     handleSelectConversation,
     handleCancelLeaveGroup,
     handleConfirmLeaveGroup,
+    changeConversationName,
   };
 }

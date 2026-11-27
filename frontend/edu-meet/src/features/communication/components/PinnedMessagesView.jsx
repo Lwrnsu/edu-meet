@@ -1,7 +1,12 @@
 import { useLayoutEffect, useRef } from "react";
 import PinnedMessageItem from "./PinnedMessageItem.jsx";
 
-export default function PinnedMessagesView({ conversation, messages }) {
+export default function PinnedMessagesView({
+  conversation,
+  messages,
+  onNavigateMessage,
+  onUnpinMessage,
+}) {
   const headingRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -39,7 +44,12 @@ export default function PinnedMessagesView({ conversation, messages }) {
         {messages.length > 0 ? (
           <ol className="communication-pinned-message-list">
             {messages.map((message) => (
-              <PinnedMessageItem key={message.id} message={message} />
+              <PinnedMessageItem
+                key={message.id}
+                message={message}
+                onNavigate={() => onNavigateMessage?.(message.id)}
+                onUnpin={() => onUnpinMessage?.(message.id)}
+              />
             ))}
           </ol>
         ) : (

@@ -6,6 +6,7 @@ import LeaveGroupDialog from "./components/LeaveGroupDialog.jsx";
 import MessageInput from "./components/MessageInput.jsx";
 import MessageList from "./components/MessageList.jsx";
 import ConversationPanel from "./components/ConversationPanel.jsx";
+import ChangeGroupNameDialog from "./components/ChangeGroupNameDialog.jsx";
 import mockCommunicationProvider from "./data/mockCommunicationProvider.js";
 import useConversations from "./hooks/useConversations.js";
 import useChat from "./hooks/useChat.js";
@@ -17,13 +18,13 @@ export default function CommunicationModule() {
   );
   const mockConversations = initialMockData.conversations;
   const mockMembers = initialMockData.members;
-  const mockPinnedMessageIdsByConversationId =
-    initialMockData.pinnedMessageIdsByConversationId;
   const initialMessagesByConversationId =
     initialMockData.messagesByConversationId;
   const chatState = useChat({
     initialMessagesByConversationId,
     currentUserId: "current-user",
+    initialPinnedMessageIdsByConversationId:
+      initialMockData.pinnedMessageIdsByConversationId,
   });
   const conversationState = useConversations({
     initialConversations: mockConversations,
@@ -40,6 +41,9 @@ export default function CommunicationModule() {
   const selectedMessages =
     chatState.messagesByConversationId[selectedConversationId] ?? [];
   const lastSentMessageId = chatState.lastSentMessageId;
+  const [openMessageMenuId, setOpenMessageMenuId] = useState(null);
+  const [changingGroupNameConversationId, setChangingGroupNameConversationId] =
+    useState(null);
   const menuTriggerRef = useRef(null);
   const conversationSearchRef = useRef(null);
   const dialogCloseIntentRef = useRef(null);
@@ -50,8 +54,8 @@ export default function CommunicationModule() {
         )
       : [];
   const selectedPinnedMessageIds =
-    selectedConversation?.type === "group"
-      ? mockPinnedMessageIdsByConversationId[selectedConversation.id] ?? []
+    selectedConversation
+      ? chatState.getPinnedMessageIds(selectedConversation.id)
       : [];
   const selectedPinnedMessages = selectedPinnedMessageIds.flatMap(
     (messageId) => {
@@ -66,7 +70,11 @@ export default function CommunicationModule() {
     selectedConversation?.type === "group";
   const showingPinnedMessages =
     activeChatPanelView === "pinned" &&
-    selectedConversation?.type === "group";
+    selectedConversation !== undefined;
+  const changingGroupNameConversation = conversations.find(
+    (conversation) =>
+      conversation.id === changingGroupNameConversationId,
+  );
 
   useLayoutEffect(() => {
     if (
@@ -90,20 +98,54 @@ export default function CommunicationModule() {
   }
 
   function handleMenuAction(action, conversation) {
+    setOpenMessageMenuId(null);
+    if (action === "change-name" && conversation?.type === "group") {
+      setChangingGroupNameConversationId(conversation.id);
+      return;
+    }
     conversationState.handleMenuAction(action, conversation);
   }
 
   function handleSelectConversation(conversationId) {
+    setOpenMessageMenuId(null);
     conversationState.handleSelectConversation(conversationId);
+  }
+
+  function handleTogglePinnedMessage(messageId) {
+    if (!selectedConversationId || !messageId) {
+      return;
+    }
+    chatState.togglePinnedMessage(selectedConversationId, messageId);
+  }
+
+  function handleNavigatePinnedMessage(messageId) {
+    conversationState.setActiveChatPanelView("chat");
+    setOpenMessageMenuId(null);
+    window.requestAnimationFrame(() => {
+      const messageRows = Array.from(
+        document.querySelectorAll("[data-message-id]"),
+      );
+      const messageRow = messageRows.find(
+        (row) => row.dataset.messageId === messageId,
+      );
+      if (messageRow) {
+        messageRow.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+      }
+    });
   }
 
   function handleCancelLeaveGroup() {
     dialogCloseIntentRef.current = "cancel";
+    setOpenMessageMenuId(null);
     conversationState.handleCancelLeaveGroup();
   }
 
   function handleConfirmLeaveGroup() {
     dialogCloseIntentRef.current = "leave";
+    setOpenMessageMenuId(null);
     conversationState.handleConfirmLeaveGroup();
   }
 
@@ -138,7 +180,10 @@ export default function CommunicationModule() {
                         : "chat"
                   }
                   onBackToChat={() =>
-                    conversationState.setActiveChatPanelView("chat")
+                    {
+                      setOpenMessageMenuId(null);
+                      conversationState.setActiveChatPanelView("chat");
+                    }
                   }
                   triggerRef={menuTriggerRef}
                 />
@@ -151,6 +196,10 @@ export default function CommunicationModule() {
                   <PinnedMessagesView
                     conversation={selectedConversation}
                     messages={selectedPinnedMessages}
+                    onNavigateMessage={handleNavigatePinnedMessage}
+                    onUnpinMessage={(messageId) =>
+                      chatState.unpinMessage(selectedConversationId, messageId)
+                    }
                   />
                 ) : (
                   <>
@@ -159,6 +208,11 @@ export default function CommunicationModule() {
                         conversation={selectedConversation}
                         messages={selectedMessages}
                         lastSentMessageId={lastSentMessageId}
+                        pinnedMessageIds={selectedPinnedMessageIds}
+                        openMessageMenuId={openMessageMenuId}
+                        onOpenMessageMenu={setOpenMessageMenuId}
+                        onCloseMessageMenu={() => setOpenMessageMenuId(null)}
+                        onTogglePin={handleTogglePinnedMessage}
                       />
                     </div>
                     <MessageInput onSendMessage={handleSendMessage} />
@@ -182,6 +236,22 @@ export default function CommunicationModule() {
         <LeaveGroupDialog
           onCancel={handleCancelLeaveGroup}
           onConfirm={handleConfirmLeaveGroup}
+        />
+      )}
+      {changingGroupNameConversation && (
+        <ChangeGroupNameDialog
+          conversation={changingGroupNameConversation}
+          onCancel={() => setChangingGroupNameConversationId(null)}
+          onSave={(name) => {
+            if (
+              conversationState.changeConversationName(
+                changingGroupNameConversationId,
+                name,
+              )
+            ) {
+              setChangingGroupNameConversationId(null);
+            }
+          }}
         />
       )}
     </>

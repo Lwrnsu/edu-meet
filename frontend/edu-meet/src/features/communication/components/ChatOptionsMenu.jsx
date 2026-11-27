@@ -33,9 +33,14 @@ export default function ChatOptionsMenu({
   onDismiss,
   position,
 }) {
-  if (conversation?.type !== "group") {
+  if (!conversation) {
     return null;
   }
+
+  const isGroupConversation = conversation.type === "group";
+  const visibleMenuActions = isGroupConversation
+    ? menuActions
+    : menuActions.filter((item) => item.action === "pinned-messages");
 
   function handleKeyDown(event) {
     const items = Array.from(
@@ -80,7 +85,11 @@ export default function ChatOptionsMenu({
       id={id}
       ref={menuRef}
       role="menu"
-      aria-label={`${conversation.name} group options`}
+      aria-label={
+        isGroupConversation
+          ? `${conversation.name} group options`
+          : `${conversation.name} conversation options`
+      }
       onKeyDown={handleKeyDown}
       onBlur={(event) => {
         const nextTarget = event.relatedTarget;
@@ -99,30 +108,34 @@ export default function ChatOptionsMenu({
     >
       <div className="communication-options-profile">
         <ConversationAvatar
-          type="group"
+          type={isGroupConversation ? "group" : "individual"}
           imageUrl={conversation.avatarUrl}
           size={80}
         />
         <h3 className="communication-options-name">{conversation.name}</h3>
-        <button
-          className="communication-options-change-profile"
-          type="button"
-          role="menuitem"
-          onClick={() => onAction?.("change-profile", conversation)}
-        >
-          Change name or image
-        </button>
+        {isGroupConversation && (
+          <button
+            className="communication-options-change-profile"
+            type="button"
+            role="menuitem"
+            onClick={() => onAction?.("change-name", conversation)}
+          >
+            Change Group Name
+          </button>
+        )}
       </div>
 
-      <img
-        className="communication-options-divider"
-        src={menuDivider}
-        alt=""
-        aria-hidden="true"
-      />
+      {isGroupConversation && (
+        <img
+          className="communication-options-divider"
+          src={menuDivider}
+          alt=""
+          aria-hidden="true"
+        />
+      )}
 
       <div className="communication-options-actions">
-        {menuActions.map((item) => (
+        {visibleMenuActions.map((item) => (
           <button
             className={`communication-options-action ${item.className}`}
             key={item.action}
