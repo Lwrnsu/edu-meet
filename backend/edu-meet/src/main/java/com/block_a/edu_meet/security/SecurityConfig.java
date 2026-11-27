@@ -36,29 +36,10 @@ public class SecurityConfig {
                 http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(Customizer.withDefaults())
-                                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                HttpMethod.POST,
-                                                                "/api/auth/login",
-                                                                "/api/auth/php-login",
-                                                                "/api/auth/php-system-admin-login",
-                                                                "/api/auth/php-school-login",
-                                                                "/api/auth/php-college-admin-login",
-                                                                "/api/auth/php-signup",
-                                                                "/api/auth/php-request-password-otp",
-                                                                "/api/auth/php-verify-password-otp",
-                                                                "/api/auth/php-change-password",
-                                                                "/api/auth/php-forgot-request-password-otp",
-                                                                "/api/auth/php-forgot-verify-password-otp",
-                                                                "/api/auth/php-forgot-reset-password",
-                                                                "/api/auth/logOut")
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/", "/api/health", "/api/auth/logIn/cached").permitAll()
-                                                .requestMatchers("/api/php/**").permitAll()
-                                                .requestMatchers("/api/**").authenticated()
-                                                .anyRequest().permitAll())
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                                                .anyRequest().permitAll());
 
                 return http.build();
         }
@@ -66,7 +47,8 @@ public class SecurityConfig {
         @Bean
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:5173", "http://edu-meet.app", "https://edu-meet.app"));
+                config.setAllowedOrigins(
+                                List.of("http://localhost:5173", "http://edu-meet.app", "https://edu-meet.app"));
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setExposedHeaders(List.of("Authorization"));
