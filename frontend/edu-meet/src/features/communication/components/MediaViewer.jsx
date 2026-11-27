@@ -8,6 +8,8 @@ export default function MediaViewer({ attachment, trigger, onClose }) {
   const titleId = useId();
   const [status, setStatus] = useState("loading");
   const [downloadError, setDownloadError] = useState(null);
+  const isVideo = Boolean(attachment.videoUrl);
+  const mediaLabel = isVideo ? "video" : "image";
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -37,7 +39,7 @@ export default function MediaViewer({ attachment, trigger, onClose }) {
     >
       <header className="communication-media-viewer-header">
         <h2 id={titleId}>{attachment.name}</h2>
-        <button type="button" ref={closeRef} onClick={onClose} aria-label="Close image viewer">
+        <button type="button" ref={closeRef} onClick={onClose} aria-label={`Close ${mediaLabel} viewer`}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="m6 6 12 12M18 6 6 18" />
           </svg>
@@ -51,11 +53,14 @@ export default function MediaViewer({ attachment, trigger, onClose }) {
       >
         {status === "error" ? (
           <p role="status">
-            Image preview unavailable.{" "}
+            {isVideo ? "Video" : "Image"} preview unavailable.{" "}
             <button type="button" onClick={() =>
               downloadChatAttachment(attachment).catch((error) => setDownloadError(error.message))
             }>Download file</button>
           </p>
+        ) : isVideo ? (
+          <video src={attachment.videoUrl} controls playsInline preload="metadata"
+            aria-label={attachment.name} onError={() => setStatus("error")} />
         ) : (
           <>
             {status === "loading" && <p role="status">Loading image…</p>}

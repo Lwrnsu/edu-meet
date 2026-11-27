@@ -4,17 +4,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Instant;
+import java.util.Locale;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.block_a.edu_meet.dao.ConversationAccess;
 import com.block_a.edu_meet.helpers.ChatIdentity;
+import com.block_a.edu_meet.helpers.VideoAttachmentType;
 import com.block_a.edu_meet.handlers.ChatHandler;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.Message;
@@ -62,8 +67,10 @@ public class AttachmentController {
         }
 
         byte[] bytes = file.getBytes();
+        String name = cleanName(file.getOriginalFilename());
+        String contentType = uploadType(bytes, name, file.getContentType());
         Message message = new Message(conversationId, actor, caption, Instant.now());
-        message.setAttachment(new Message.Attachment(cleanName(file.getOriginalFilename()), imageType(bytes), bytes.length));
+        message.setAttachment(new Message.Attachment(name, contentType, bytes.length));
         message.setAttachmentBytes(bytes);
         Message saved = messages.save(message);
         chat.publishSavedMessage(conversation, saved);
@@ -75,6 +82,7 @@ public class AttachmentController {
                                                        @PathVariable String messageId,
 
                                                        @RequestParam(defaultValue = "false") boolean inline,
+                                                       @RequestHeader(value = HttpHeaders.RANGE, required = false) String range,
                                                        Principal principal) {
         access.requireMember(conversationId, ChatIdentity.userId(principal));
         Message message = messages.findByIdAndConversationId(messageId, conversationId)
@@ -82,7 +90,27 @@ public class AttachmentController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment doesn't exist"));
 
         Message.Attachment attachment = message.getAttachment();
-        boolean showInline = inline && !MediaType.APPLICATION_OCTET_STREAM_VALUE.equals(attachment.contentType());
+        byte[] bytes = message.getAttachmentBytes();
+        var resource = new ByteArrayResource(bytes);
+        if (range != null) {
+            try {
+                // MVC writes valid Resource ranges. Reject invalid ranges before passing it a body.
+                if (range.isBlank()) throw new IllegalArgumentException("Empty Range header");
+                HttpRange.toResourceRegions(HttpRange.parseRanges(range), resource);
+            } catch (IllegalArgumentException invalidRange) {
+                return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                        .cacheControl(CacheControl.noStore())
+                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + bytes.length)
+                        .build();
+            }
+        }
+        String contentType = attachment.contentType();
+        if (MediaType.APPLICATION_OCTET_STREAM_VALUE.equals(contentType)) {
+            String videoType = VideoAttachmentType.detect(bytes);
+            if (videoType != null) contentType = videoType;
+        }
+        boolean showInline = inline && !MediaType.APPLICATION_OCTET_STREAM_VALUE.equals(contentType);
         var disposition = showInline ? ContentDisposition.inline() : ContentDisposition.attachment();
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -90,9 +118,20 @@ public class AttachmentController {
                 .header("Content-Security-Policy", "default-src 'none'; sandbox")
                 .headers(headers -> headers.setContentDisposition(
                         disposition.filename(attachment.name(), StandardCharsets.UTF_8).build()))
-                .contentType(MediaType.parseMediaType(attachment.contentType()))
-                .contentLength(attachment.size())
-                .body(new ByteArrayResource(message.getAttachmentBytes()));
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
+    }
+
+    private static String uploadType(byte[] bytes, String name, String declaredType) {
+        String videoType = VideoAttachmentType.detect(bytes);
+        String lowerName = name.toLowerCase(Locale.ROOT);
+        String mime = declaredType == null ? "" : declaredType.split(";", 2)[0].strip();
+        boolean claimsMp4 = lowerName.endsWith(".mp4") || "video/mp4".equalsIgnoreCase(mime);
+        boolean claimsWebm = lowerName.endsWith(".webm") || "video/webm".equalsIgnoreCase(mime);
+        if ((claimsMp4 && !"video/mp4".equals(videoType)) || (claimsWebm && !"video/webm".equals(videoType))) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Invalid MP4 or WebM video");
+        }
+        return videoType == null ? imageType(bytes) : videoType;
     }
 
     private static String cleanName(String original) {

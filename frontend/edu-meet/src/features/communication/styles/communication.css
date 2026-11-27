@@ -713,7 +713,8 @@
   cursor: pointer;
 }
 
-.communication-attachment-preview img {
+.communication-attachment-preview img,
+.communication-attachment-video {
   display: block;
   max-width: min(100%, 280px);
   max-height: 200px;
@@ -721,6 +722,10 @@
   height: auto;
   object-fit: contain;
   border-radius: inherit;
+}
+
+.communication-attachment-video {
+  border-radius: 12px;
 }
 
 .communication-attachment-download {
@@ -823,7 +828,8 @@
   padding: 64px clamp(12px, 3vw, 28px);
 }
 
-.communication-media-viewer-stage img {
+.communication-media-viewer-stage img,
+.communication-media-viewer-stage video {
   display: block;
   max-width: 100%;
   max-height: 100%;

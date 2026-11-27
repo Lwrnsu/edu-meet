@@ -6,6 +6,7 @@ const VIDEO_EXTENSIONS = new Set(["MP4", "WEBM", "MOV", "M4V", "AVI", "MKV", "MP
 
 export default function MessageAttachment({ attachment, onOpenMedia }) {
   const container = useRef(null);
+  const inlineVideo = useRef(null);
   const [failedPreviewUrl, setFailedPreviewUrl] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -16,6 +17,8 @@ export default function MessageAttachment({ attachment, onOpenMedia }) {
   const isVideo = contentType?.startsWith("video/") || VIDEO_EXTENSIONS.has(extension);
   const isPdf = contentType === "application/pdf" || extension === "PDF";
   const canPreview = isImage && previewUrl && failedPreviewUrl !== previewUrl && onOpenMedia;
+  // Native media requests cannot attach the chat API's bearer header.
+  const videoUrl = isVideo ? attachment.videoUrl : null;
 
   useEffect(() => {
     if (!isImage) return;
@@ -57,6 +60,22 @@ export default function MessageAttachment({ attachment, onOpenMedia }) {
 
   return (
     <div className="communication-message-attachment" ref={container}>
+      {videoUrl && failedPreviewUrl !== videoUrl && (
+        <>
+          <video className="communication-attachment-video" ref={inlineVideo} src={videoUrl}
+            controls playsInline preload="metadata" aria-label={name}
+            onError={() => setFailedPreviewUrl(videoUrl)} />
+          {onOpenMedia && (
+            <button className="communication-attachment-download" type="button"
+              onClick={(event) => {
+                inlineVideo.current?.pause();
+                onOpenMedia(attachment, event.currentTarget);
+              }}>
+              Open video viewer
+            </button>
+          )}
+        </>
+      )}
       {canPreview && (
         <button
           className="communication-attachment-preview"

@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.ResourceRegionHttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,7 +32,9 @@ public class CommunicationApiResponseAdvice extends ResponseEntityExceptionHandl
     @Override
     public boolean supports(MethodParameter returnType,
                             Class<? extends HttpMessageConverter<?>> converterType) {
-        return !ApiResponse.class.isAssignableFrom(returnType.getParameterType());
+        return !ApiResponse.class.isAssignableFrom(returnType.getParameterType())
+                && !ResourceHttpMessageConverter.class.isAssignableFrom(converterType)
+                && !ResourceRegionHttpMessageConverter.class.isAssignableFrom(converterType);
     }
 
     @Override
