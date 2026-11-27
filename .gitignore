@@ -1,4 +1,7 @@
 frontend/edu-meet/node_modules/
+frontend/edu-meet/.env
+frontend/edu-meet/.env.*
+!frontend/edu-meet/.env.example
 
 backend/edu-meet/target/
 backend/edu-meet/.mvn/wrapper/maven-wrapper.jar
