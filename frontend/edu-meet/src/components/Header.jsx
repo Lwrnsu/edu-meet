@@ -1,9 +1,11 @@
+import { Outlet } from "react-router";
+
 function Header() {
-    return (
-        <>
-            
-        </>
-    )
+  return (
+    <>
+      <Outlet />
+    </>
+  );
 }
 
-export default Header
+export default Header;
