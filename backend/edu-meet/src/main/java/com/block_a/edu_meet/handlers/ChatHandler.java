@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -19,6 +20,7 @@ import com.block_a.edu_meet.repositories.MessageRepository;
 import tools.jackson.databind.ObjectMapper;
 import com.block_a.edu_meet.services.RecentMessageCache;
 
+@Profile("chat")
 @Component
 public class ChatHandler extends TextWebSocketHandler {
 

@@ -1,29 +1,38 @@
-import { Routes, Route } from "react-router"
+import { Navigate, Route, Routes } from 'react-router'
+import AdminLoginRoute from './auth/AdminLoginRoute'
+import AdminPortalRoute from './auth/AdminPortalRoute'
+import ForgotPasswordRoute from './auth/ForgotPasswordRoute'
+import LoginRoute from './auth/LoginRoute'
+import RequireAuth from './auth/RequireAuth'
+import ResetPasswordRoute from './auth/ResetPasswordRoute'
+import SchoolPortalRoute from './auth/SchoolPortalRoute'
+import SignUpRoute from './auth/SignUpRoute'
 
-function App() {
+export default function App() {
   return (
-    <>
-      <Routes>
-        <Route path="*" element={<NotFoundPage />}/>
-        <Route path="/" element={<AuthPage />}/>
-        <Route element={<Header />} >
-          <Route path="/dashboard" element={<DashboardPage />}/>
-          <Route path="/chat" element={<ChatPage />}/>
-          <Route path="/review" element={<ReviewPage />}/>
-          <Route path="/notepad" element={<NotepadPage />}/>
-          <Route path="/task" element={<TaskPage />}/>
-          <Route path="/class" element={<ClassPage />}/>
-          <Route path="/meet" element={< MeetPage/>}/>
-          <Route path="/activity" element={<ActivityPage />}/>
-          <Route path="/department" element={<DepartmentPage />}/>
-          <Route path="/account" element={<AccountManagementPage />}/>
-          <Route path="/sys" element={<SchoolSystemPage />}/>
-          <Route path="/school" element={<SchoolManagementPage />}/>
-        </Route>
-
-      </Routes>
-    </>
+    <Routes>
+      <Route path="/" element={<SignUpRoute />} />
+      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/login/system_admin" element={<AdminLoginRoute />} />
+      <Route path="/forgot" element={<ForgotPasswordRoute />} />
+      <Route path="/reset" element={<ResetPasswordRoute />} />
+      <Route
+        path="/system_admin/*"
+        element={
+          <RequireAuth portal="admin">
+            <AdminPortalRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/portal/*"
+        element={
+          <RequireAuth portal="user">
+            <SchoolPortalRoute />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
-
-export default App

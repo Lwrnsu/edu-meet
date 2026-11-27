@@ -132,6 +132,7 @@ function mapRow(membership, user, roleNameById) {
     departmentName: membership.department_name || '',
     status: Number(membership.status) === 1 ? 'active' : 'inactive',
     schoolId: Number(membership.school_id),
+    createdAt: user?.created_at || membership.created_at || null,
   }
 }
 
@@ -258,6 +259,7 @@ export async function createCollegeUser({
         department: membership.department_slug || membership.department_name || '—',
         status: 'active',
         schoolId: id,
+        createdAt: user.created_at || membership.created_at || null,
       },
       temporaryPassword,
     }
@@ -325,6 +327,7 @@ export async function updateCollegeUser(
     roleId,
     departmentId: membership.department_id != null ? Number(membership.department_id) : null,
     department: membership.department_slug || membership.department_name || '—',
+    createdAt: membership.created_at || row.createdAt || null,
   }
 }
 

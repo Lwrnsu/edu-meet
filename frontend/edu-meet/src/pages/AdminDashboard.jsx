@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loadSchoolsForAdmin } from '../api/schoolsAdmin'
 import { listUsers } from '../api/users'
+import eduMeetLogo from '../assets/brand/edu-meet-logo.png'
 import ManageAdminsSection from './ManageAdminsSection'
 import ManageSchoolsSection from './ManageSchoolsSection'
 import SecuritySection from './SecuritySection'
@@ -154,11 +155,10 @@ export default function AdminDashboard({ user, onLogout }) {
       <aside className="admin-dash__sidebar">
         <div className="admin-dash__brand">
           <span className="admin-dash__brand-mark">
-            <IconGrid />
+            <img src={eduMeetLogo} alt="" className="admin-dash__brand-logo" />
           </span>
           <div className="admin-dash__brand-text">
-            <p className="admin-dash__brand-title">System Admin</p>
-            <p className="admin-dash__brand-sub">Control Panel</p>
+            <p className="admin-dash__brand-title">Edu-Meet</p>
           </div>
         </div>
 

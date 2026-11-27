@@ -10,6 +10,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,6 +50,7 @@ import com.block_a.edu_meet.helpers.MemberChangeRequest;
 
 */
 
+@Profile("chat")
 @RestController
 @RequestMapping("/api/conversations")
 public class ConversationController {
