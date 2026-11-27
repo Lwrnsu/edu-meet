@@ -34,9 +34,14 @@ export default function ChatOptionsMenu({
   position,
   live = false,
 }) {
-  if (conversation?.type !== "group") {
+  if (!conversation) {
     return null;
   }
+  const isGroup = conversation.type === "group";
+  const pinsUnavailable = live && !isGroup;
+  const visibleActions = menuActions.filter(({ action }) =>
+    isGroup ? !live || action !== "leave-group" : action === "pinned-messages",
+  );
 
   function handleKeyDown(event) {
     const items = Array.from(
@@ -81,7 +86,7 @@ export default function ChatOptionsMenu({
       id={id}
       ref={menuRef}
       role="menu"
-      aria-label={`${conversation.name} group options`}
+      aria-label={`${conversation.name} ${isGroup ? "group" : "conversation"} options`}
       onKeyDown={handleKeyDown}
       onBlur={(event) => {
         const nextTarget = event.relatedTarget;
@@ -100,41 +105,52 @@ export default function ChatOptionsMenu({
     >
       <div className="communication-options-profile">
         <ConversationAvatar
-          type="group"
+          type={conversation.type}
           imageUrl={conversation.avatarUrl}
           size={80}
         />
         <h3 className="communication-options-name">{conversation.name}</h3>
-        <button
-          className="communication-options-change-profile"
-          type="button"
-          role="menuitem"
-          onClick={() => onAction?.(live ? "rename-group" : "change-profile", conversation)}
-        >
-          {live ? "Rename group" : "Change name or image"}
-        </button>
+        {isGroup && (
+          <button
+            className="communication-options-change-profile"
+            type="button"
+            role="menuitem"
+            onClick={() => onAction?.("rename-group", conversation)}
+          >
+            Change Group Name
+          </button>
+        )}
       </div>
 
-      <img
-        className="communication-options-divider"
-        src={menuDivider}
-        alt=""
-        aria-hidden="true"
-      />
+      {isGroup && (
+        <img
+          className="communication-options-divider"
+          src={menuDivider}
+          alt=""
+          aria-hidden="true"
+        />
+      )}
 
       <div className="communication-options-actions">
-        {menuActions.filter((item) => !live || item.action !== "leave-group").map((item) => (
+        {visibleActions.map((item) => (
           <button
             className={`communication-options-action ${item.className}`}
             key={item.action}
             type="button"
             role="menuitem"
-            onClick={() => onAction?.(item.action, conversation)}
+            aria-disabled={pinsUnavailable || undefined}
+            aria-describedby={pinsUnavailable ? `${id}-pins-unavailable` : undefined}
+            onClick={pinsUnavailable ? undefined : () => onAction?.(item.action, conversation)}
           >
             <img src={item.icon} alt="" aria-hidden="true" />
             <span>{item.label}</span>
           </button>
         ))}
+        {pinsUnavailable && (
+          <p className="communication-options-unavailable" id={`${id}-pins-unavailable`}>
+            Pinning is available in group chats.
+          </p>
+        )}
       </div>
     </div>
   );

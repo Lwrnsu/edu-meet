@@ -18,6 +18,9 @@ import "./styles/communication.css";
 export default function CommunicationModule({ currentUserId }) {
   const live = Boolean(currentUserId);
   const [initialMockData] = useState(() => live ? null : mockCommunicationProvider.getInitialState());
+  const [mockPinsByConversation, setMockPinsByConversation] = useState(
+    () => initialMockData?.pinnedMessageIdsByConversationId ?? {},
+  );
   const [membersByConversationId, setMembersByConversationId] = useState({});
   const [memberError, setMemberError] = useState(null);
   const [renameConversationId, setRenameConversationId] = useState(null);
@@ -86,10 +89,7 @@ export default function CommunicationModule({ currentUserId }) {
   const menuTriggerRef = useRef(null);
   const conversationSearchRef = useRef(null);
   const dialogCloseIntentRef = useRef(null);
-  const selectedPinnedMessageIds =
-    selectedConversation?.type === "group"
-      ? initialMockData?.pinnedMessageIdsByConversationId[selectedConversation.id] ?? []
-      : [];
+  const selectedPinnedMessageIds = mockPinsByConversation[selectedConversationId] ?? [];
   const selectedPinnedMessages = selectedPinnedMessageIds.flatMap(
     (messageId) => {
       const pinnedMessage = selectedMessages.find(
@@ -103,11 +103,25 @@ export default function CommunicationModule({ currentUserId }) {
     selectedConversation?.type === "group";
   const showingPinnedMessages =
     activeChatPanelView === "pinned" &&
-    selectedConversation?.type === "group";
+    Boolean(selectedConversation) &&
+    (!live || selectedConversation.type === "group");
 
   const liveGroupId = live && selectedConversation?.type === "group" ? selectedConversationId : null;
   const pins = usePinnedMessages(liveGroupId, currentUserId, showingPinnedMessages);
-  const pinnedIds = new Set(pins.messages?.map((message) => message.id));
+  const pinnedIds = new Set(live
+    ? pins.messages?.map((message) => message.id)
+    : selectedPinnedMessageIds);
+
+  function setMockPin(messageId, pinned) {
+    setMockPinsByConversation((current) => {
+      const ids = new Set(current[selectedConversationId]);
+      if (pinned) ids.add(messageId);
+      else ids.delete(messageId);
+      return { ...current, [selectedConversationId]: [...ids] };
+    });
+  }
+
+  const updatePin = live ? pins.updatePin : setMockPin;
 
   function closeRename() {
     setRenameConversationId(null);
@@ -160,7 +174,7 @@ export default function CommunicationModule({ currentUserId }) {
   }
 
   function handleMenuAction(action, conversation) {
-    if (action === "rename-group") {
+    if (action === "rename-group" && conversation.type === "group") {
       setRenameConversationId(conversation.id);
       return;
     }
@@ -233,7 +247,7 @@ export default function CommunicationModule({ currentUserId }) {
                     isLoading={live && !pins.messages && !pins.error}
                     error={pins.error}
                     isUpdating={Boolean(pins.pendingMessageId)}
-                    onUnpin={live ? (messageId) => pins.updatePin(messageId, false) : undefined}
+                    onUnpin={(messageId) => updatePin(messageId, false)}
                   />
                 ) : (
                   <>
@@ -261,7 +275,9 @@ export default function CommunicationModule({ currentUserId }) {
                         onLoadOlder={chatState.loadOlderMessages}
                         pinnedIds={pinnedIds}
                         isUpdatingPin={Boolean(pins.pendingMessageId)}
-                        onTogglePin={liveGroupId && pins.messages ? (id) => pins.updatePin(id, !pinnedIds.has(id)) : undefined}
+                        onTogglePin={!live || (liveGroupId && pins.messages)
+                          ? (id) => updatePin(id, !pinnedIds.has(id))
+                          : undefined}
                       />
                     </div>
                     <MessageInput

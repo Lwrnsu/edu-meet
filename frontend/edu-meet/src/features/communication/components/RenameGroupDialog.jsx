@@ -23,6 +23,7 @@ export default function RenameGroupDialog({ name, onSave, onClose }) {
       input.current.focus();
       return;
     }
+    if (nextName === name) return;
 
     saving.current = true;
     setIsSaving(true);
@@ -49,7 +50,7 @@ export default function RenameGroupDialog({ name, onSave, onClose }) {
       }}
     >
       <form onSubmit={submit}>
-        <h2 id="communication-rename-title">Rename group</h2>
+        <h2 id="communication-rename-title">Change Group Name</h2>
         <label htmlFor="communication-group-name">Group name</label>
         <input
           ref={input}
@@ -62,11 +63,11 @@ export default function RenameGroupDialog({ name, onSave, onClose }) {
         />
         {error && <p id="communication-rename-error" role="alert">{error}</p>}
         <div className="communication-rename-actions">
-          <button className="communication-action-button" type="button" onClick={onClose} disabled={isSaving}>
-            Cancel
+          <button className="communication-rename-save" type="submit" disabled={isSaving || draft.trim() === name}>
+            {isSaving ? "Saving…" : "Save"}
           </button>
-          <button className="communication-action-button communication-primary-action" type="submit" disabled={isSaving}>
-            {isSaving ? "Saving…" : "Save name"}
+          <button className="communication-rename-cancel" type="button" onClick={onClose} disabled={isSaving}>
+            Cancel
           </button>
         </div>
       </form>

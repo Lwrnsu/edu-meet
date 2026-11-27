@@ -1,7 +1,9 @@
 import ConversationAvatar from "./ConversationAvatar.jsx";
 import MessageBubble from "./MessageBubble.jsx";
 
-export default function MessageGroup({ group, pinnedIds, isUpdatingPin, onTogglePin }) {
+export default function MessageGroup({
+  group, pinnedIds, isUpdatingPin, onTogglePin, openMessageMenuId, setOpenMessageMenuId,
+}) {
   const isOutgoing = group.direction === "outgoing";
   const firstMessage = group.messages[0];
   const lastMessage = group.messages[group.messages.length - 1];
@@ -44,6 +46,8 @@ export default function MessageGroup({ group, pinnedIds, isUpdatingPin, onToggle
                 isPinned={pinnedIds?.has(message.id)}
                 isUpdatingPin={isUpdatingPin}
                 onTogglePin={onTogglePin}
+                isMenuOpen={openMessageMenuId === message.id}
+                setOpenMessageMenuId={setOpenMessageMenuId}
               />
             ))}
           </ol>

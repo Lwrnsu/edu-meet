@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import groupMessages from "../data/groupMessages.js";
 import MessageGroup from "./MessageGroup.jsx";
 
@@ -46,6 +46,7 @@ export default function MessageList({
   isUpdatingPin,
   onTogglePin,
 }) {
+  const [openMessageMenuId, setOpenMessageMenuId] = useState(null);
   const scrollContainerRef = useRef(null);
   const messageContentRef = useRef(null);
   const previousMessagesRef = useRef(null);
@@ -150,6 +151,8 @@ export default function MessageList({
               pinnedIds={pinnedIds}
               isUpdatingPin={isUpdatingPin}
               onTogglePin={onTogglePin}
+              openMessageMenuId={openMessageMenuId}
+              setOpenMessageMenuId={setOpenMessageMenuId}
             />
           ))}
         </ol>

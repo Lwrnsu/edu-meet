@@ -66,17 +66,20 @@ export default function useConversations({
   const isEmpty = conversations.length === 0;
 
   async function renameConversation(conversationId, name) {
-    const updated = await renameGroup(conversationId, currentUserId, name);
+    const updated = currentUserId
+      ? await renameGroup(conversationId, currentUserId, name)
+      : { id: conversationId, name };
     setLoadedConversations((current) => current.map((conversation) =>
       conversation.id === updated.id ? { ...conversation, name: updated.name } : conversation,
     ));
   }
 
   function handleMenuAction(action, conversation) {
+    const isGroup = conversation?.type === "group";
     if (
-      (action === "view-members" || action === "pinned-messages") &&
-      conversation?.type === "group" &&
-      conversation.id === selectedConversationId
+      conversation?.id === selectedConversationId &&
+      ((action === "view-members" && isGroup) ||
+        (action === "pinned-messages" && (isGroup || !currentUserId)))
     ) {
       setActiveChatPanelView(
         action === "view-members" ? "members" : "pinned",
