@@ -1,9 +1,9 @@
 <?php
 class Database {
     private static string $host = "localhost";
-    private static string $database = "EduMeet";
+    private static string $database = "edu_meet_db";
     private static string $username = "root";
-    private static string $password = "secret";
+    private static string $password = "";
     private static ?PDO $connection = null;
     private static ?mysqli $mysqliConnection = null;
 
