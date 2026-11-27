@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 
 import FacultyQuizDashboard from "./pages/FacultyQuizDashboard.jsx";
 import FacultyActivityBuilder from "./pages/FacultyActivityBuilder.jsx";
-import StudentAssessmentPage from "./pages/StudentAssessmentPage.jsx";
 import StudentScoreHistory from "./pages/StudentScoreHistory.jsx";
 import FacultyEssayGrading from "./pages/FacultyEssayGradingPage.jsx";
 import FacultyScoreOverviewPage from "./pages/FacultyScoreOverviewPage.jsx";
@@ -80,7 +79,6 @@ function QuizExamPreview() {
   const [editingActivity, setEditingActivity] = useState(null);
   const [gradingActivity, setGradingActivity] = useState(null);
   const [scoreActivity, setScoreActivity] = useState(initialRoute.scoreActivity);
-  const [studentView, setStudentView] = useState("assessments");
 
   // CREATE A NEW ASSESSMENT
   async function handleSave(activityData, saveStatus) {
@@ -268,6 +266,7 @@ function QuizExamPreview() {
   // FACULTY SCORE OVERVIEW
   if (currentPage === "scores") {
     const activityId = scoreActivity?.activityId ?? scoreActivity?.id;
+
     const activityName =
       scoreActivity?.activityName ??
       scoreActivity?.name ??
@@ -283,7 +282,9 @@ function QuizExamPreview() {
     );
   }
 
-  // STUDENT PORTAL
+  // STUDENT RESULTS PORTAL
+  // Students answer assessments inside the live Video Conference module.
+  // Group 5 displays submitted and auto-submitted score history only.
   if (currentPage === "student") {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -301,47 +302,21 @@ function QuizExamPreview() {
           </button>
         </div>
 
-        {/* STUDENT NAVIGATION */}
-        <div className="mx-auto flex max-w-5xl gap-2 px-6 pt-6">
-          <button
-            type="button"
-            onClick={() => setStudentView("assessments")}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              studentView === "assessments"
-                ? "bg-purple-600 text-white"
-                : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            My Assessments
-          </button>
+        <div className="mx-auto max-w-5xl px-6 pt-5 pb-8">
+          <div className="mb-5 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+            <p className="font-semibold">Assessment results</p>
 
-          <button
-            type="button"
-            onClick={() => setStudentView("results")}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              studentView === "results"
-                ? "bg-purple-600 text-white"
-                : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            My Results
-          </button>
-        </div>
+            <p className="mt-1">
+              Quizzes and examinations are answered inside an active
+              Edu-Meet session. This portal only displays results after
+              a student submits their answers or the faculty ends the
+              assessment session. Attempts still in progress are
+              automatically submitted when the faculty ends the session.
+              Essay responses may remain pending faculty review.
+            </p>
+          </div>
 
-        <div className="mx-auto max-w-5xl px-6 pt-4 pb-8">
-          {studentView === "assessments" ? (
-            <>
-              <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-                Development preview only. Student authentication and class
-                enrollment integration are still pending. Opening an
-                assessment may create or retrieve a student attempt.
-              </div>
-
-              <StudentAssessmentPage />
-            </>
-          ) : (
-            <StudentScoreHistory />
-          )}
+          <StudentScoreHistory />
         </div>
       </div>
     );
@@ -353,13 +328,10 @@ function QuizExamPreview() {
       <div className="mx-auto flex max-w-6xl justify-end gap-3 px-6 pt-4">
         <button
           type="button"
-          onClick={() => {
-            setStudentView("assessments");
-            setCurrentPage("student");
-          }}
+          onClick={() => setCurrentPage("student")}
           className="rounded-lg border border-purple-300 bg-white px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50"
         >
-          Open Student Preview
+          Open Student Results Preview
         </button>
       </div>
 
