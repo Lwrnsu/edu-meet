@@ -3,6 +3,7 @@ package com.block_a.edu_meet.ai.tools;
 import org.springframework.stereotype.Component;
 
 import com.block_a.edu_meet.ai.KnowledgeBase;
+import com.block_a.edu_meet.ai.SourceCollector;
 
 import java.util.List;
 import java.util.Map;
@@ -12,9 +13,11 @@ import java.util.Map;
 public class SearchKnowledgeBaseTool implements Tool {
 
     private final KnowledgeBase knowledgeBase;
+    private final SourceCollector sources;
 
-    public SearchKnowledgeBaseTool(KnowledgeBase knowledgeBase) {
+    public SearchKnowledgeBaseTool(KnowledgeBase knowledgeBase, SourceCollector sources) {
         this.knowledgeBase = knowledgeBase;
+        this.sources = sources;
     }
 
     @Override
@@ -60,7 +63,10 @@ public class SearchKnowledgeBaseTool implements Tool {
         }
 
         return Map.of("results", results.stream()
-                .map(entry -> Map.of("title", entry.title(), "text", entry.text()))
+                .map(entry -> {
+                    sources.add(entry.title());
+                    return Map.of("title", entry.title(), "text", entry.text());
+                })
                 .toList());
     }
 }

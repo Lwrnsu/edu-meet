@@ -4,11 +4,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import com.block_a.edu_meet.ai.tools.ToolRegistry;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +27,13 @@ public class GeminiChatService {
 
     // Stops a model that keeps asking for tools from looping forever.
     private static final int MAX_TOOL_ROUNDS = 6;
+
+    // Bounded upstream calls: without these a hung connection would hold a
+    // request thread (and the session lock) indefinitely.
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_BACKOFF_MS = 300;
 
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -36,7 +49,7 @@ public class GeminiChatService {
     public GeminiChatService(ToolRegistry tools,
                              @Value("${gemini.api-key}") String apiKey,
                              @Value("${gemini.model}") String model) {
-        this(RestClient.builder().baseUrl(BASE_URL).build(), tools, apiKey, model);
+        this(defaultClient(), tools, apiKey, model);
     }
 
     // Visible for tests: lets a caller supply an already configured client.
@@ -45,6 +58,20 @@ public class GeminiChatService {
         this.tools = tools;
         this.apiKey = apiKey;
         this.model = model;
+    }
+
+    private static RestClient defaultClient() {
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .build();
+
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(client);
+        factory.setReadTimeout(READ_TIMEOUT);
+
+        return RestClient.builder()
+                .baseUrl(BASE_URL)
+                .requestFactory(factory)
+                .build();
     }
 
     // Runs one user turn: keep calling tools until the model gives a text answer.
@@ -88,15 +115,45 @@ public class GeminiChatService {
             body.put("tools", List.of(Map.of("functionDeclarations", declarations)));
         }
 
-        Map<String, Object> response = http.post()
-                .uri("/models/{model}:generateContent", model)
-                .header("x-goog-api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JSON_OBJECT);
+        RestClientException lastFailure = null;
 
-        return response == null ? Map.of() : response;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                Map<String, Object> response = http.post()
+                        .uri("/models/{model}:generateContent", model)
+                        .header("x-goog-api-key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body)
+                        .retrieve()
+                        .body(JSON_OBJECT);
+
+                return response == null ? Map.of() : response;
+            } catch (RestClientException e) {
+                if (!isRetryable(e) || attempt == MAX_ATTEMPTS) {
+                    throw e;
+                }
+                lastFailure = e;
+                sleepBeforeRetry(attempt);
+            }
+        }
+
+        throw lastFailure;
+    }
+
+    // Only transient upstream failures are worth retrying; a 400 or a timeout
+    // would just burn the user's time again.
+    private static boolean isRetryable(RestClientException e) {
+        return e instanceof HttpServerErrorException
+                || e instanceof HttpClientErrorException.TooManyRequests;
+    }
+
+    private static void sleepBeforeRetry(int attempt) {
+        try {
+            Thread.sleep(RETRY_BACKOFF_MS * attempt);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ModelResponseException("Interrupted while retrying the model request");
+        }
     }
 
     @SuppressWarnings("unchecked")

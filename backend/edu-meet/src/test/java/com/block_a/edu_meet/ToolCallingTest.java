@@ -2,6 +2,7 @@ package com.block_a.edu_meet;
 
 import com.block_a.edu_meet.ai.GeminiChatService;
 import com.block_a.edu_meet.ai.KnowledgeBase;
+import com.block_a.edu_meet.ai.SourceCollector;
 import com.block_a.edu_meet.ai.tools.SearchKnowledgeBaseTool;
 import com.block_a.edu_meet.ai.tools.Tool;
 import com.block_a.edu_meet.ai.tools.ToolRegistry;
@@ -28,7 +29,7 @@ class ToolCallingTest {
     @Test
     void declarationsUseGeminiShapeAndOmitEmptyParameters() {
         ToolRegistry registry = new ToolRegistry(List.of(
-                new SearchKnowledgeBaseTool(new KnowledgeBase()),
+                new SearchKnowledgeBaseTool(new KnowledgeBase(), new SourceCollector()),
                 pingTool()
         ));
 
@@ -67,7 +68,7 @@ class ToolCallingTest {
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         ToolRegistry registry = new ToolRegistry(List.of(
-                new SearchKnowledgeBaseTool(new KnowledgeBase())
+                new SearchKnowledgeBaseTool(new KnowledgeBase(), new SourceCollector())
         ));
 
         // Turn 1: the model asks for the knowledge base.
