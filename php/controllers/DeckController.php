@@ -7,3 +7,139 @@
 
 // NOTE: I created a class ApiResponse for you to send response to the user
 //       after calling the API. 
+
+
+require_once __DIR__ . '/../models/ApiResponse.php';
+require_once __DIR__ . '/../models/Deck.php';
+
+class DeckController
+{
+    // CREATE DECK
+    // $input: class_id, name, description (optional)
+    public function createDeck(array $input): ApiResponse
+    {
+        if (empty($input['class_id']) || empty(trim($input['name'] ?? ''))) {
+            return new ApiResponse(false, 400, "class_id and name are required", []);
+        }
+
+        try {
+            $deck = new Deck();
+            $newId = $deck->create(
+                (int) $input['class_id'],
+                $input['name'],
+                $input['description'] ?? null
+            );
+
+            return new ApiResponse(true, 201, "Deck created successfully", ['id' => $newId]);
+        } catch (InvalidArgumentException $e) {
+            return new ApiResponse(false, 400, $e->getMessage(), []);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to create deck", []);
+        }
+    }
+
+    // GET ALL DECKS
+    public function getDecks(): ApiResponse
+    {
+        try {
+            $deck = new Deck();
+            $decks = $deck->getAll();
+
+            return new ApiResponse(true, 200, "Decks retrieved", $decks);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to retrieve decks", []);
+        }
+    }
+
+    // GET DECKS UNDER A CLASS
+    // $input: class_id
+    public function getDecksByClass(array $input): ApiResponse
+    {
+        if (empty($input['class_id'])) {
+            return new ApiResponse(false, 400, "class_id is required", []);
+        }
+
+        try {
+            $deck = new Deck();
+            $decks = $deck->getByClass((int) $input['class_id']);
+
+            return new ApiResponse(true, 200, "Decks retrieved", $decks);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to retrieve decks", []);
+        }
+    }
+
+    // GET ONE DECK
+    // $input: id
+    public function getDeckById(array $input): ApiResponse
+    {
+        if (empty($input['id'])) {
+            return new ApiResponse(false, 400, "id is required", []);
+        }
+
+        try {
+            $deck = new Deck();
+            $result = $deck->getById((int) $input['id']);
+
+            if ($result === false) {
+                return new ApiResponse(false, 404, "Deck not found", []);
+            }
+            return new ApiResponse(true, 200, "Deck retrieved", $result);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to retrieve deck", []);
+        }
+    }
+
+    // UPDATE DECK
+    // $input: id, class_id, name, description (optional)
+    public function updateDeck(array $input): ApiResponse
+    {
+        if (empty($input['id']) || empty($input['class_id']) || empty(trim($input['name'] ?? ''))) {
+            return new ApiResponse(false, 400, "id, class_id and name are required", []);
+        }
+
+        try {
+            $deck = new Deck();
+
+            if ($deck->getById((int) $input['id']) === false) {
+                return new ApiResponse(false, 404, "Deck not found", []);
+            }
+
+            $deck->update(
+                (int) $input['id'],
+                (int) $input['class_id'],
+                $input['name'],
+                $input['description'] ?? null
+            );
+
+            return new ApiResponse(true, 200, "Deck updated successfully", []);
+        } catch (InvalidArgumentException $e) {
+            return new ApiResponse(false, 400, $e->getMessage(), []);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to update deck", []);
+        }
+    }
+
+    // DELETE DECK
+    // $input: id
+    public function deleteDeck(array $input): ApiResponse
+    {
+        if (empty($input['id'])) {
+            return new ApiResponse(false, 400, "id is required", []);
+        }
+
+        try {
+            $deck = new Deck();
+
+            if ($deck->getById((int) $input['id']) === false) {
+                return new ApiResponse(false, 404, "Deck not found", []);
+            }
+
+            $deck->delete((int) $input['id']);
+
+            return new ApiResponse(true, 200, "Deck deleted successfully", []);
+        } catch (Throwable $e) {
+            return new ApiResponse(false, 500, "Failed to delete deck", []);
+        }
+    }
+}
