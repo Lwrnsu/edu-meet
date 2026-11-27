@@ -1,58 +1,54 @@
 package com.block_a.edu_meet;
 
+import org.springframework.stereotype.Service;
 
+import com.block_a.edu_meet.repository.ClassroomEnrollmentRepository;
+import com.block_a.edu_meet.repository.ClassroomRepository;
+
+@Service
 public class Meeting {
-    private final Classroom classroom;
+    private final ClassroomRepository classroomRepository;
+    private final ClassroomEnrollmentRepository enrollmentRepository;
 
-    public Meeting(Classroom classroom){
-        this.classroom = classroom;
+    public Meeting(
+            ClassroomRepository classroomRepository,
+            ClassroomEnrollmentRepository enrollmentRepository) {
+        this.classroomRepository = classroomRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
-    public boolean facultyValidation(Classroom classroom, String facultyInCharge){
-        if(classroom == null || facultyInCharge == null){
-            return false;
-        }
-        return classroom.getFacultyInCharge().equals(facultyInCharge);
-    }
-    public boolean studentValidation(Classroom classroom,Student student){
-        if(classroom == null || student == null || classroom.getStudent() == null){
-            return false;
-        }
-        for(Student s : classroom.getStudent()){
-            if(s == null){
-                continue;
-            } 
-            if (s.getUsername().equals(student.getUsername())){
-                return true;
-            }
-        }
-        return false;
+    public boolean facultyValidation(String roomName, String facultyUsername) {
+        return hasText(roomName)
+                && hasText(facultyUsername)
+                && classroomRepository.existsByRoomNameAndFacultyInCharge(roomName, facultyUsername);
     }
 
+    public boolean facultyValidationByIdentifier(String roomName, String identifier) {
+        if (!hasText(roomName) || !hasText(identifier)) return false;
+        return classroomRepository.existsByRoomNameAndFacultyAccountId(roomName, identifier)
+                || classroomRepository.existsByRoomNameAndFacultyEmail(roomName, identifier)
+                || classroomRepository.existsByRoomNameAndFacultyInCharge(roomName, identifier);
+    }
 
-        public static void main(String[] args){
-            //testcases
-        Student jay = new Student("Lwrnsu", "Jay");
-        Student stranger = new Student("random", "Bob");
+    public boolean studentValidation(String roomName, String studentUsername) {
+        return hasText(roomName)
+                && hasText(studentUsername)
+                && enrollmentRepository.existsByClassroom_RoomNameAndStudent_Username(roomName, studentUsername);
+    }
 
-        Classroom classroom = new Classroom("Mr. Cruz", new Student[]{ jay });
-        Meeting meeting = new Meeting(classroom);
+    public boolean studentValidationByIdentifier(String roomName, String identifier) {
+        if (!hasText(roomName) || !hasText(identifier)) return false;
+        return enrollmentRepository.existsByClassroom_RoomNameAndStudent_AccountId(roomName, identifier)
+                || enrollmentRepository.existsByClassroom_RoomNameAndStudent_Email(roomName, identifier)
+                || enrollmentRepository.existsByClassroom_RoomNameAndStudent_Username(roomName, identifier);
+    }
 
-        System.out.println(meeting.studentValidation(classroom, jay));
-        System.out.println(meeting.studentValidation(classroom, stranger));
+    public boolean participantValidation(String roomName, String identifier) {
+        return facultyValidationByIdentifier(roomName, identifier)
+                || studentValidationByIdentifier(roomName, identifier);
+    }
 
-        System.out.println(meeting.facultyValidation(classroom, "Mr. Cruz"));
-        System.out.println(meeting.facultyValidation(classroom, "Ms. Santos"));
-        System.out.println(meeting.studentValidation(classroom, null));
-        System.out.println(meeting.facultyValidation(null, "Mr. Cruz"));
-
-        Classroom broken = new Classroom("Mr. Cruz", new Student[]{ null });
-        //crashes if the entry in the array is null.
-        System.out.println(meeting.studentValidation(broken, jay));
-        System.out.println("\n");
-
-        Classroom mixed = new Classroom("Mr. Cruz", new Student[]{ null, jay });
-        System.out.println(meeting.studentValidation(mixed, jay));
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }
-
