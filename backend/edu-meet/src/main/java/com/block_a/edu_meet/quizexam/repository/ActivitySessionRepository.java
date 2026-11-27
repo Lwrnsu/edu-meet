@@ -1,12 +1,17 @@
-
 package com.block_a.edu_meet.quizexam.repository;
 
 import com.block_a.edu_meet.quizexam.dto.ActivitySessionResponse;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
@@ -40,27 +45,56 @@ public class ActivitySessionRepository {
     }
 
     // START AN ASSESSMENT SESSION
+    // The database only creates a session for a published activity owned by this
+    // faculty member. The unique MySQL key prevents two active sessions at once.
     public ActivitySessionResponse startSession(
             Long activityId,
             Integer facultyId
     ) {
 
         String sql = """
-            SELECT public.start_activity_session(?, ?)
+            INSERT INTO activity_sessions (
+                activity_id,
+                started_by_faculty_id
+            )
+            SELECT
+                a.id,
+                ?
+            FROM activities a
+            WHERE a.id = ?
+              AND a.faculty_id = ?
+              AND a.status = 'published'
             """;
 
-        Long sessionId = jdbcTemplate.queryForObject(
-            sql,
-            Long.class,
-            activityId,
-            facultyId
-        );
+        KeyHolder keyHolder = new GeneratedKeyHolder();
 
-        if (sessionId == null) {
+        try {
+            int rowsInserted = jdbcTemplate.update(connection -> {
+                PreparedStatement statement = connection.prepareStatement(
+                    sql,
+                    Statement.RETURN_GENERATED_KEYS
+                );
+
+                statement.setInt(1, facultyId);
+                statement.setLong(2, activityId);
+                statement.setInt(3, facultyId);
+
+                return statement;
+            }, keyHolder);
+
+            if (rowsInserted != 1 || keyHolder.getKey() == null) {
+                throw new IllegalArgumentException(
+                    "Published assessment not found or this faculty member does not own it."
+                );
+            }
+        } catch (DuplicateKeyException exception) {
             throw new IllegalStateException(
-                "The database did not return a session ID."
+                "This assessment already has an active session.",
+                exception
             );
         }
+
+        Long sessionId = keyHolder.getKey().longValue();
 
         return findById(sessionId)
             .orElseThrow(() -> new IllegalStateException(
@@ -69,28 +103,66 @@ public class ActivitySessionRepository {
     }
 
     // END AN ASSESSMENT SESSION
+    // Ending the session and auto-submitting unfinished attempts happen in one
+    // transaction. The saved student answers are preserved.
+    @Transactional
     public ActivitySessionResponse endSession(
             Long sessionId,
             Integer facultyId
     ) {
 
-        String sql = """
-            SELECT public.end_activity_session(?, ?)
+        String endSessionSql = """
+            UPDATE activity_sessions
+            SET
+                status = 'ended_by_faculty',
+                ended_at = CURRENT_TIMESTAMP(6),
+                ended_by_faculty_id = ?
+            WHERE id = ?
+              AND started_by_faculty_id = ?
+              AND status = 'in_progress'
             """;
 
-        Boolean ended = jdbcTemplate.queryForObject(
-            sql,
-            Boolean.class,
+        int sessionsEnded = jdbcTemplate.update(
+            endSessionSql,
+            facultyId,
             sessionId,
             facultyId
         );
 
-        if (!Boolean.TRUE.equals(ended)) {
+        if (sessionsEnded != 1) {
             throw new IllegalArgumentException(
                 "Session could not be ended. It may already be ended, " +
                 "inactive, or not owned by this Professor."
             );
         }
+
+        String autoSubmitSql = """
+            UPDATE student_answers
+            SET
+                submission_status = 'auto_submitted',
+                submitted_at = (
+                    SELECT ended_at
+                    FROM activity_sessions
+                    WHERE id = ?
+                ),
+                last_saved_at = LEAST(
+                    last_saved_at,
+                    (
+                        SELECT ended_at
+                        FROM activity_sessions
+                        WHERE id = ?
+                    )
+                )
+            WHERE session_id = ?
+              AND submission_status = 'in_progress'
+            """;
+
+        jdbcTemplate.update(
+            autoSubmitSql,
+            sessionId,
+            sessionId,
+            sessionId
+        );
 
         return findById(sessionId)
             .orElseThrow(() -> new IllegalStateException(
@@ -110,7 +182,7 @@ public class ActivitySessionRepository {
                 status,
                 started_at,
                 ended_at
-            FROM public.activity_sessions
+            FROM activity_sessions
             WHERE activity_id = ?
               AND status = 'in_progress'
             ORDER BY started_at DESC
@@ -139,7 +211,7 @@ public class ActivitySessionRepository {
                 status,
                 started_at,
                 ended_at
-            FROM public.activity_sessions
+            FROM activity_sessions
             WHERE id = ?
             """;
 

@@ -17,18 +17,18 @@ public class QuizDatabaseConnectionCheck implements CommandLineRunner {
     public void run(String... args) {
 
         String database = jdbcTemplate.queryForObject(
-            "SELECT current_database()",
+            "SELECT DATABASE()",
             String.class
         );
 
         String user = jdbcTemplate.queryForObject(
-            "SELECT current_user",
+            "SELECT CURRENT_USER()",
             String.class
         );
 
         System.out.println(
-            "QUIZ_DB_CONNECTION_OK: " + database
-            + " | USER: " + user
+            "MYSQL_DB_CONNECTION_OK: " + database +
+            " | USER: " + user
         );
     }
 }

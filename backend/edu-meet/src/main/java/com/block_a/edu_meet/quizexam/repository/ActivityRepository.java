@@ -1,10 +1,13 @@
-
 package com.block_a.edu_meet.quizexam.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +22,8 @@ public class ActivityRepository {
     }
 
     // CREATE A NEW DRAFT ASSESSMENT
+    // MySQL does not use PostgreSQL's RETURNING clause. Retrieve the generated key
+    // through JDBC's generated-keys support instead.
     public Long createDraft(
             String name,
             String type,
@@ -30,7 +35,7 @@ public class ActivityRepository {
     ) {
 
         String sql = """
-            INSERT INTO public.activities (
+            INSERT INTO activities (
                 name,
                 type,
                 course_name,
@@ -40,21 +45,35 @@ public class ActivityRepository {
                 faculty_id,
                 status
             )
-            VALUES (?, ?, ?, ?, ?, CAST(? AS jsonb), ?, 'draft')
-            RETURNING id
+            VALUES (?, ?, ?, ?, ?, CAST(? AS JSON), ?, 'draft')
             """;
 
-        return jdbcTemplate.queryForObject(
-            sql,
-            Long.class,
-            name,
-            type,
-            courseName,
-            courseCode,
-            passingGradePercent,
-            questionAndAnswerJson,
-            facultyId
-        );
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        int rowsInserted = jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(
+                sql,
+                Statement.RETURN_GENERATED_KEYS
+            );
+
+            statement.setString(1, name);
+            statement.setString(2, type);
+            statement.setString(3, courseName);
+            statement.setString(4, courseCode);
+            statement.setBigDecimal(5, passingGradePercent);
+            statement.setString(6, questionAndAnswerJson);
+            statement.setInt(7, facultyId);
+
+            return statement;
+        }, keyHolder);
+
+        if (rowsInserted != 1 || keyHolder.getKey() == null) {
+            throw new IllegalStateException(
+                "The database did not return the new assessment ID."
+            );
+        }
+
+        return keyHolder.getKey().longValue();
     }
 
     // ADD A TARGET CLASS TO AN ASSESSMENT
@@ -66,7 +85,7 @@ public class ActivityRepository {
     ) {
 
         String sql = """
-            INSERT INTO public.activity_targets (
+            INSERT INTO activity_targets (
                 activity_id,
                 class_id,
                 class_name,
@@ -88,7 +107,7 @@ public class ActivityRepository {
     public int deleteTargetClasses(Long activityId) {
 
         String sql = """
-            DELETE FROM public.activity_targets
+            DELETE FROM activity_targets
             WHERE activity_id = ?
             """;
 
@@ -105,7 +124,7 @@ public class ActivityRepository {
                 class_id,
                 class_name,
                 class_code
-            FROM public.activity_targets
+            FROM activity_targets
             WHERE activity_id = ?
             ORDER BY class_name ASC
             """;
@@ -131,7 +150,7 @@ public class ActivityRepository {
                 status,
                 created_at,
                 updated_at
-            FROM public.activities
+            FROM activities
             WHERE faculty_id = ?
             ORDER BY created_at DESC
             """;
@@ -158,7 +177,7 @@ public class ActivityRepository {
                 status,
                 created_at,
                 updated_at
-            FROM public.activities
+            FROM activities
             WHERE id = ?
               AND faculty_id = ?
             """;
@@ -187,15 +206,15 @@ public class ActivityRepository {
     ) {
 
         String sql = """
-            UPDATE public.activities
+            UPDATE activities
             SET
                 name = ?,
                 type = ?,
                 course_name = ?,
                 course_code = ?,
                 passing_grade_percent = ?,
-                question_and_answer = CAST(? AS jsonb),
-                updated_at = CURRENT_TIMESTAMP
+                question_and_answer = CAST(? AS JSON),
+                updated_at = CURRENT_TIMESTAMP(6)
             WHERE id = ?
               AND faculty_id = ?
               AND status = 'draft'
@@ -214,7 +233,29 @@ public class ActivityRepository {
         );
     }
 
+    // CHECK WHETHER AN ASSESSMENT HAS AN ACTIVE SESSION
+    public boolean hasActiveSession(Long activityId) {
+
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM activity_sessions
+                WHERE activity_id = ?
+                  AND status = 'in_progress'
+            )
+            """;
+
+        Integer exists = jdbcTemplate.queryForObject(
+            sql,
+            Integer.class,
+            activityId
+        );
+
+        return exists != null && exists == 1;
+    }
+
     // UPDATE ASSESSMENT STATUS
+    // An assessment cannot be moved to draft or archived while a session is active.
     public int updateStatus(
             Long activityId,
             Integer facultyId,
@@ -222,19 +263,29 @@ public class ActivityRepository {
     ) {
 
         String sql = """
-            UPDATE public.activities
+            UPDATE activities
             SET
                 status = ?,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = CURRENT_TIMESTAMP(6)
             WHERE id = ?
               AND faculty_id = ?
+              AND (
+                  ? = 'published'
+                  OR NOT EXISTS (
+                      SELECT 1
+                      FROM activity_sessions s
+                      WHERE s.activity_id = activities.id
+                        AND s.status = 'in_progress'
+                  )
+              )
             """;
 
         return jdbcTemplate.update(
             sql,
             status,
             activityId,
-            facultyId
+            facultyId,
+            status
         );
     }
 }

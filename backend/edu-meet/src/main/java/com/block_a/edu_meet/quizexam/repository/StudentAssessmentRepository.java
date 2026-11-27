@@ -1,4 +1,3 @@
-
 package com.block_a.edu_meet.quizexam.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -8,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Repository
 public class StudentAssessmentRepository {
@@ -40,11 +38,11 @@ public class StudentAssessmentRepository {
                 a.question_and_answer,
                 a.passing_grade_percent,
                 a.created_at
-            FROM public.activities a
+            FROM activities a
             WHERE a.status = 'published'
               AND EXISTS (
                   SELECT 1
-                  FROM public.activity_targets t
+                  FROM activity_targets t
                   WHERE t.activity_id = a.id
                     AND t.class_id IN (%s)
               )
@@ -79,12 +77,12 @@ public class StudentAssessmentRepository {
                 a.question_and_answer,
                 a.passing_grade_percent,
                 a.created_at
-            FROM public.activities a
+            FROM activities a
             WHERE a.id = ?
               AND a.status = 'published'
               AND EXISTS (
                   SELECT 1
-                  FROM public.activity_targets t
+                  FROM activity_targets t
                   WHERE t.activity_id = a.id
                     AND t.class_id IN (%s)
               )
@@ -105,7 +103,7 @@ public class StudentAssessmentRepository {
 
         String sql = """
             SELECT id
-            FROM public.activity_sessions
+            FROM activity_sessions
             WHERE activity_id = ?
               AND status = 'in_progress'
             ORDER BY started_at DESC

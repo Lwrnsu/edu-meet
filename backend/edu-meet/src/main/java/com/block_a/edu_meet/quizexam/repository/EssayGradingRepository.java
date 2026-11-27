@@ -1,4 +1,3 @@
-
 package com.block_a.edu_meet.quizexam.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,8 +38,8 @@ public class EssayGradingRepository {
                 a.name AS activity_name,
                 a.question_and_answer,
                 a.passing_grade_percent
-            FROM public.student_answers sa
-            JOIN public.activities a
+            FROM student_answers sa
+            JOIN activities a
                 ON a.id = sa.activity_id
             WHERE a.id = ?
               AND a.faculty_id = ?
@@ -77,8 +76,8 @@ public class EssayGradingRepository {
                 a.name AS activity_name,
                 a.question_and_answer,
                 a.passing_grade_percent
-            FROM public.student_answers sa
-            JOIN public.activities a
+            FROM student_answers sa
+            JOIN activities a
                 ON a.id = sa.activity_id
             WHERE sa.id = ?
               AND a.faculty_id = ?
@@ -108,7 +107,7 @@ public class EssayGradingRepository {
                 feedback,
                 graded_by_faculty_id,
                 graded_at
-            FROM public.essay_grades
+            FROM essay_grades
             WHERE student_answer_id = ?
             ORDER BY question_id
             """;
@@ -120,6 +119,7 @@ public class EssayGradingRepository {
     }
 
     // INSERT OR UPDATE AN ESSAY GRADE
+    // MySQL uses ON DUPLICATE KEY UPDATE instead of PostgreSQL ON CONFLICT.
     public int saveEssayGrade(
             Long studentAnswerId,
             String questionId,
@@ -130,7 +130,7 @@ public class EssayGradingRepository {
     ) {
 
         String sql = """
-            INSERT INTO public.essay_grades (
+            INSERT INTO essay_grades (
                 student_answer_id,
                 question_id,
                 max_points,
@@ -139,19 +139,22 @@ public class EssayGradingRepository {
                 graded_by_faculty_id
             )
             VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT (student_answer_id, question_id)
-            DO UPDATE SET
-                max_points = EXCLUDED.max_points,
-                points_awarded = EXCLUDED.points_awarded,
-                feedback = EXCLUDED.feedback,
-                graded_by_faculty_id = EXCLUDED.graded_by_faculty_id,
-                graded_at = CURRENT_TIMESTAMP
+            ON DUPLICATE KEY UPDATE
+                max_points = ?,
+                points_awarded = ?,
+                feedback = ?,
+                graded_by_faculty_id = ?,
+                graded_at = CURRENT_TIMESTAMP(6)
             """;
 
         return jdbcTemplate.update(
             sql,
             studentAnswerId,
             questionId,
+            maxPoints,
+            pointsAwarded,
+            feedback,
+            facultyId,
             maxPoints,
             pointsAwarded,
             feedback,
@@ -172,7 +175,7 @@ public class EssayGradingRepository {
     ) {
 
         String sql = """
-            UPDATE public.student_answers
+            UPDATE student_answers
             SET
                 essay_score = ?,
                 score = ?,
@@ -181,10 +184,10 @@ public class EssayGradingRepository {
                 is_passed = ?,
                 grading_status = ?,
                 graded_at = CASE
-                    WHEN ? THEN CURRENT_TIMESTAMP
+                    WHEN ? THEN CURRENT_TIMESTAMP(6)
                     ELSE NULL
                 END,
-                last_saved_at = CURRENT_TIMESTAMP
+                last_saved_at = CURRENT_TIMESTAMP(6)
             WHERE id = ?
               AND submission_status IN ('submitted', 'auto_submitted')
             """;

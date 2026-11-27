@@ -4,7 +4,6 @@ package com.block_a.edu_meet.quizexam.controller;
 import com.block_a.edu_meet.quizexam.dto.EssaySubmissionResponse;
 import com.block_a.edu_meet.quizexam.dto.GradeEssayRequest;
 import com.block_a.edu_meet.quizexam.dto.StudentScoreResponse;
-
 import com.block_a.edu_meet.quizexam.service.EssayGradingService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,32 +28,25 @@ public class EssayGradingController {
         this.gradingService = gradingService;
     }
 
-    // VIEW ESSAY SUBMISSIONS FOR AN ASSESSMENT
     @GetMapping("/activities/{activityId}/essay-submissions")
     public ResponseEntity<List<EssaySubmissionResponse>> getEssaySubmissions(
             @PathVariable Long activityId,
             HttpServletRequest request
     ) {
-
         Integer facultyId = requireFacultyId(request);
 
         List<EssaySubmissionResponse> submissions =
-            gradingService.getEssaySubmissions(
-                activityId,
-                facultyId
-            );
+            gradingService.getEssaySubmissions(activityId, facultyId);
 
         return ResponseEntity.ok(submissions);
     }
 
-    // GRADE ESSAY QUESTIONS FOR ONE STUDENT
     @PutMapping("/student-answers/{studentAnswerId}/essay-grades")
     public ResponseEntity<StudentScoreResponse> gradeEssays(
             @PathVariable Long studentAnswerId,
             @RequestBody GradeEssayRequest requestBody,
             HttpServletRequest request
     ) {
-
         Integer facultyId = requireFacultyId(request);
 
         StudentScoreResponse result =
@@ -67,9 +59,7 @@ public class EssayGradingController {
         return ResponseEntity.ok(result);
     }
 
-    // REQUIRE AN AUTHENTICATED PROFESSOR
     private Integer requireFacultyId(HttpServletRequest request) {
-
         Object facultyIdAttribute =
             request.getAttribute("authenticatedFacultyId");
 
@@ -78,7 +68,6 @@ public class EssayGradingController {
 
         if (!(facultyIdAttribute instanceof Number facultyIdNumber) ||
             roleAttribute == null) {
-
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
                 "Authentication is required."
@@ -96,7 +85,7 @@ public class EssayGradingController {
         if (!Set.of("faculty", "professor").contains(role)) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Only authorized Professors can grade essays."
+                "Only authorized faculty can grade essays."
             );
         }
 
@@ -105,19 +94,17 @@ public class EssayGradingController {
         if (facultyId <= 0 || facultyId > Integer.MAX_VALUE) {
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
-                "Invalid Professor identity."
+                "Invalid faculty identity."
             );
         }
 
         return (int) facultyId;
     }
 
-    // HANDLE VALIDATION ERRORS
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleValidationError(
             IllegalArgumentException exception
     ) {
-
         return ResponseEntity.badRequest().body(
             Map.of("error", exception.getMessage())
         );

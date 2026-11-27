@@ -26,50 +26,33 @@ public class ActivitySessionController {
         this.sessionService = sessionService;
     }
 
-    // START A QUIZ OR EXAM
-    @PostMapping(
-        "/api/quizexam/activities/{activityId}/sessions/start"
-    )
+    @PostMapping("/api/quizexam/activities/{activityId}/sessions/start")
     public ResponseEntity<ActivitySessionResponse> startSession(
             @PathVariable Long activityId,
             HttpServletRequest request
     ) {
-
         Integer facultyId = requireFacultyId(request);
 
         ActivitySessionResponse session =
-            sessionService.startSession(
-                activityId,
-                facultyId
-            );
+            sessionService.startSession(activityId, facultyId);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(session);
+        return ResponseEntity.status(HttpStatus.CREATED).body(session);
     }
 
-    // MANUALLY END A QUIZ OR EXAM
-    @PostMapping(
-        "/api/quizexam/sessions/{sessionId}/end"
-    )
+    @PostMapping("/api/quizexam/sessions/{sessionId}/end")
     public ResponseEntity<ActivitySessionResponse> endSession(
             @PathVariable Long sessionId,
             HttpServletRequest request
     ) {
-
         Integer facultyId = requireFacultyId(request);
 
         ActivitySessionResponse session =
-            sessionService.endSession(
-                sessionId,
-                facultyId
-            );
+            sessionService.endSession(sessionId, facultyId);
 
         return ResponseEntity.ok(session);
     }
 
-    // REQUIRE AN AUTHENTICATED PROFESSOR
     private Integer requireFacultyId(HttpServletRequest request) {
-
         Object facultyIdAttribute =
             request.getAttribute("authenticatedFacultyId");
 
@@ -78,7 +61,6 @@ public class ActivitySessionController {
 
         if (!(facultyIdAttribute instanceof Number facultyIdNumber) ||
             roleAttribute == null) {
-
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
                 "Authentication is required."
@@ -92,7 +74,7 @@ public class ActivitySessionController {
         if (!Set.of("faculty", "professor").contains(role)) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Only authorized Professors can control assessment sessions."
+                "Only authorized faculty can control assessment sessions."
             );
         }
 
@@ -101,19 +83,17 @@ public class ActivitySessionController {
         if (facultyId <= 0 || facultyId > Integer.MAX_VALUE) {
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
-                "Invalid Professor identity."
+                "Invalid faculty identity."
             );
         }
 
         return (int) facultyId;
     }
 
-    // HANDLE VALIDATION ERRORS
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleValidationError(
             IllegalArgumentException exception
     ) {
-
         return ResponseEntity.badRequest().body(
             Map.of("error", exception.getMessage())
         );

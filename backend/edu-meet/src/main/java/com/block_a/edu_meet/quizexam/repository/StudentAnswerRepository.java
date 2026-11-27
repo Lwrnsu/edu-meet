@@ -1,4 +1,3 @@
-
 package com.block_a.edu_meet.quizexam.repository;
 
 import com.block_a.edu_meet.quizexam.dto.StudentScoreResponse;
@@ -30,8 +29,8 @@ public class StudentAnswerRepository {
                 s.id AS session_id,
                 s.activity_id,
                 s.status AS session_status
-            FROM public.activity_sessions s
-            JOIN public.activities a
+            FROM activity_sessions s
+            JOIN activities a
                 ON a.id = s.activity_id
             WHERE s.id = ?
               AND s.status = 'in_progress'
@@ -45,7 +44,8 @@ public class StudentAnswerRepository {
     }
 
     // CREATE ONE STUDENT ATTEMPT PER SESSION
-    // Existing attempts are preserved because of the unique constraint.
+    // MySQL uses ON DUPLICATE KEY UPDATE instead of PostgreSQL ON CONFLICT.
+    // The unique key on (session_id, student_id) preserves an existing attempt.
     public int createAttemptIfAbsent(
             Long activityId,
             Long sessionId,
@@ -53,7 +53,7 @@ public class StudentAnswerRepository {
     ) {
 
         String sql = """
-            INSERT INTO public.student_answers (
+            INSERT INTO student_answers (
                 activity_id,
                 session_id,
                 student_id
@@ -62,15 +62,14 @@ public class StudentAnswerRepository {
                 s.activity_id,
                 s.id,
                 ?
-            FROM public.activity_sessions s
-            JOIN public.activities a
+            FROM activity_sessions s
+            JOIN activities a
                 ON a.id = s.activity_id
             WHERE s.id = ?
               AND s.activity_id = ?
               AND s.status = 'in_progress'
               AND a.status = 'published'
-            ON CONFLICT (session_id, student_id)
-            DO NOTHING
+            ON DUPLICATE KEY UPDATE student_id = student_id
             """;
 
         return jdbcTemplate.update(
@@ -95,7 +94,7 @@ public class StudentAnswerRepository {
                 student_id,
                 submission_status,
                 grading_status
-            FROM public.student_answers
+            FROM student_answers
             WHERE session_id = ?
               AND student_id = ?
             """;
@@ -111,6 +110,7 @@ public class StudentAnswerRepository {
     }
 
     // SAVE OR UPDATE ANSWERS WHILE THE SESSION IS ACTIVE
+    // MySQL uses UPDATE ... JOIN rather than PostgreSQL UPDATE ... FROM.
     public int saveAnswers(
             Long sessionId,
             Integer studentId,
@@ -118,13 +118,13 @@ public class StudentAnswerRepository {
     ) {
 
         String sql = """
-            UPDATE public.student_answers sa
+            UPDATE student_answers sa
+            JOIN activity_sessions s
+                ON sa.session_id = s.id
             SET
-                answer = CAST(? AS jsonb),
-                last_saved_at = CURRENT_TIMESTAMP
-            FROM public.activity_sessions s
-            WHERE sa.session_id = s.id
-              AND sa.session_id = ?
+                sa.answer = CAST(? AS JSON),
+                sa.last_saved_at = CURRENT_TIMESTAMP(6)
+            WHERE sa.session_id = ?
               AND sa.student_id = ?
               AND sa.submission_status = 'in_progress'
               AND s.status = 'in_progress'
@@ -152,26 +152,26 @@ public class StudentAnswerRepository {
     ) {
 
         String sql = """
-            UPDATE public.student_answers sa
+            UPDATE student_answers sa
+            JOIN activity_sessions s
+                ON sa.session_id = s.id
             SET
-                answer = CAST(? AS jsonb),
-                submission_status = 'submitted',
-                grading_status = ?,
-                objective_score = ?,
-                essay_score = 0,
-                score = ?,
-                max_score = ?,
-                grade_percent = CAST(? AS numeric),
-                is_passed = CAST(? AS boolean),
-                submitted_at = CURRENT_TIMESTAMP,
-                last_saved_at = CURRENT_TIMESTAMP,
-                graded_at = CASE
-                    WHEN ? THEN CURRENT_TIMESTAMP
+                sa.answer = CAST(? AS JSON),
+                sa.submission_status = 'submitted',
+                sa.grading_status = ?,
+                sa.objective_score = ?,
+                sa.essay_score = 0,
+                sa.score = ?,
+                sa.max_score = ?,
+                sa.grade_percent = ?,
+                sa.is_passed = ?,
+                sa.submitted_at = CURRENT_TIMESTAMP(6),
+                sa.last_saved_at = CURRENT_TIMESTAMP(6),
+                sa.graded_at = CASE
+                    WHEN ? THEN CURRENT_TIMESTAMP(6)
                     ELSE NULL
                 END
-            FROM public.activity_sessions s
-            WHERE sa.session_id = s.id
-              AND sa.session_id = ?
+            WHERE sa.session_id = ?
               AND sa.student_id = ?
               AND sa.submission_status = 'in_progress'
               AND s.status = 'in_progress'
@@ -204,8 +204,8 @@ public class StudentAnswerRepository {
                 sa.answer,
                 a.question_and_answer,
                 a.passing_grade_percent
-            FROM public.student_answers sa
-            JOIN public.activities a
+            FROM student_answers sa
+            JOIN activities a
                 ON a.id = sa.activity_id
             WHERE sa.session_id = ?
               AND sa.submission_status = 'auto_submitted'
@@ -228,20 +228,20 @@ public class StudentAnswerRepository {
     ) {
 
         String sql = """
-            UPDATE public.student_answers
+            UPDATE student_answers
             SET
                 grading_status = ?,
                 objective_score = ?,
                 essay_score = 0,
                 score = ?,
                 max_score = ?,
-                grade_percent = CAST(? AS numeric),
-                is_passed = CAST(? AS boolean),
+                grade_percent = ?,
+                is_passed = ?,
                 graded_at = CASE
-                    WHEN ? THEN CURRENT_TIMESTAMP
+                    WHEN ? THEN CURRENT_TIMESTAMP(6)
                     ELSE NULL
                 END,
-                last_saved_at = CURRENT_TIMESTAMP
+                last_saved_at = CURRENT_TIMESTAMP(6)
             WHERE id = ?
               AND submission_status = 'auto_submitted'
               AND grading_status = 'not_graded'
@@ -282,8 +282,8 @@ public class StudentAnswerRepository {
                 sa.grading_status,
                 sa.submitted_at,
                 sa.graded_at
-            FROM public.student_answers sa
-            JOIN public.activities a
+            FROM student_answers sa
+            JOIN activities a
                 ON a.id = sa.activity_id
             WHERE sa.session_id = ?
               AND sa.student_id = ?

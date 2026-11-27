@@ -1,4 +1,3 @@
-
 package com.block_a.edu_meet.quizexam.service;
 
 import com.block_a.edu_meet.quizexam.dto.CreateActivityRequest;
@@ -222,8 +221,33 @@ public class ActivityService {
         );
 
         if (updated == 0) {
+
+            boolean assessmentOwned =
+                activityRepository.findByIdAndFacultyId(
+                    activityId,
+                    facultyId
+                ).isPresent();
+
+            if (!assessmentOwned) {
+                throw new IllegalArgumentException(
+                    "Assessment not found or not owned by this faculty member."
+                );
+            }
+
+            boolean restrictedStatus =
+                Set.of("draft", "archived").contains(normalizedStatus);
+
+            if (restrictedStatus &&
+                activityRepository.hasActiveSession(activityId)) {
+
+                throw new IllegalArgumentException(
+                    "This assessment cannot be changed to draft or archived " +
+                    "while a session is active. End the session first."
+                );
+            }
+
             throw new IllegalArgumentException(
-                "Assessment not found or not owned by this faculty member."
+                "Assessment status could not be updated. Please try again."
             );
         }
     }

@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record FacultyStudentScoreResponse(
+        Long studentAnswerId,
+        Long sessionId,
         Long studentId,
         String submissionStatus,
         String gradingStatus,
