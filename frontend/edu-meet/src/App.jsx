@@ -1,11 +1,17 @@
-import Faculty from "./compilerfrontend/Faculty"
-import Student from "./compilerfrontend/Student"
+import { Routes, Route } from "react-router"
+import AdminLoginPage from "./pages/AdminLoginPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import { Lobby } from "./Video Conference/Lobby.jsx";
+
 function App() {
-  const checkPrefix = window.location.hostname;
-  if (checkPrefix.startsWith("admin.")) {
-    return (
-      <>
-        <AdminLoginPage />
-      </>
-    );
-  } 
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<LoginPage />}/>
+        <Route path="/admin" element={<AdminLoginPage />}/>
+      </Routes>
+    </>
+  )
+}
+
+export default App
