@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -49,7 +50,7 @@ public class ConversationController {
     private final ConversationCreationService conversationCreationService;
     private final MongoOperations mongoOperations;
     public ConversationController(ConversationRepository conversationRepository,
-                                  MemberLookup memberLookup,
+                                  @Qualifier("accountMemberLookup") MemberLookup memberLookup,
                                   MessageRepository messageRepository,
                                   ConversationAccess conversationAccess,
                                   ConversationCreationService conversationCreationService,

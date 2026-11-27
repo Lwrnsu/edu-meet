@@ -1,7 +1,7 @@
 <?php
 
-require_once __DIR__ . '/../repository/UserRepository.php';
-require_once __DIR__ . '/../repository/PasswordResetRepository.php';
+require_once __DIR__ . '/../repositories/UserRepository.php';
+require_once __DIR__ . '/../repositories/PasswordResetRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/MailHelper.php';
 

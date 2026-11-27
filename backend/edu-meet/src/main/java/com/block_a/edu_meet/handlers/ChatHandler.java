@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -46,7 +47,8 @@ public class ChatHandler extends TextWebSocketHandler {
 
     public ChatHandler(ObjectMapper objectMapper, MessageRepository messageRepository,
                        ConversationRepository conversationRepository,
-                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets, MemberLookup memberLookup) {
+                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets,
+                       @Qualifier("accountMemberLookup") MemberLookup memberLookup) {
         this.objectMapper = objectMapper;
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;

@@ -160,7 +160,14 @@ function MyVideoConference() {
 }
 
 function MeetingLayout() {
-  const [chatOpen, setChatOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState("menu");
+  const toolTitles = {
+    menu: "Meeting tools",
+    messages: "Messages",
+    codeEditor: "Code Editor",
+    quizExam: "Quiz / Exam",
+  };
 
   return (
     <div className="meeting-layout">
@@ -170,18 +177,79 @@ function MeetingLayout() {
         </div>
         <div className="meeting-controls">
           <ControlBar />
-          <button onClick={() => setChatOpen((open) => !open)}>
-            {chatOpen ? "Close chat" : "Chat"}
+          <button
+            type="button"
+            className="meeting-tools-toggle"
+            aria-label={toolsOpen ? "Close meeting tools" : "Open meeting tools"}
+            aria-expanded={toolsOpen}
+            aria-controls="meeting-tools-panel"
+            onClick={() => {
+              setActiveTool("menu");
+              setToolsOpen((open) => !open);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
         </div>
       </div>
 
-      <aside
-        className="meeting-chat-panel"
-        style={{ display: chatOpen ? "flex" : "none" }}
-      >
-        <Chat />
-      </aside>
+      {toolsOpen && (
+        <aside
+          id="meeting-tools-panel"
+          className="meeting-tools-panel"
+          aria-label="Meeting tools"
+        >
+          <header className="meeting-tools-header">
+            {activeTool !== "menu" && (
+              <button
+                type="button"
+                className="meeting-tools-back"
+                onClick={() => setActiveTool("menu")}
+              >
+                Back
+              </button>
+            )}
+            <h2>{toolTitles[activeTool]}</h2>
+            <button
+              type="button"
+              className="meeting-tools-close"
+              onClick={() => setToolsOpen(false)}
+            >
+              Close
+            </button>
+          </header>
+
+          {activeTool === "menu" && (
+            <nav className="meeting-tools-menu" aria-label="Meeting tools">
+              <button type="button" onClick={() => setActiveTool("messages")}>
+                Messages
+              </button>
+              <button type="button" onClick={() => setActiveTool("codeEditor")}>
+                Code Editor
+                <span>Coming later</span>
+              </button>
+              <button type="button" onClick={() => setActiveTool("quizExam")}>
+                Quiz / Exam
+                <span>Coming later</span>
+              </button>
+            </nav>
+          )}
+
+          {activeTool === "messages" && <Chat />}
+          {activeTool === "codeEditor" && (
+            <div className="meeting-tool-placeholder">
+              <p>The code editor will be added later.</p>
+            </div>
+          )}
+          {activeTool === "quizExam" && (
+            <div className="meeting-tool-placeholder">
+              <p>Quiz and exam tools will be added later.</p>
+            </div>
+          )}
+        </aside>
+      )}
 
       <RoomAudioRenderer />
     </div>
