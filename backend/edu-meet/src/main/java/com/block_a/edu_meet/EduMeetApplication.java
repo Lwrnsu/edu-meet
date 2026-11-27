@@ -3,9 +3,6 @@ package com.block_a.edu_meet;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import org.springframework.web.bind.annotation.*;
-
-@RestController 
 @SpringBootApplication
 public class EduMeetApplication {
 	public static void main(String[] args) {

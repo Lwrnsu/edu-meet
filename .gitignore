@@ -3,6 +3,8 @@ frontend/edu-meet/.env
 frontend/edu-meet/.env.*
 !frontend/edu-meet/.env.example
 
+backend/edu-meet/php/vendor/
+backend/edu-meet/php/composer.phar
 backend/edu-meet/target/
 backend/edu-meet/.mvn/wrapper/maven-wrapper.jar
 
@@ -37,6 +39,8 @@ frontend/edu-meet/dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+*.sw?*.class
+dump.rdb
 *.sw?
 
 .env
