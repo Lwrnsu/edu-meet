@@ -6,17 +6,23 @@ import com.block_a.edu_meet.Student;
 import com.block_a.edu_meet.repository.ClassroomEnrollmentRepository;
 import com.block_a.edu_meet.repository.ClassroomRepository;
 import com.block_a.edu_meet.repository.StudentRepository;
+import com.block_a.edu_meet.security.AuthenticatedUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/classrooms")
-@CrossOrigin(origins = "*")
 public class ClassroomController {
+
+    private static final String[] CLASS_ADMIN_ROLES = {
+            "dean", "college_dean", "school_admin", "college_admin", "system_admin"
+    };
 
     private final ClassroomRepository classroomRepository;
     private final StudentRepository studentRepository;
@@ -32,7 +38,10 @@ public class ClassroomController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createClassroom(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> createClassroom(
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        requireRole(authentication, CLASS_ADMIN_ROLES);
         String roomName = body.get("roomName");
         String facultyUsername = body.getOrDefault("facultyUsername", body.get("facultyAccountId"));
         String facultyAccountId = body.get("facultyAccountId");
@@ -51,7 +60,11 @@ public class ClassroomController {
     }
 
     @PutMapping("/{roomName}/faculty")
-    public ResponseEntity<?> assignFaculty(@PathVariable String roomName, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> assignFaculty(
+            @PathVariable String roomName,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        requireRole(authentication, CLASS_ADMIN_ROLES);
         Classroom classroom = classroomRepository.findByRoomName(roomName).orElse(null);
         if (classroom == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Classroom not found: " + roomName));
@@ -63,10 +76,27 @@ public class ClassroomController {
     }
 
     @PostMapping("/{roomName}/enroll")
-    public ResponseEntity<?> enrollStudent(@PathVariable String roomName, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> enrollStudent(
+            @PathVariable String roomName,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        AuthenticatedUser actor = requireRole(
+                authentication,
+                "faculty",
+                "dean",
+                "college_dean",
+                "school_admin",
+                "college_admin",
+                "system_admin");
         Classroom classroom = classroomRepository.findByRoomName(roomName).orElse(null);
         if (classroom == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Classroom not found: " + roomName));
+        }
+
+        if (actor.hasAnyRole("faculty") && !isAssignedFaculty(classroom, actor)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Faculty may enroll students only in their assigned classroom.");
         }
 
         String accountId = body.get("accountId");
@@ -97,7 +127,35 @@ public class ClassroomController {
     }
 
     @GetMapping
-    public List<Classroom> listClassrooms() {
+    public List<Classroom> listClassrooms(Authentication authentication) {
+        requireRole(authentication, CLASS_ADMIN_ROLES);
         return classroomRepository.findAll();
+    }
+
+    private static AuthenticatedUser requireRole(Authentication authentication, String... allowedRoles) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "A verified authenticated user is required.");
+        }
+        if (!user.hasAnyRole(allowedRoles)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Your account is not authorized to manage classrooms.");
+        }
+        return user;
+    }
+
+    private static boolean isAssignedFaculty(Classroom classroom, AuthenticatedUser faculty) {
+        String identity = Integer.toString(faculty.id());
+        return matches(classroom.getFacultyAccountId(), identity)
+                || matches(classroom.getFacultyAccountId(), faculty.email())
+                || matches(classroom.getFacultyEmail(), faculty.email())
+                || matches(classroom.getFacultyInCharge(), identity)
+                || matches(classroom.getFacultyInCharge(), faculty.email());
+    }
+
+    private static boolean matches(String actual, String expected) {
+        return actual != null && expected != null && actual.equalsIgnoreCase(expected);
     }
 }

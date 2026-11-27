@@ -1,20 +1,10 @@
-<<<<<<< HEAD
 <?php
-class Database {
-    private static string $host = "localhost";
-    private static string $database = "edu_meet_db";
-    private static string $username = "root";
-    private static string $password = "";
-=======
-﻿<?php
-
 class Database
 {
     private static string $host = '127.0.0.1';
     private static string $database = 'edu_meet_db';
     private static string $username = 'root';
     private static string $password = '';
->>>>>>> origin/CERICO
     private static ?PDO $connection = null;
     private static ?mysqli $mysqliConnection = null;
 
@@ -37,10 +27,6 @@ class Database
         return self::$mysqliConnection;
     }
 
-<<<<<<< HEAD
-    public static function connect(): PDO {
-        if (self::$connection === null) {
-            try {
                 $dsn = "mysql:host=" . self::setting('EDUMEET_DB_HOST', self::$host)
                     . ";port=" . self::setting('EDUMEET_DB_PORT', '3306')
                     . ";dbname=" . self::setting('EDUMEET_DB_NAME', self::$database) . ";charset=utf8mb4";
@@ -60,12 +46,10 @@ class Database
                 );
 
             }
-=======
     public static function connect(): PDO
     {
         if (self::$connection instanceof PDO) {
             return self::$connection;
->>>>>>> origin/CERICO
         }
 
         try {
@@ -86,5 +70,10 @@ class Database
         }
 
         return self::$connection;
+    }
+
+    private static function environmentValue(string $name, string $default): string {
+        $value = getenv($name);
+        return $value === false || $value === '' ? $default : $value;
     }
 }

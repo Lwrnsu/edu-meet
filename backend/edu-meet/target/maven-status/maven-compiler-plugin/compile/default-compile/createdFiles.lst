@@ -1,6 +1,5 @@
-<<<<<<< HEAD
+com\block_a\edu_meet\controllers\ConversationController$1.class
 com\block_a\edu_meet\services\ConversationCreationService$1.class
-=======
 com\block_a\edu_meet\attendance\AttendanceCalculator$AttendanceResult.class
 com\block_a\edu_meet\helpers\CreateConversationRequest.class
 com\block_a\edu_meet\helpers\MemberLookup.class
@@ -33,4 +32,3 @@ com\block_a\edu_meet\services\OtpRateLimitService.class
 com\block_a\edu_meet\attendance\AttendanceService.class
 com\block_a\edu_meet\services\LoginAttemptService.class
 com\block_a\edu_meet\config\WebSocketConfig.class
->>>>>>> origin/CERICO
