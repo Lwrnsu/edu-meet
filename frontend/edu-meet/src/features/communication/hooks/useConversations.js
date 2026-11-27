@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { adaptConversations } from "../utils/communicationAdapters.js";
+import { adaptConversation, adaptConversations } from "../utils/communicationAdapters.js";
 import { isNewerPreview } from "../utils/conversationPreview.js";
 
 export default function useConversations({
@@ -48,7 +48,7 @@ export default function useConversations({
             };
           });
         });
-        if (refreshCount === 0) setSelectedConversationId(next[0]?.id ?? null);
+        setSelectedConversationId((current) => current === undefined ? next[0]?.id ?? null : current);
       })
       .catch((error) => {
         if (!signal.aborted) setError(error.message);
@@ -74,7 +74,9 @@ export default function useConversations({
       const peer = membersByConversationId[conversation.id]?.find((member) => member.id !== currentUserId);
       return {
         ...conversation,
-        name: peer?.name ?? conversation.name,
+        name: peer?.name
+          ?? (conversation.lastMessageSenderId !== currentUserId ? conversation.lastMessageSenderName : null)
+          ?? conversation.name,
         avatarUrl: peer?.avatarUrl ?? conversation.avatarUrl,
       };
     });
@@ -115,6 +117,28 @@ export default function useConversations({
     setAccessError(null);
     setSelectedConversationId(conversationId);
     setActiveChatPanelView("chat");
+  }
+
+  async function getOrCreateDirectConversation(member, { signal }) {
+    const existing = loadedConversations.find((conversation) =>
+      conversation.type === "individual" && conversation.participantIds.includes(member.id),
+    );
+    if (existing) return existing.id;
+
+    const payload = await api.createDirectConversation(currentUserId, member.id, { signal });
+    if (signal.aborted) return;
+    const direct = adaptConversation(payload, { numericTimestampUnit: "seconds" });
+    setLoadedConversations((current) => current.some(({ id }) => id === direct.id)
+      ? current
+      : [...current, { ...direct, name: member.name, avatarUrl: member.avatarUrl ?? direct.avatarUrl }],
+    );
+    setRefreshCount((count) => count + 1);
+    return direct.id;
+  }
+
+  function refreshForIncomingMessage(conversationId) {
+    if (loadedConversations.some(({ id }) => id === conversationId)) return;
+    setRefreshCount((count) => count + 1);
   }
 
   function handleCancelLeaveGroup() {
@@ -159,6 +183,8 @@ export default function useConversations({
     handleMenuAction,
     renameConversation,
     handleSelectConversation,
+    getOrCreateDirectConversation,
+    refreshForIncomingMessage,
     handleCancelLeaveGroup,
     handleConfirmLeaveGroup,
   };

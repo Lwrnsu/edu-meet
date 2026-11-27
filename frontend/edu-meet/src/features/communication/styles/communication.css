@@ -587,6 +587,32 @@
   opacity: 0.7;
 }
 
+.communication-chat-member-message {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #3d4757;
+  border-radius: 999px;
+  background: transparent;
+  color: #111827;
+  font: 600 13px Poppins, sans-serif;
+  cursor: pointer;
+}
+
+.communication-chat-member-message:hover:not(:disabled) {
+  background: #f0ede7;
+}
+
+.communication-chat-member-message:focus-visible {
+  outline: 2px solid #3d4757;
+  outline-offset: 2px;
+}
+
+.communication-chat-member-message:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .communication-chat-members-empty {
   margin: 0;
   padding: 24px;

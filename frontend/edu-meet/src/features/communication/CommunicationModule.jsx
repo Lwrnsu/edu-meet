@@ -48,6 +48,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     live,
     conversationId: selectedConversation?.id,
     onConversationUnavailable: handleConversationUnavailable,
+    onIncomingMessage: conversationState.refreshForIncomingMessage,
   });
   const selectedMembers = live
     ? membersByConversationId[selectedConversationId] ?? []
@@ -115,6 +116,8 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
   const menuTriggerRef = useRef(null);
   const conversationSearchRef = useRef(null);
   const dialogCloseIntentRef = useRef(null);
+  const messageInputRef = useRef(null);
+  const focusComposerFor = useRef(null);
   const selectedPinnedMessageIds = mockPinsByConversation[selectedConversationId] ?? [];
   const selectedPinnedMessages = selectedPinnedMessageIds.flatMap(
     (messageId) => {
@@ -197,6 +200,19 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     dialogCloseIntentRef.current = null;
   }, [leaveGroupConversationId]);
 
+  useLayoutEffect(() => {
+    if (focusComposerFor.current !== selectedConversationId) return;
+    messageInputRef.current?.focus();
+    focusComposerFor.current = null;
+  }, [selectedConversationId]);
+
+  async function handleMessageMember(member, options) {
+    const id = await conversationState.getOrCreateDirectConversation(member, options);
+    if (!id || options.signal.aborted) return;
+    focusComposerFor.current = id;
+    conversationState.handleSelectConversation(id);
+  }
+
   function handleSendMessage(text) {
     return chatState.sendMessage(selectedConversationId, text);
   }
@@ -263,8 +279,11 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                 {showingMembers ? (
                   memberError?.conversationId === selectedConversationId ? <p role="alert">{memberError.message}</p> : (
                     <ChatMembersView
+                      key={selectedConversationId}
                       conversation={selectedConversation}
                       members={selectedMembers}
+                      currentUserId={currentUserId}
+                      onMessageMember={live ? handleMessageMember : undefined}
                     />
                   )
                 ) : showingPinnedMessages ? (
@@ -311,6 +330,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                     </div>
                     <MessageInput
                       key={selectedConversationId}
+                      inputRef={messageInputRef}
                       onSendMessage={handleSendMessage}
                       onSendAttachment={live
                         ? (file, text) => chatState.sendAttachment(selectedConversationId, file, text)

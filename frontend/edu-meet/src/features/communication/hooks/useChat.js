@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createChatSocket } from "../services/chatSocket.js";
 import { adaptMessage, adaptMessages, mergeMessages } from "../utils/communicationAdapters.js";
 import { validateMessageText } from "../utils/communicationValidation.js";
@@ -12,6 +12,7 @@ export default function useChat({
   api,
   conversationId,
   onConversationUnavailable,
+  onIncomingMessage,
 }) {
   if (
     typeof currentUserId !== "string" ||
@@ -33,6 +34,7 @@ export default function useChat({
 
   const socketRef = useRef(null);
   const olderRequests = useRef(new Set());
+  const notifyIncomingMessage = useEffectEvent((conversationId) => onIncomingMessage?.(conversationId));
 
   useEffect(() => {
     if (!live) return;
@@ -61,6 +63,7 @@ export default function useChat({
                 [message.conversationId]: mergeMessages(current[message.conversationId] ?? [], [message]),
               }));
               if (message.direction === "outgoing") setLastSentMessageId(message.id);
+              else notifyIncomingMessage(message.conversationId);
             } catch (error) {
               setError(error.message);
             }

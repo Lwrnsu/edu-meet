@@ -4,7 +4,7 @@ import { validateMessageText } from "../utils/communicationValidation.js";
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
-export default function MessageInput({ onSendMessage, onSendAttachment, sendDisabled = false }) {
+export default function MessageInput({ onSendMessage, onSendAttachment, inputRef, sendDisabled = false }) {
   const picker = useRef(null);
   const uploading = useRef(false);
   const [draft, setDraft] = useState("");
@@ -101,6 +101,7 @@ export default function MessageInput({ onSendMessage, onSendAttachment, sendDisa
         )}
         <input
           className="communication-message-input"
+          ref={inputRef}
           type="text"
           aria-label={file ? "Caption" : "Message"}
           placeholder={file ? "Add a caption…" : "Type a message..."}

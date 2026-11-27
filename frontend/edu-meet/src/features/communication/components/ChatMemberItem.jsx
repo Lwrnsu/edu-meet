@@ -1,6 +1,6 @@
 import ConversationAvatar from "./ConversationAvatar.jsx";
 
-export default function ChatMemberItem({ member }) {
+export default function ChatMemberItem({ member, onMessage, messageDisabled, openingChat }) {
   return (
     <li className="communication-chat-member">
       <ConversationAvatar
@@ -14,6 +14,17 @@ export default function ChatMemberItem({ member }) {
           {member.studentId}
         </span>
       </div>
+      {onMessage && (
+        <button
+          className="communication-chat-member-message"
+          type="button"
+          aria-label={openingChat ? `Opening chat with ${member.name}` : `Message ${member.name}`}
+          disabled={messageDisabled}
+          onClick={onMessage}
+        >
+          {openingChat ? "Opening…" : "Message"}
+        </button>
+      )}
     </li>
   );
 }

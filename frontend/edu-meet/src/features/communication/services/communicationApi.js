@@ -146,6 +146,13 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
     return request("/api/conversations", {}, signal);
   }
 
+  function createDirectConversation(currentUserId, memberId, { signal } = {}) {
+    return request("/api/conversations", {}, signal, {
+      method: "POST",
+      body: { type: "PRIVATE", participantIds: [currentUserId, memberId] },
+    });
+  }
+
   function getMembers(conversationId, options) {
     return conversationRequest(conversationId, "/members", options);
   }
@@ -199,6 +206,7 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
 
   return {
     getConversations,
+    createDirectConversation,
     getMembers,
     getMessages,
     getOlderMessages,
