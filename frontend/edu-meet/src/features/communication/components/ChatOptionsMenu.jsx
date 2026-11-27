@@ -32,6 +32,7 @@ export default function ChatOptionsMenu({
   onAction,
   onDismiss,
   position,
+  canArchive,
 }) {
   if (!conversation) {
     return null;
@@ -144,6 +145,12 @@ export default function ChatOptionsMenu({
             <span>{item.label}</span>
           </button>
         ))}
+        {canArchive && (
+          <button className="communication-options-action" type="button" role="menuitem"
+            onClick={() => onAction?.("archive", conversation)}>
+            <span>{conversation.archived ? "Restore Chat" : "Archive Chat"}</span>
+          </button>
+        )}
       </div>
     </div>
   );

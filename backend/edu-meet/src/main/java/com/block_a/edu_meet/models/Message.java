@@ -19,6 +19,8 @@ public class Message {
     private Attachment attachment;
     @JsonIgnore
     private byte[] attachmentBytes;
+    @JsonIgnore
+    private boolean unsent;
 
     public Message() {
     }
@@ -49,6 +51,8 @@ public class Message {
 
     public byte[] getAttachmentBytes() { return attachmentBytes; }
     public void setAttachmentBytes(byte[] attachmentBytes) { this.attachmentBytes = attachmentBytes; }
+
+    public boolean isUnsent() { return unsent; }
 
     public record Attachment(String name, String contentType, long size) {}
 

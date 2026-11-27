@@ -11,20 +11,21 @@ import com.block_a.edu_meet.models.Message;
 
 public interface MessageRepository extends MongoRepository<Message, String> {
 
-    @Query(value = "{'conversationId': ?0}", fields = "{'attachmentBytes': 0}",
+    @Query(value = "{'conversationId': ?0, 'unsent': {'$ne': true}}", fields = "{'attachmentBytes': 0}",
             sort = "{'timestamp': -1, '_id': -1}")
     List<Message> findByConversationIdOrderByTimestampDescIdDesc(String conversationId, Pageable pageable);
 
-    @Query(value = "{'conversationId': ?0}", fields = "{'_id': 1}",
+    @Query(value = "{'conversationId': ?0, 'unsent': {'$ne': true}}", fields = "{'_id': 1}",
             sort = "{'timestamp': -1, '_id': -1}")
     List<Message> findRecentIds(String conversationId, Pageable pageable);
 
-    @Query(value = "{'conversationId': ?0, '$or': ["
+    @Query(value = "{'conversationId': ?0, 'unsent': {'$ne': true}, '$or': ["
             + "{'timestamp': {'$lt': ?1}}, {'timestamp': ?1, '_id': {'$lt': ?2}}]}",
             fields = "{'attachmentBytes': 0}", sort = "{'timestamp': -1, '_id': -1}")
     List<Message> findOlderMessages(String conversationId, Instant before, String beforeId, Pageable pageable);
 
-    @Query(value = "{'conversationId': ?0, '_id': {'$in': ?1}}", fields = "{'attachmentBytes': 0}")
+    @Query(value = "{'conversationId': ?0, '_id': {'$in': ?1}, 'unsent': {'$ne': true}}",
+            fields = "{'attachmentBytes': 0}")
     List<Message> findByConversationIdAndIdIn(String conversationId, List<String> ids);
 
     @Query(value = "{'_id': ?0}", fields = "{'attachmentBytes': 0}")

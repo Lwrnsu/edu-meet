@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { createChatSocket } from "../services/chatSocket.js";
 import { adaptMessage, adaptMessages, mergeMessages } from "../utils/communicationAdapters.js";
 import { validateMessageText } from "../utils/communicationValidation.js";
@@ -13,6 +13,7 @@ export default function useChat({
   conversationId,
   onConversationUnavailable,
   onIncomingMessage,
+  onMessageUnsent,
 }) {
   if (
     typeof currentUserId !== "string" ||
@@ -29,12 +30,25 @@ export default function useChat({
   const [error, setError] = useState(null);
   const [connectionState, setConnectionState] = useState("disconnected");
   const [pinChangesByConversation, setPinChangesByConversation] = useState({});
+  const [unsentMessageIds, setUnsentMessageIds] = useState(() => new Set());
   const [paginationByConversationId, setPaginationByConversationId] =
     useState({});
 
   const socketRef = useRef(null);
   const olderRequests = useRef(new Set());
+  const handledUnsends = useRef(new Set());
   const notifyIncomingMessage = useEffectEvent((conversationId) => onIncomingMessage?.(conversationId));
+  const applyUnsend = useCallback((id, messageId) => {
+    if (handledUnsends.current.has(messageId)) return;
+    handledUnsends.current.add(messageId);
+    setUnsentMessageIds((current) => new Set(current).add(messageId));
+    setMessagesByConversationId((current) => ({
+      ...current,
+      [id]: (current[id] ?? []).filter((message) => message.id !== messageId),
+    }));
+    setPinChangesByConversation((current) => ({ ...current, [id]: (current[id] ?? 0) + 1 }));
+    onMessageUnsent(id, messageId);
+  }, [onMessageUnsent]);
 
   useEffect(() => {
     if (!live) return;
@@ -55,9 +69,11 @@ export default function useChat({
             ...current,
             [id]: (current[id] ?? 0) + 1,
           }))),
+          socket.onMessageUnsent(applyUnsend),
           socket.onSavedMessage((payload) => {
             try {
               const message = adaptMessage(payload, currentUserId, { numericTimestampUnit: "seconds" });
+              if (handledUnsends.current.has(message.id)) return;
               setMessagesByConversationId((current) => ({
                 ...current,
                 [message.conversationId]: mergeMessages(current[message.conversationId] ?? [], [message]),
@@ -83,7 +99,7 @@ export default function useChat({
       socket?.disconnect();
       socketRef.current = null;
     };
-  }, [api, live, currentUserId]);
+  }, [api, live, currentUserId, applyUnsend]);
 
   useEffect(() => {
     if (!live || !conversationId || connectionState !== "open") return;
@@ -185,6 +201,16 @@ export default function useChat({
     setLastSentMessageId(message.id);
   }
 
+  async function unsendMessage(conversationId, messageId) {
+    setError(null);
+    try {
+      await api.unsendMessage(conversationId, messageId);
+      applyUnsend(conversationId, messageId);
+    } catch (error) {
+      setError(error.message);
+    }
+  }
+
   const older = paginationByConversationId[conversationId];
 
   async function loadOlderMessages() {
@@ -231,6 +257,8 @@ export default function useChat({
     error,
     connectionState,
     pinChangesByConversation,
+    unsentMessageIds,
+    unsendMessage,
     older,
     loadOlderMessages,
     sendMessage,

@@ -174,6 +174,15 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
     return conversationRequest(conversationId, "/membership", { method: "DELETE" });
   }
 
+  function setConversationArchived(conversationId, archived) {
+    return conversationRequest(conversationId, "/archive", { method: archived ? "PUT" : "DELETE" });
+  }
+
+  function unsendMessage(conversationId, messageId) {
+    const id = encodeURIComponent(requireText(messageId, "messageId"));
+    return conversationRequest(conversationId, `/messages/${id}`, { method: "DELETE" });
+  }
+
   function getPinnedMessages(conversationId, options) {
     return conversationRequest(conversationId, "/pinned-messages", options);
   }
@@ -212,6 +221,8 @@ export function createCommunicationApi({ baseUrl = "", accessToken } = {}) {
     getOlderMessages,
     renameGroup,
     leaveGroup,
+    setConversationArchived,
+    unsendMessage,
     getPinnedMessages,
     setMessagePinned,
     sendAttachment,

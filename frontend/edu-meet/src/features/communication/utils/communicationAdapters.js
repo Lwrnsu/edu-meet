@@ -267,6 +267,7 @@ export function adaptConversation(
     name,
     avatarUrl,
     participantIds,
+    archived: source.archived === true,
     lastMessageText,
     lastMessageTime,
     lastMessageId: source.lastMessageId ?? null,

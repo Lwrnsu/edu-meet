@@ -9,6 +9,8 @@ export default function ConversationPanel({
   searchInputRef,
   status,
   error,
+  showArchived,
+  onToggleArchived,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -21,7 +23,7 @@ export default function ConversationPanel({
   return (
     <aside className="communication-panel" aria-label="Chats">
       <header className="communication-panel-header">
-        <h1 className="communication-panel-title">Chats</h1>
+        <h1 className="communication-panel-title">{showArchived ? "Archive" : "Chats"}</h1>
       </header>
       <div className="communication-panel-content">
         <label className="communication-search">
@@ -36,9 +38,20 @@ export default function ConversationPanel({
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </label>
+        {onToggleArchived && (
+          <button type="button" className="communication-archive-toggle" onClick={() => {
+            setSearchTerm("");
+            onToggleArchived();
+          }}>
+            {showArchived ? "Back to Chats" : "Archived Chats"}
+          </button>
+        )}
         {error && <p className="communication-chat-notice" role="alert">{error}</p>}
         {status && <p className="communication-chat-notice" role="status">{status}</p>}
         <ul className="communication-conversation-list">
+          {showArchived && conversations.length === 0 && !normalizedSearch && (
+            <li className="communication-conversation-empty" role="status">No archived chats.</li>
+          )}
           {normalizedSearch && filteredConversations.length === 0 ? (
             <li className="communication-conversation-empty" role="status">
               No conversations found.

@@ -55,6 +55,25 @@ public class GroupChatController {
         return new LeftConversation(conversationId);
     }
 
+    @DeleteMapping("/messages/{messageId}")
+    public UnsentMessage unsend(@PathVariable String conversationId, @PathVariable String messageId,
+                                Principal principal) {
+        String actor = ChatIdentity.userId(principal);
+        Conversation conversation = conversationAccess.requireMember(conversationId, actor);
+        Query ownedMessage = Query.query(Criteria.where("id").is(messageId)
+                .and("conversationId").is(conversationId).and("senderId").is(actor));
+        // Keep the timestamp and ID so existing pagination cursors still work.
+        var result = mongo.updateFirst(ownedMessage, new Update().set("unsent", true)
+                .unset("text").unset("attachment").unset("attachmentBytes"), Message.class);
+        if (result.getMatchedCount() == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Message doesn't exist");
+        }
+        mongo.updateFirst(Query.query(Criteria.where("id").is(conversationId)),
+                new Update().pull("pinnedMessageIds", messageId), Conversation.class);
+        chat.publishMessageUnsent(conversation, messageId);
+        return new UnsentMessage(conversationId, messageId);
+    }
+
     @PatchMapping("/name")
     public Conversation rename(@PathVariable String conversationId,
 
@@ -110,7 +129,7 @@ public class GroupChatController {
 
     private Message requireMessage(String conversationId, String messageId) {
         return messages.findMetadataById(messageId)
-                .filter(candidate -> conversationId.equals(candidate.getConversationId()))
+                .filter(candidate -> !candidate.isUnsent() && conversationId.equals(candidate.getConversationId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message doesn't exist"));
     }
 
@@ -131,5 +150,7 @@ public class GroupChatController {
     public record UnpinnedMessage(String messageId) {}
 
     public record LeftConversation(String conversationId) {}
+
+    public record UnsentMessage(String conversationId, String messageId) {}
 
 }

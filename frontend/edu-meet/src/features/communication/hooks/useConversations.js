@@ -12,6 +12,7 @@ export default function useConversations({
     initialConversations[0]?.id,
   );
   const [activeChatPanelView, setActiveChatPanelView] = useState("chat");
+  const [showArchived, setShowArchived] = useState(false);
   const [loadedConversations, setLoadedConversations] = useState(initialConversations);
   const [refreshCount, setRefreshCount] = useState(0);
   const [accessError, setAccessError] = useState(null);
@@ -48,7 +49,9 @@ export default function useConversations({
             };
           });
         });
-        setSelectedConversationId((current) => current === undefined ? next[0]?.id ?? null : current);
+        setSelectedConversationId((current) => current === undefined
+          ? next.find((conversation) => !conversation.archived)?.id ?? null
+          : current);
       })
       .catch((error) => {
         if (!signal.aborted) setError(error.message);
@@ -65,6 +68,22 @@ export default function useConversations({
     setLoadedConversations((current) => current.filter((conversation) => conversation.id !== id));
     setIsLoading(true);
     setError(null);
+    setRefreshCount((count) => count + 1);
+  }, []);
+
+  const refreshAfterUnsend = useCallback((id, messageId) => {
+    setLoadedConversations((current) => current.map((conversation) =>
+      conversation.id === id && conversation.lastMessageId === messageId ? {
+        ...conversation,
+        preview: "No messages yet.",
+        lastMessageId: null,
+        lastMessageTime: null,
+        lastMessageText: null,
+        lastMessageSenderId: null,
+        lastMessageSenderName: null,
+        lastMessageAttachmentContentType: null,
+      } : conversation,
+    ));
     setRefreshCount((count) => count + 1);
   }, []);
 
@@ -117,6 +136,27 @@ export default function useConversations({
     setAccessError(null);
     setSelectedConversationId(conversationId);
     setActiveChatPanelView("chat");
+    setShowArchived(loadedConversations.find(({ id }) => id === conversationId)?.archived === true);
+  }
+
+  function toggleArchivedView() {
+    setShowArchived(!showArchived);
+    setSelectedConversationId(null);
+    setActiveChatPanelView("chat");
+  }
+
+  async function setConversationArchived(conversation) {
+    setError(null);
+    try {
+      const { archived } = await api.setConversationArchived(conversation.id, !conversation.archived);
+      setLoadedConversations((current) => current.map((entry) =>
+        entry.id === conversation.id ? { ...entry, archived } : entry,
+      ));
+      setSelectedConversationId((current) => current === conversation.id ? null : current);
+      setRefreshCount((count) => count + 1);
+    } catch (error) {
+      setError(error.message);
+    }
   }
 
   async function getOrCreateDirectConversation(member, { signal }) {
@@ -170,6 +210,7 @@ export default function useConversations({
   return {
     selectedConversationId,
     activeChatPanelView,
+    showArchived,
     leaveGroupConversationId,
     conversations,
     selectedConversation,
@@ -177,12 +218,15 @@ export default function useConversations({
     isEmpty,
     error: error ?? accessError,
     handleConversationUnavailable,
+    refreshAfterUnsend,
     setIsLoading,
     setError,
     setActiveChatPanelView,
     handleMenuAction,
     renameConversation,
     handleSelectConversation,
+    toggleArchivedView,
+    setConversationArchived,
     getOrCreateDirectConversation,
     refreshForIncomingMessage,
     handleCancelLeaveGroup,

@@ -7,13 +7,16 @@ import menuIcon from "../assets/menu-vertical.png";
 import pushPinIcon from "../assets/push-pin.png";
 
 export default function MessageBubble({
-  message, isOutgoing, isLast, isPinned, isUpdatingPin, onTogglePin, isMenuOpen, setOpenMessageMenuId, onOpenMedia,
+  message, isOutgoing, isLast, isPinned, isUpdatingPin, onTogglePin, onUnsend,
+  isMenuOpen, setOpenMessageMenuId, onOpenMedia,
 }) {
   const status = message.status === "double-tick" && !message.isLocal;
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState(null);
-  const menuOpen = isMenuOpen && Boolean(onTogglePin);
+  const canUnsend = isOutgoing && Boolean(onUnsend) && !message.isLocal;
+  const hasActions = Boolean(onTogglePin) || canUnsend;
+  const menuOpen = isMenuOpen && hasActions;
   const menuPositioned = menuPosition !== null;
 
   useLayoutEffect(() => {
@@ -102,6 +105,21 @@ export default function MessageBubble({
     };
   }, [menuOpen, setOpenMessageMenuId]);
 
+  function handleMenuNavigation(event) {
+    if (!["ArrowUp", "ArrowDown"].includes(event.key)) return;
+    const items = Array.from(menuRef.current.querySelectorAll('[role="menuitem"]'));
+    const current = items.indexOf(document.activeElement);
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    event.preventDefault();
+    items[(current + direction + items.length) % items.length]?.focus({ preventScroll: true });
+  }
+
+  function confirmUnsend() {
+    setOpenMessageMenuId(null);
+    if (window.confirm("Unsend this message for everyone?")) onUnsend(message.id);
+    triggerRef.current?.focus({ preventScroll: true });
+  }
+
   const bubble = (
     <div
       className={`communication-message-bubble communication-message-bubble--${isOutgoing ? "outgoing" : "incoming"}`}
@@ -126,7 +144,7 @@ export default function MessageBubble({
           )}
         </div>
       )}
-      {onTogglePin ? (
+      {hasActions ? (
         <div className={`communication-message-bubble-with-controls${isOutgoing ? " communication-message-bubble-with-controls--outgoing" : ""}`}>
           {bubble}
           <div className="communication-message-controls">
@@ -164,13 +182,14 @@ export default function MessageBubble({
           ref={menuRef}
           role="menu"
           aria-label="Message actions"
+          onKeyDown={handleMenuNavigation}
           style={{
             left: menuPosition?.left ?? 0,
             top: menuPosition?.top ?? 0,
             visibility: menuPositioned ? "visible" : "hidden",
           }}
         >
-          <button
+          {onTogglePin && <button
             type="button"
             role="menuitem"
             aria-disabled={isUpdatingPin || undefined}
@@ -183,7 +202,8 @@ export default function MessageBubble({
           >
             <img src={pushPinIcon} alt="" />
             <span>{isPinned ? "Unpin Message" : "Pin Message"}</span>
-          </button>
+          </button>}
+          {canUnsend && <button type="button" role="menuitem" onClick={confirmUnsend}>Unsend Message</button>}
         </div>,
         document.body,
       )}

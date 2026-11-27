@@ -10,6 +10,7 @@ export default function ChatHeader({
   onMenuAction,
   onBackToChat,
   triggerRef,
+  canArchive,
   view = "chat",
 }) {
   const [openConversationId, setOpenConversationId] = useState(null);
@@ -135,7 +136,8 @@ export default function ChatHeader({
       action === "rename-group" ||
       action === "leave-group" ||
       action === "view-members" ||
-      action === "pinned-messages"
+      action === "pinned-messages" ||
+      action === "archive"
     ) {
       setOpenConversationId(null);
     }
@@ -194,6 +196,7 @@ export default function ChatHeader({
               onAction={handleMenuAction}
               onDismiss={() => setOpenConversationId(null)}
               position={menuPosition}
+              canArchive={canArchive}
             />
           )}
         </div>

@@ -87,6 +87,7 @@ export function createChatSocket({
   let state = "disconnected";
   const savedMessageHandlers = new Set();
   const pinsChangedHandlers = new Set();
+  const unsentMessageHandlers = new Set();
   const errorHandlers = new Set();
   const stateHandlers = new Set();
 
@@ -206,6 +207,18 @@ export function createChatSocket({
         pinsChangedHandlers.forEach((handler) => {
           try {
             handler(payload.conversationId);
+          } catch {
+            // A subscriber should not interrupt the others.
+          }
+        });
+        return;
+      }
+
+      if (payload?.type === "message_unsent" && typeof payload.conversationId === "string" &&
+          typeof payload.messageId === "string") {
+        unsentMessageHandlers.forEach((handler) => {
+          try {
+            handler(payload.conversationId, payload.messageId);
           } catch {
             // A subscriber should not interrupt the others.
           }
@@ -354,6 +367,7 @@ export function createChatSocket({
     onSavedMessage: (handler) =>
       subscribe(savedMessageHandlers, handler),
     onPinsChanged: (handler) => subscribe(pinsChangedHandlers, handler),
+    onMessageUnsent: (handler) => subscribe(unsentMessageHandlers, handler),
     onError: (handler) => subscribe(errorHandlers, handler),
     onStateChange: (handler) => subscribe(stateHandlers, handler),
   };

@@ -151,6 +151,12 @@ public class ChatHandler extends TextWebSocketHandler {
         broadcast(conversation, Map.of("type", "pins_changed", "conversationId", conversation.getId()));
     }
 
+    public void publishMessageUnsent(Conversation conversation, String messageId) {
+        recentMessageCache.invalidate(conversation.getId());
+        broadcast(conversation, Map.of("type", "message_unsent",
+                "conversationId", conversation.getId(), "messageId", messageId));
+    }
+
     private void broadcast(Conversation conversation, Object event) {
         TextMessage out = new TextMessage(objectMapper.writeValueAsString(event));
         for (String memberId : conversation.getParticipantIds()) {

@@ -59,6 +59,23 @@ class ConversationSidebarTest {
     }
 
     @Test
+    void namesADirectChatFromItsOtherParticipantEvenWithoutMessages() {
+        ConversationRepository conversations = mock(ConversationRepository.class);
+        MessageRepository messages = mock(MessageRepository.class);
+        MemberLookup members = mock(MemberLookup.class);
+        ConversationController controller = new ConversationController(
+                conversations, members, messages, mock(ConversationAccess.class),
+                new ConversationCreationService(conversations), mock(MongoOperations.class));
+        var direct = new Conversation(ConversationType.PRIVATE, null, List.of("php:1", "php:2"));
+        direct.setId("direct");
+        when(conversations.findByParticipantIdsContaining("php:1")).thenReturn(List.of(direct));
+        when(members.findMembers(List.of("php:2")))
+                .thenReturn(List.of(new MemberDto("php:2", "Bob School", null, null)));
+
+        assertEquals("Bob School", controller.getMyConversations("php:1").getFirst().name());
+    }
+
+    @Test
     void sortsByNewestMessageWithEmptyChatsLast() {
         ConversationRepository conversations = mock(ConversationRepository.class);
         MessageRepository messages = mock(MessageRepository.class);

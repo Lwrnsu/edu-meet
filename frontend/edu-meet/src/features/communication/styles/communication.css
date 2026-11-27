@@ -1280,6 +1280,24 @@
   box-sizing: border-box;
 }
 
+.communication-archive-toggle {
+  align-self: flex-start;
+  min-height: 36px;
+  margin: 4px 0;
+  padding: 4px 10px;
+  color: #111827;
+  font: 600 13px Poppins, sans-serif;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.communication-archive-toggle:hover,
+.communication-archive-toggle:focus-visible {
+  background: #eae3f5;
+}
+
 .communication-search {
   display: flex;
   flex: 0 0 34px;

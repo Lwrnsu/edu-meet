@@ -19,6 +19,8 @@ public class Conversation {
     private List<String> participantIds;
     @JsonIgnore
     private List<String> pinnedMessageIds = List.of();
+    @JsonIgnore
+    private List<String> archivedBy = List.of();
     private String avatarUrl;
     private String blockId;
     private String classId;
@@ -50,6 +52,10 @@ public class Conversation {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public List<String> getPinnedMessageIds() { return pinnedMessageIds; }
+
+    public boolean isArchivedBy(String userId) {
+        return archivedBy != null && archivedBy.contains(userId);
+    }
 
     public String getBlockId() { return blockId; }
     public void setBlockId(String blockId) { this.blockId = blockId; }

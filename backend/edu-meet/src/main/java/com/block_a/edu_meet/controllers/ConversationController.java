@@ -4,8 +4,8 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -70,34 +70,68 @@ public class ConversationController {
     public List<ConversationSummary> getMyConversations(String userId) {
         List<Conversation> conversations = conversationRepository.findByParticipantIdsContaining(userId);
         var latestByConversation = new HashMap<String, Message>();
+        var directPeers = new HashMap<String, String>();
+        var memberIds = new LinkedHashSet<String>();
         for (Conversation conversation : conversations) {
             Message latest = messageRepository.findFirstByConversationIdOrderByTimestampDescIdDesc(conversation.getId());
-            if (latest != null) latestByConversation.put(conversation.getId(), latest);
+            if (latest != null) {
+                latestByConversation.put(conversation.getId(), latest);
+                if (latest.getSenderId() != null) memberIds.add(latest.getSenderId());
+            }
+            if (conversation.getType() == ConversationType.PRIVATE) {
+                conversation.getParticipantIds().stream().filter(id -> !id.equals(userId)).findFirst()
+                        .ifPresent(peer -> {
+                            directPeers.put(conversation.getId(), peer);
+                            memberIds.add(peer);
+                        });
+            }
         }
-        List<String> senderIds = latestByConversation.values().stream()
-                .map(Message::getSenderId).filter(Objects::nonNull).distinct().toList();
-        var senderNames = new HashMap<String, String>();
-        if (!senderIds.isEmpty()) {
-            memberLookup.findMembers(senderIds).forEach(member -> senderNames.put(member.id(), member.fullName()));
+        var memberNames = new HashMap<String, String>();
+        if (!memberIds.isEmpty()) {
+            memberLookup.findMembers(List.copyOf(memberIds))
+                    .forEach(member -> memberNames.put(member.id(), member.fullName()));
         }
 
         return conversations.stream()
                 .map(c -> {
                     Message last = latestByConversation.get(c.getId());
+                    String name = memberNames.getOrDefault(directPeers.get(c.getId()), c.getName());
                     return new ConversationSummary(
-                            c.getId(), c.getType(), c.getName(), c.getAvatarUrl(),
+                            c.getId(), c.getType(), name, c.getAvatarUrl(),
                             c.getParticipantIds(),
+                            c.isArchivedBy(userId),
                             last == null ? null : preview(last),
                             last == null ? null : last.getTimestamp(),
                             last == null ? null : last.getId(),
                             last == null ? null : last.getSenderId(),
-                            last == null ? null : senderNames.get(last.getSenderId()),
+                            last == null ? null : memberNames.get(last.getSenderId()),
                             last == null || last.getAttachment() == null ? null : last.getAttachment().contentType());
                 })
                 .sorted(Comparator.comparing(ConversationSummary::lastMessageTime,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
+
+    @PutMapping("/{conversationId}/archive")
+    public ArchiveState archive(@PathVariable String conversationId, Principal principal) {
+        return updateArchive(conversationId, ChatIdentity.userId(principal), true);
+    }
+
+    @DeleteMapping("/{conversationId}/archive")
+    public ArchiveState restore(@PathVariable String conversationId, Principal principal) {
+        return updateArchive(conversationId, ChatIdentity.userId(principal), false);
+    }
+
+    private ArchiveState updateArchive(String conversationId, String actor, boolean archived) {
+        Query membership = Query.query(Criteria.where("id").is(conversationId).and("participantIds").is(actor));
+        Update update = archived ? new Update().addToSet("archivedBy", actor) : new Update().pull("archivedBy", actor);
+        if (mongoOperations.updateFirst(membership, update, Conversation.class).getMatchedCount() == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist");
+        }
+        return new ArchiveState(conversationId, archived);
+    }
+
+    public record ArchiveState(String conversationId, boolean archived) {}
 
     @GetMapping("/{conversationId}/members")
     public List<MemberDto> getMembers(@PathVariable String conversationId,

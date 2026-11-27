@@ -38,6 +38,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     selectedConversation,
     selectedConversationId,
     activeChatPanelView,
+    showArchived,
     leaveGroupConversationId,
     handleConversationUnavailable,
   } = conversationState;
@@ -49,13 +50,16 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     conversationId: selectedConversation?.id,
     onConversationUnavailable: handleConversationUnavailable,
     onIncomingMessage: conversationState.refreshForIncomingMessage,
+    onMessageUnsent: conversationState.refreshAfterUnsend,
   });
   const selectedMembers = live
     ? membersByConversationId[selectedConversationId] ?? []
     : initialMockData.members.filter((member) => member.conversationId === selectedConversationId);
 
   const mediaConversationId = selectedConversation?.id;
-  if (viewingMedia && viewingMedia.conversationId !== mediaConversationId) {
+  const isUnsent = (message) => chatState.unsentMessageIds.has(message.id);
+  if (viewingMedia && (viewingMedia.conversationId !== mediaConversationId ||
+      chatState.unsentMessageIds.has(viewingMedia.attachment.messageId))) {
     setViewingMedia(null);
   }
 
@@ -75,6 +79,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
       ...(attachment && {
         attachment: {
           ...attachment,
+          messageId: message.id,
           downloadUrl: api.attachmentUrl(message.conversationId, message.id),
           accessToken,
         },
@@ -82,31 +87,34 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     };
   }
 
-  const selectedMessages = (chatState.messagesByConversationId[selectedConversationId] ?? []).map(withSender);
-  const conversations = conversationState.conversations.map((conversation) => {
-    const messages = chatState.messagesByConversationId[conversation.id];
-    const latest = messages?.at(-1);
-    if (live) {
-      return reconcileConversationPreview(
-        conversation, latest, currentUserId, membersByConversationId[conversation.id],
-      );
-    }
-    if (!latest) {
-      return { ...conversation, preview: conversation.preview ?? "No messages yet." };
-    }
-    const member = membersByConversationId[conversation.id]?.find(({ id }) => id === latest.senderId);
-    const senderName = member?.name || latest.senderName;
-    const sender = latest.direction === "outgoing" ? "You" : senderName?.trim().split(/\s+/, 1)[0];
-    let preview = latest.text;
-    if (latest.attachment) {
-      preview = latest.attachment.contentType?.startsWith("image/") ? "Sent an image" : "Sent a file";
-    }
-    return {
-      ...conversation,
-      preview: sender ? `${sender}: ${preview}` : preview,
-      lastMessageTime: latest.createdAt,
-    };
-  });
+  const selectedMessages = (chatState.messagesByConversationId[selectedConversationId] ?? [])
+    .filter((message) => !isUnsent(message)).map(withSender);
+  const conversations = conversationState.conversations
+    .filter((conversation) => Boolean(conversation.archived) === showArchived)
+    .map((conversation) => {
+      const messages = chatState.messagesByConversationId[conversation.id];
+      const latest = messages?.findLast((message) => !isUnsent(message));
+      if (live) {
+        return reconcileConversationPreview(
+          conversation, latest, currentUserId, membersByConversationId[conversation.id],
+        );
+      }
+      if (!latest) {
+        return { ...conversation, preview: conversation.preview ?? "No messages yet." };
+      }
+      const member = membersByConversationId[conversation.id]?.find(({ id }) => id === latest.senderId);
+      const senderName = member?.name || latest.senderName;
+      const sender = latest.direction === "outgoing" ? "You" : senderName?.trim().split(/\s+/, 1)[0];
+      let preview = latest.text;
+      if (latest.attachment) {
+        preview = latest.attachment.contentType?.startsWith("image/") ? "Sent an image" : "Sent a file";
+      }
+      return {
+        ...conversation,
+        preview: sender ? `${sender}: ${preview}` : preview,
+        lastMessageTime: latest.createdAt,
+      };
+    });
   if (live) {
     conversations.sort((first, second) =>
       (second.lastMessageTime ?? "").localeCompare(first.lastMessageTime ?? ""),
@@ -139,8 +147,9 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
     pinChanges: chatState.pinChangesByConversation[liveConversationId],
     connected: chatState.connectionState === "open",
   });
+  const visiblePins = pins.messages?.filter((message) => !isUnsent(message));
   const pinnedIds = new Set(live
-    ? pins.messages?.map((message) => message.id)
+    ? visiblePins?.map((message) => message.id)
     : selectedPinnedMessageIds);
 
   function setMockPin(messageId, pinned) {
@@ -218,6 +227,10 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
   }
 
   function handleMenuAction(action, conversation) {
+    if (action === "archive") {
+      conversationState.setConversationArchived(conversation);
+      return;
+    }
     if (action === "rename-group" && conversation.type === "group") {
       setRenameConversationId(conversation.id);
       return;
@@ -253,6 +266,8 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
             searchInputRef={conversationSearchRef}
             status={conversationState.isLoading ? "Loading conversations…" : null}
             error={conversationState.error}
+            showArchived={showArchived}
+            onToggleArchived={live ? conversationState.toggleArchivedView : undefined}
           />
         </section>
 
@@ -275,6 +290,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                     conversationState.setActiveChatPanelView("chat")
                   }
                   triggerRef={menuTriggerRef}
+                  canArchive={live}
                 />
                 {showingMembers ? (
                   memberError?.conversationId === selectedConversationId ? <p role="alert">{memberError.message}</p> : (
@@ -290,7 +306,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                   <PinnedMessagesView
                     conversation={selectedConversation}
                     onOpenMedia={openMedia}
-                    messages={live ? (pins.messages ?? []).map(withSender) : selectedPinnedMessages}
+                    messages={live ? (visiblePins ?? []).map(withSender) : selectedPinnedMessages}
                     isLoading={live && !pins.messages && !pins.error}
                     error={pins.error}
                     isUpdating={Boolean(pins.pendingMessageId)}
@@ -326,6 +342,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                         onTogglePin={!live || (liveConversationId && pins.messages)
                           ? (id) => updatePin(id, !pinnedIds.has(id))
                           : undefined}
+                        onUnsend={live ? (id) => chatState.unsendMessage(selectedConversationId, id) : undefined}
                       />
                     </div>
                     <MessageInput

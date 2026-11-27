@@ -2,6 +2,7 @@ package com.block_a.edu_meet.chat;
 
 import static com.block_a.edu_meet.support.ChatTestPrincipals.rosterManager;
 import static com.block_a.edu_meet.support.ChatTestPrincipals.account;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -26,6 +27,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.block_a.edu_meet.controllers.CommunicationApiResponseAdvice;
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.controllers.GroupChatController;
+import com.block_a.edu_meet.controllers.MessageController;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.models.ConversationType;
 import com.block_a.edu_meet.models.Message;
@@ -37,6 +39,7 @@ class GroupChatControllerTest {
 
     @Autowired private GroupChatController groupController;
     @Autowired private ConversationController conversationsController;
+    @Autowired private MessageController messageController;
     @Autowired private ConversationRepository conversations;
     @Autowired private MessageRepository messages;
 
@@ -49,7 +52,7 @@ class GroupChatControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(groupController, conversationsController)
+        mvc = MockMvcBuilders.standaloneSetup(groupController, conversationsController, messageController)
                 .setControllerAdvice(new CommunicationApiResponseAdvice()).build();
         group = conversations.save(new Conversation(ConversationType.BLOCK, "Original", List.of("php:1", "php:2")));
         other = conversations.save(new Conversation(ConversationType.PRIVATE, null, List.of("php:1", "php:2")));
@@ -106,6 +109,53 @@ class GroupChatControllerTest {
                 .andExpect(status().isNotFound());
         mvc.perform(delete("/api/conversations/" + other.getId() + "/membership").principal(account(1)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void onlyTheSenderCanUnsendAndTheMessageRemainsUsableAsAPaginationCursor() throws Exception {
+        first.setAttachment(new Message.Attachment("test.txt", "application/octet-stream", 1));
+        first.setAttachmentBytes(new byte[] {1});
+        messages.save(first);
+        third.setConversationId(group.getId());
+        messages.save(third);
+        String url = groupUrl() + "/messages/" + first.getId();
+        mvc.perform(put(pinUrl(first)).principal(account(2))).andExpect(status().isOk());
+        mvc.perform(get(groupUrl() + "/messages").principal(account(2))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body[0].id").value(first.getId()));
+        mvc.perform(delete(url).principal(account(2))).andExpect(status().isNotFound());
+        mvc.perform(delete(url).principal(account(3))).andExpect(status().isNotFound());
+        mvc.perform(delete(url).principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.messageId").value(first.getId()));
+        mvc.perform(delete(url).principal(account(1))).andExpect(status().isOk());
+        mvc.perform(get(groupUrl() + "/messages").principal(account(2))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(1))
+                .andExpect(jsonPath("$.body[0].id").value(third.getId()));
+        mvc.perform(get(groupUrl() + "/messages/older").principal(account(2)).param("beforeId", first.getId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.body[0].id").value(third.getId()));
+        mvc.perform(get(groupUrl() + "/pinned-messages").principal(account(2))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.length()").value(0));
+        mvc.perform(put(pinUrl(first)).principal(account(2))).andExpect(status().isNotFound());
+        Message stored = messages.findById(first.getId()).orElseThrow();
+        assertNull(stored.getText());
+        assertNull(stored.getAttachment());
+        assertNull(stored.getAttachmentBytes());
+    }
+
+    @Test
+    void archiveIsPrivateToTheMemberAndRestorable() throws Exception {
+        String archive = groupUrl() + "/archive";
+        mvc.perform(put(archive).principal(account(3))).andExpect(status().isNotFound());
+        mvc.perform(put(archive).principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.archived").value(true));
+        mvc.perform(get("/api/conversations").principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body[0].id").value(group.getId()))
+                .andExpect(jsonPath("$.body[0].archived").value(true));
+        mvc.perform(get("/api/conversations").principal(account(2))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body[0].archived").value(false));
+        mvc.perform(delete(archive).principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.archived").value(false));
+        mvc.perform(get("/api/conversations").principal(account(1))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.body[0].archived").value(false));
     }
 
     @Test

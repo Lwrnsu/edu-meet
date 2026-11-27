@@ -52,6 +52,7 @@ export default function MessageList({
   pinnedIds,
   isUpdatingPin,
   onTogglePin,
+  onUnsend,
   onOpenMedia,
 }) {
   const [openMessageMenuId, setOpenMessageMenuId] = useState(null);
@@ -169,6 +170,7 @@ export default function MessageList({
                 pinnedIds={pinnedIds}
                 isUpdatingPin={isUpdatingPin}
                 onTogglePin={onTogglePin}
+                onUnsend={onUnsend}
                 onOpenMedia={onOpenMedia}
                 openMessageMenuId={openMessageMenuId}
                 setOpenMessageMenuId={setOpenMessageMenuId}
