@@ -279,7 +279,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
                 {showingMembers ? (
                   memberError?.conversationId === selectedConversationId ? <p role="alert">{memberError.message}</p> : (
                     <ChatMembersView
-                      key={selectedConversationId}
+                      key={`members:${selectedConversationId}`}
                       conversation={selectedConversation}
                       members={selectedMembers}
                       currentUserId={currentUserId}
