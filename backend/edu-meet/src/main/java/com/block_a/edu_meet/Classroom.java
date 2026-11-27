@@ -20,23 +20,33 @@ public class Classroom {
     @Column(name = "faculty_in_charge", nullable = false, length = 100)
     private String facultyInCharge;
 
-    protected Classroom() {
-    }
+    @Column(name = "faculty_account_id", length = 100)
+    private String facultyAccountId;
+
+    @Column(name = "faculty_email", length = 150)
+    private String facultyEmail;
+
+    protected Classroom() {}
 
     public Classroom(String roomName, String facultyInCharge) {
         this.roomName = roomName;
         this.facultyInCharge = facultyInCharge;
     }
 
-    public Long getId() {
-        return id;
+    public Classroom(String roomName, String facultyInCharge, String facultyAccountId, String facultyEmail) {
+        this.roomName = roomName;
+        this.facultyInCharge = facultyInCharge;
+        this.facultyAccountId = facultyAccountId;
+        this.facultyEmail = facultyEmail;
     }
 
-    public String getRoomName() {
-        return roomName;
-    }
+    public Long getId() { return id; }
+    public String getRoomName() { return roomName; }
+    public String getFacultyInCharge() { return facultyInCharge; }
+    public String getFacultyAccountId() { return facultyAccountId; }
+    public String getFacultyEmail() { return facultyEmail; }
 
-    public String getFacultyInCharge() {
-        return facultyInCharge;
-    }
+    public void setFacultyInCharge(String facultyInCharge) { this.facultyInCharge = facultyInCharge; }
+    public void setFacultyAccountId(String facultyAccountId) { this.facultyAccountId = facultyAccountId; }
+    public void setFacultyEmail(String facultyEmail) { this.facultyEmail = facultyEmail; }
 }
