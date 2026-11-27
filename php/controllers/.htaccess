@@ -1,0 +1,17 @@
+RewriteEngine On
+
+# Student
+RewriteRule ^api/get/(classes|class)/?$ Controllers/StudentClassController.php [L]
+
+# Faculty -- same URIs as Student, so only one can own them.
+# RewriteRule ^api/get/(classes|class)/?$ Controllers/FacultyClassController.php [L]
+
+# Program Chair
+RewriteRule ^api/(get|add|update|delete)/blocks/?$ Controllers/ProgramChairClassController.php [L]
+
+# Dean
+RewriteRule ^api/(add|delete|update)/classes/?$ Controllers/DeanClassController.php [L]
+
+# Class (shared)
+RewriteRule ^api/validate/student/?$ Controllers/ClassController.php [L]
+RewriteRule ^api/get/list/class/?$ Controllers/ClassController.php [L]
