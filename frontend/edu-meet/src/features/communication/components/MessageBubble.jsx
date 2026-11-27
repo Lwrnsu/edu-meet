@@ -5,7 +5,7 @@ export default function MessageBubble({ message, isOutgoing, isLast, isPinned, i
   const status = message.status === "double-tick" && !message.isLocal;
 
   return (
-    <li className="communication-message-bubble-row">
+    <li className="communication-message-bubble-row" data-message-id={message.id}>
       {isOutgoing && isLast && (
         <div className="communication-message-metadata">
           <time dateTime={message.createdAt}>{message.timestamp}</time>

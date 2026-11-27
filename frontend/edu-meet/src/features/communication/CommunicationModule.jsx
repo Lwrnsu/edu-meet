@@ -252,8 +252,10 @@ export default function CommunicationModule({ currentUserId }) {
                     {pins.error && <p className="communication-chat-notice" role="alert">{pins.error}</p>}
                     <div className="communication-chat-content">
                       <MessageList
+                        key={selectedConversation.id}
                         conversation={selectedConversation}
                         messages={selectedMessages}
+                        historyReady={!chatState.isLoading && !chatState.historyError}
                         lastSentMessageId={lastSentMessageId}
                         older={chatState.older}
                         onLoadOlder={chatState.loadOlderMessages}
