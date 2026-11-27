@@ -10,7 +10,6 @@ function App() {
       />
       <Route path="/video-conference" element={<VideoRoom />} />
       <Route path="/meet" element={<VideoRoom />} />
-      <Route path="/Video Conference" element={<VideoRoom />} />
       <Route
         path="*"
         element={
@@ -26,4 +25,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

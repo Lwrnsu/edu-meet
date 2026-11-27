@@ -30,6 +30,15 @@
 >
 > 3. Run ``.\mvnw.cmd test`` to compile the backend and run its tests. Run ``.\mvnw.cmd spring-boot:run`` to start it locally.
 >
+> 4. Viola! You can now proceed with your tasks!
+
+## Running the demo and the Redis session test
+
+> **Mac / Linux:** `bash demo.sh`, then in another terminal `EMAIL=you@mail.com PASSWORD=secret bash test-redis.sh`
+>
+> **Windows:** start MySQL in XAMPP, then run `demo.cmd`. In a second window run `set EMAIL=you@mail.com`, `set PASSWORD=secret`, then `test-redis.cmd`. Redis on Windows needs Memurai, Docker Desktop, or WSL. `demo.cmd` starts whichever it finds.
+>
+> The test prints `ALL GOOD` when everything passes. Add `LOGIN_PATH=php-system-admin-login` (Mac) or `set LOGIN_PATH=php-system-admin-login` (Windows) for an admin account.
 > 4. For LiveKit access, set ``LIVEKIT_API_KEY`` and ``LIVEKIT_API_SECRET`` in the terminal before starting Spring Boot. Do not put real credentials in source control.
 
 ## LiveKit credentials

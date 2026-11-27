@@ -6,7 +6,8 @@
     after login. Until it does, every request gets 401 "Please log in first."
 */
 class CurrentUser {
-    public const ROLES = ['student', 'faculty', 'dean', 'college_admin', 'system_admin'];
+    public const ROLES = ['student', 'faculty', 'program_chair', 'dean', 'college_admin', 'system_admin'];
+    public const ADMINS = ['college_admin', 'system_admin'];
 
     public function __construct(
         public readonly int $id,
@@ -27,6 +28,10 @@ class CurrentUser {
             return null;
         }
         return new self((int) $id, (string) $role);
+    }
+
+    public function isAdmin(): bool {
+        return in_array($this->role, self::ADMINS, true);
     }
 
     public function is(string $role): bool {
