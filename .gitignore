@@ -1,4 +1,19 @@
 frontend/edu-meet/node_modules/
+frontend/edu-meet/.env
+frontend/edu-meet/.env.*
+!frontend/edu-meet/.env.example
+
+backend/edu-meet/target/
+backend/edu-meet/.mvn/wrapper/maven-wrapper.jar
+
+### STS ###
+backend/edu-meet/.apt_generated
+backend/edu-meet/.classpath
+backend/edu-meet/.factorypath
+backend/edu-meet/.project
+backend/edu-meet/.settings
+backend/edu-meet/.springBeans
+backend/edu-meet/.sts4-cache
 
 # Logs
 **/*logs
@@ -23,3 +38,5 @@ frontend/edu-meet/dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.env
