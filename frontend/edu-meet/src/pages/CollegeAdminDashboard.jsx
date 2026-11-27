@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadCollegeAdminOverview } from '../api/collegeAdminOverview'
+import eduMeetLogo from '../assets/brand/edu-meet-logo.png'
 import ManageCollegeDepartmentsSection from './ManageCollegeDepartmentsSection'
 import ManageCollegeUsersSection from './ManageCollegeUsersSection'
 import SecuritySection from './SecuritySection'
@@ -190,11 +191,10 @@ export default function CollegeAdminDashboard({ user, onLogout }) {
       <aside className="college-dash__sidebar">
         <div className="college-dash__brand">
           <span className="college-dash__brand-mark">
-            <IconGrid />
+            <img src={eduMeetLogo} alt="" className="college-dash__brand-logo" />
           </span>
           <div className="college-dash__brand-text">
-            <p className="college-dash__brand-title">College Admin</p>
-            <p className="college-dash__brand-sub">Control Panel</p>
+            <p className="college-dash__brand-title">Edu-Meet</p>
           </div>
         </div>
 

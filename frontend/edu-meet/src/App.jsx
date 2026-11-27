@@ -1,7 +1,5 @@
-import { Routes, Route } from "react-router"
-import AdminLoginPage from "./pages/AdminLoginPage.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
-
+import Faculty from "./compilerfrontend/Faculty"
+import Student from "./compilerfrontend/Student"
 function App() {
   const checkPrefix = window.location.hostname;
   if (checkPrefix.startsWith("admin.")) {
@@ -11,13 +9,3 @@ function App() {
       </>
     );
   } 
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<LoginPage />}/>
-      </Routes>
-    </>
-  )
-}
-
-export default App

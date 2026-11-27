@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { signup } from '../api/auth'
 import { isLettersOnlyName } from '../api/nameValidation'
+import vector2 from '../assets/auth/vector-2.png'
+import vector5 from '../assets/auth/vector-5.png'
+import vector6 from '../assets/auth/vector-6.png'
 import './SignUpPage.css'
 
 const INITIAL_FORM = {
@@ -285,7 +288,15 @@ export default function SignUpPage({ onSwitchToSignIn }) {
 
   return (
     <main className="signup">
-      <div className="signup__blob" aria-hidden="true" />
+      <div className="signup__art" aria-hidden="true">
+        <div className="signup__art-bottom">
+          <img className="signup__art-vector5" src={vector5} alt="" />
+          <img className="signup__art-vector2" src={vector2} alt="" />
+        </div>
+        <div className="signup__art-side">
+          <img className="signup__art-vector6" src={vector6} alt="" />
+        </div>
+      </div>
 
       <section className="signup__card">
         <aside className="signup__welcome">

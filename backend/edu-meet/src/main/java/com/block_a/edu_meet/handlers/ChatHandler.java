@@ -7,10 +7,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+<<<<<<< HEAD
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
+=======
+import org.springframework.context.annotation.Profile;
+>>>>>>> origin/CERICO
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -30,6 +34,7 @@ import com.block_a.edu_meet.services.ChatSocketTickets;
 import com.block_a.edu_meet.security.PhpChatAccount;
 import com.block_a.edu_meet.exception.ApiException;
 
+@Profile("chat")
 @Component
 public class ChatHandler extends TextWebSocketHandler {
 

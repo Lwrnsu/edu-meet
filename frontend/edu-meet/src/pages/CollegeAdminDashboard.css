@@ -52,7 +52,7 @@
   justify-content: center;
   gap: 0;
   padding: 0.25rem 0;
-  min-height: 2.4rem;
+  min-height: 3.3rem;
   transition: gap 0.22s ease, justify-content 0.22s ease, padding 0.22s ease;
 }
 
@@ -67,11 +67,22 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.45rem;
-  background: rgba(167, 139, 250, 0.2);
+  width: 2.6rem;
+  height: 3.15rem;
+  aspect-ratio: 644 / 788;
+  border-radius: 0;
+  background: transparent;
   color: var(--accent);
+  overflow: visible;
+}
+
+.college-dash__brand-logo {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .college-dash__brand-text {
@@ -91,21 +102,16 @@
   opacity: 1;
 }
 
-.college-dash__brand-title,
-.college-dash__brand-sub {
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
 .college-dash__brand-title {
-  color: var(--accent);
-  font-size: 14px;
-}
-
-.college-dash__brand-sub {
-  color: var(--stroke);
-  font-size: 12px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg, #9b86ff 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .college-dash__nav {
@@ -423,41 +429,37 @@
 }
 
 .college-dash__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  max-width: 56rem;
-  padding: 1.25rem 1.5rem 1.5rem;
-  background: var(--bg);
-  border-radius: 1.25rem;
-  outline: 5px solid var(--ink);
-  outline-offset: -5px;
+  border: 2px solid var(--stroke);
+  border-radius: 0.85rem;
+  background: var(--white);
+  overflow: hidden;
 }
 
 .college-dash__panel-head {
-  display: grid;
-  gap: 0.2rem;
+  padding: 1.1rem 1.25rem 0.85rem;
 }
 
 .college-dash__panel-title {
   margin: 0;
-  font-size: 1.5rem;
+  color: var(--ink);
+  font-size: 18px;
   font-weight: 600;
 }
 
 .college-dash__panel-sub {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.75rem;
-  font-weight: 600;
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .college-dash__dept-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 1.5rem;
+  max-height: min(22rem, 45vh);
+  overflow-y: auto;
+  border-top: 1px solid rgba(55, 65, 81, 0.18);
 }
 
 .college-dash__dept-item {
@@ -465,26 +467,28 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.12);
 }
 
 .college-dash__dept-name {
-  color: var(--muted);
-  font-size: 1.5rem;
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 600;
 }
 
 .college-dash__dept-count {
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .college-dash__dept-item--empty .college-dash__dept-name {
-  font-size: 1rem;
+  font-size: 15px;
 }
 
 .college-dash__panel-foot {
-  margin-top: 0.25rem;
+  padding: 0.85rem 1.25rem 1.1rem;
 }
 
 .college-dash__view-all {
@@ -495,7 +499,7 @@
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 1.25rem;
+  font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -599,6 +603,10 @@
   border: 1px solid var(--ink);
   border-radius: 1.25rem;
   padding: 1.5rem 1.75rem 1.35rem;
+}
+
+.college-dash-modal__panel--user-form-edit {
+  width: min(100%, 34rem);
 }
 
 .college-users__modal-title {
@@ -746,6 +754,7 @@
 
 .college-users__table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.75rem;
   font-weight: 600;
@@ -753,7 +762,7 @@
 
 .college-users__table th,
 .college-users__table td {
-  padding: 0.85rem 0.65rem;
+  padding: 0.85rem 0.5rem;
   text-align: left;
   vertical-align: middle;
   border-bottom: 1px solid var(--stroke);
@@ -761,6 +770,32 @@
 
 .college-users__table th {
   color: var(--ink);
+  white-space: nowrap;
+}
+
+.college-users__table th:nth-child(1),
+.college-users__table td:nth-child(1) {
+  width: 22%;
+}
+
+.college-users__table th:nth-child(2),
+.college-users__table td:nth-child(2) {
+  width: 28%;
+}
+
+.college-users__table th:nth-child(3),
+.college-users__table td:nth-child(3) {
+  width: 16%;
+}
+
+.college-users__table th:nth-child(4),
+.college-users__table td:nth-child(4) {
+  width: 24%;
+}
+
+.college-users__table th:nth-child(5),
+.college-users__table td:nth-child(5) {
+  width: 6.75rem;
   white-space: nowrap;
 }
 
@@ -898,6 +933,17 @@
   font-weight: 600;
 }
 
+.college-users__field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-color: var(--white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2312251f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.75rem 0.5rem;
+}
+
 .college-users__field input::placeholder {
   color: #9ca3af;
 }
@@ -955,7 +1001,7 @@
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--stroke);
 }
@@ -1005,12 +1051,13 @@
 }
 
 .college-depts__table-wrap {
+  width: 100%;
   overflow-x: auto;
-  border-top: 1px solid var(--stroke);
 }
 
 .college-depts__table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1018,10 +1065,46 @@
 
 .college-depts__table th,
 .college-depts__table td {
-  padding: 0.85rem 0.65rem;
+  padding: 0.85rem 0.5rem;
   text-align: left;
   vertical-align: middle;
   border-bottom: 1px solid var(--stroke);
+}
+
+.college-depts__table th {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.college-depts__table th:nth-child(1),
+.college-depts__table td:nth-child(1) {
+  width: 34%;
+}
+
+.college-depts__table th:nth-child(2),
+.college-depts__table td:nth-child(2) {
+  width: 26%;
+}
+
+.college-depts__table th:nth-child(3),
+.college-depts__table td:nth-child(3) {
+  width: 8%;
+}
+
+.college-depts__table th:nth-child(4),
+.college-depts__table td:nth-child(4) {
+  width: 10%;
+}
+
+.college-depts__table th:nth-child(5),
+.college-depts__table td:nth-child(5) {
+  width: 10%;
+}
+
+.college-depts__table th:nth-child(6),
+.college-depts__table td:nth-child(6) {
+  width: 12%;
+  white-space: nowrap;
 }
 
 .college-depts__empty {
@@ -1086,6 +1169,6 @@
   }
 
   .college-dash__dept-name {
-    font-size: 1.15rem;
+    font-size: 14px;
   }
 }

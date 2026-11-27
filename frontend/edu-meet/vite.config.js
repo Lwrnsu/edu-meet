@@ -15,5 +15,16 @@ export default defineConfig(({ mode }) => ({
     watch: {
       usePolling: true,
     },
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.removeHeader("origin");
+          });
+        },
+      },
+    },
   },
 }));
