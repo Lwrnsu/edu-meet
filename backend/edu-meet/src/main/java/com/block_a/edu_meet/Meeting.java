@@ -28,31 +28,5 @@ public class Meeting {
         }
         return false;
     }
-
-
-        public static void main(String[] args){
-            //testcases
-        Student jay = new Student("Lwrnsu", "Jay");
-        Student stranger = new Student("random", "Bob");
-
-        Classroom classroom = new Classroom("Mr. Cruz", new Student[]{ jay });
-        Meeting meeting = new Meeting(classroom);
-
-        System.out.println(meeting.studentValidation(classroom, jay));
-        System.out.println(meeting.studentValidation(classroom, stranger));
-
-        System.out.println(meeting.facultyValidation(classroom, "Mr. Cruz"));
-        System.out.println(meeting.facultyValidation(classroom, "Ms. Santos"));
-        System.out.println(meeting.studentValidation(classroom, null));
-        System.out.println(meeting.facultyValidation(null, "Mr. Cruz"));
-
-        Classroom broken = new Classroom("Mr. Cruz", new Student[]{ null });
-        //crashes if the entry in the array is null.
-        System.out.println(meeting.studentValidation(broken, jay));
-        System.out.println("\n");
-
-        Classroom mixed = new Classroom("Mr. Cruz", new Student[]{ null, jay });
-        System.out.println(meeting.studentValidation(mixed, jay));
-    }
 }
 
