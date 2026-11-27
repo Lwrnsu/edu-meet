@@ -53,7 +53,8 @@ function IconEye({ open }) {
 }
 
 export default function SecuritySection({ user }) {
-  const registeredEmail = (user?.email || '').trim()
+  const accountEmail = (user?.email || '').trim()
+  const [emailInput, setEmailInput] = useState('')
   const [step, setStep] = useState('email')
   const [otp, setOtp] = useState('')
   const [verifiedOtp, setVerifiedOtp] = useState('')
@@ -74,7 +75,7 @@ export default function SecuritySection({ user }) {
   }
 
   async function sendOtp() {
-    const data = await requestPasswordOtp({ email: registeredEmail })
+    const data = await requestPasswordOtp({ email: accountEmail })
     setInfo(data.message || 'OTP sent.')
   }
 
@@ -82,12 +83,22 @@ export default function SecuritySection({ user }) {
     event.preventDefault()
     clearMessages()
 
-    if (!registeredEmail) {
+    if (!accountEmail) {
       setError('This account has no registered email.')
       return
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registeredEmail)) {
-      setError('The registered email address is not valid.')
+
+    const typedEmail = emailInput.trim()
+    if (!typedEmail) {
+      setError('Email is required.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (typedEmail.toLowerCase() !== accountEmail.toLowerCase()) {
+      setError('Email does not match this account.')
       return
     }
 
@@ -117,7 +128,7 @@ export default function SecuritySection({ user }) {
 
     setSubmitting(true)
     try {
-      await verifyPasswordOtp({ email: registeredEmail, otp: code })
+      await verifyPasswordOtp({ email: accountEmail, otp: code })
       setVerifiedOtp(code)
       resetPasswordFields()
       setStep('password')
@@ -187,7 +198,7 @@ export default function SecuritySection({ user }) {
     setSubmitting(true)
     try {
       const data = await changePassword({
-        email: registeredEmail,
+        email: accountEmail,
         otp: verifiedOtp,
         current_password: current,
         new_password: next,
@@ -197,6 +208,7 @@ export default function SecuritySection({ user }) {
       resetPasswordFields()
       setOtp('')
       setVerifiedOtp('')
+      setEmailInput('')
       setStep('email')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to change password.')
@@ -210,6 +222,7 @@ export default function SecuritySection({ user }) {
     setOtp('')
     setVerifiedOtp('')
     resetPasswordFields()
+    setEmailInput('')
     setStep('email')
   }
 
@@ -234,10 +247,14 @@ export default function SecuritySection({ user }) {
                   type="email"
                   name="email"
                   autoComplete="email"
-                  value={registeredEmail}
-                  readOnly
-                  aria-readonly="true"
+                  placeholder="Enter your registered email"
+                  value={emailInput}
+                  onChange={(event) => {
+                    setEmailInput(event.target.value)
+                    clearMessages()
+                  }}
                   aria-label="Registered email"
+                  disabled={submitting}
                 />
               </label>
 

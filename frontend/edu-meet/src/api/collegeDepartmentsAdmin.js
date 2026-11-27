@@ -122,6 +122,7 @@ export async function loadCollegeDepartments(schoolId) {
         deanMembershipId: deanMembershipByDept.get(deptId) || null,
         facultyCount: facultyByDept.get(deptId) || 0,
         studentCount: studentByDept.get(deptId) || 0,
+        createdAt: dept.created_at || null,
       }
     })
     .sort((a, b) => a.slug.localeCompare(b.slug))

@@ -39,6 +39,7 @@ import com.block_a.edu_meet.helpers.CreateConversationRequest;
 import com.block_a.edu_meet.helpers.MemberChangeRequest;
 import com.block_a.edu_meet.services.ConversationCreationService;
 
+@Profile("chat")
 @RestController
 @RequestMapping("/api/conversations")
 public class ConversationController {
