@@ -1,29 +1,29 @@
-import { Routes, Route } from "react-router"
+import { Link, Navigate, Route, Routes } from "react-router";
+import VideoRoom from "./Video Conference/VideoRoom.jsx";
 
 function App() {
   return (
-    <>
-      <Routes>
-        <Route path="*" element={<NotFoundPage />}/>
-        <Route path="/" element={<AuthPage />}/>
-        <Route element={<Header />} >
-          <Route path="/dashboard" element={<DashboardPage />}/>
-          <Route path="/chat" element={<ChatPage />}/>
-          <Route path="/review" element={<ReviewPage />}/>
-          <Route path="/notepad" element={<NotepadPage />}/>
-          <Route path="/task" element={<TaskPage />}/>
-          <Route path="/class" element={<ClassPage />}/>
-          <Route path="/meet" element={< MeetPage/>}/>
-          <Route path="/activity" element={<ActivityPage />}/>
-          <Route path="/department" element={<DepartmentPage />}/>
-          <Route path="/account" element={<AccountManagementPage />}/>
-          <Route path="/sys" element={<SchoolSystemPage />}/>
-          <Route path="/school" element={<SchoolManagementPage />}/>
-        </Route>
-
-      </Routes>
-    </>
-  )
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to="/video-conference" replace />}
+      />
+      <Route path="/video-conference" element={<VideoRoom />} />
+      <Route path="/meet" element={<VideoRoom />} />
+      <Route path="/Video Conference" element={<VideoRoom />} />
+      <Route
+        path="*"
+        element={
+          <main>
+            <h1>Page not found</h1>
+            <p>
+              <Link to="/video-conference">Open the meeting page</Link>
+            </p>
+          </main>
+        }
+      />
+    </Routes>
+  );
 }
 
-export default App
+export default App;
