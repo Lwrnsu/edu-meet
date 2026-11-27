@@ -269,6 +269,10 @@ export function adaptConversation(
     participantIds,
     lastMessageText,
     lastMessageTime,
+    lastMessageId: source.lastMessageId ?? null,
+    lastMessageSenderId: source.lastMessageSenderId ?? null,
+    lastMessageSenderName: source.lastMessageSenderName ?? null,
+    lastMessageAttachmentContentType: source.lastMessageAttachmentContentType ?? null,
     preview,
   };
 }
@@ -367,7 +371,7 @@ export function adaptMessage(
   const senderName =
     sender?.fullName ??
     sender?.name ??
-    null;
+    requireOptionalString(source.senderName, "message.senderName");
   const avatarUrl =
     sender?.avatarUrl === undefined ? null : sender.avatarUrl;
 
@@ -452,7 +456,10 @@ export function mergeMessages(existingMessages, additionalMessages) {
         "message.id must be a nonblank string",
       );
     }
-    messagesById.set(message.id, { ...message });
+    messagesById.set(message.id, {
+      ...message,
+      senderName: message.senderName ?? messagesById.get(message.id)?.senderName ?? null,
+    });
   });
 
   return [...messagesById.values()].sort((first, second) => {

@@ -2,6 +2,7 @@ package com.block_a.edu_meet.handlers;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +18,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.block_a.edu_meet.models.Conversation;
+import com.block_a.edu_meet.helpers.MemberLookup;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 import com.block_a.edu_meet.models.Message;
 import com.block_a.edu_meet.repositories.MessageRepository;
@@ -40,15 +42,17 @@ public class ChatHandler extends TextWebSocketHandler {
     private final ConversationRepository conversationRepository;
     private final RecentMessageCache recentMessageCache;
     private final ChatSocketTickets tickets;
+    private final MemberLookup memberLookup;
 
     public ChatHandler(ObjectMapper objectMapper, MessageRepository messageRepository,
                        ConversationRepository conversationRepository,
-                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets) {
+                       RecentMessageCache recentMessageCache, ChatSocketTickets tickets, MemberLookup memberLookup) {
         this.objectMapper = objectMapper;
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;
         this.recentMessageCache = recentMessageCache;
         this.tickets = tickets;
+        this.memberLookup = memberLookup;
     }
 
     @Override
@@ -131,7 +135,16 @@ public class ChatHandler extends TextWebSocketHandler {
     public void publishSavedMessage(Conversation conversation, Message saved) {
         recentMessageCache.invalidate(saved.getConversationId());
 
-        TextMessage out = new TextMessage(objectMapper.writeValueAsString(saved));
+        String senderName = null;
+        try {
+            var members = memberLookup.findMembers(List.of(saved.getSenderId()));
+            if (!members.isEmpty()) senderName = members.getFirst().fullName();
+        } catch (DataAccessException exception) {
+            log.warn("Could not resolve the sender name for message {}", saved.getId(), exception);
+        }
+        var event = new SavedMessage(saved.getId(), saved.getConversationId(), saved.getSenderId(),
+                saved.getText(), saved.getTimestamp(), saved.getAttachment(), senderName);
+        TextMessage out = new TextMessage(objectMapper.writeValueAsString(event));
         for (String memberId : conversation.getParticipantIds()) {
             Set<WebSocketSession> memberSessions = sessionsByUser.get(memberId);
             if (memberSessions == null) continue;
@@ -144,6 +157,9 @@ public class ChatHandler extends TextWebSocketHandler {
             }
         }
     }
+
+    private record SavedMessage(String id, String conversationId, String senderId, String text,
+                                Instant timestamp, Message.Attachment attachment, String senderName) {}
 
     private boolean hasValidSession(WebSocketSession session) {
         if (!(session.getAttributes().get("chatAccount") instanceof PhpChatAccount account)) return false;

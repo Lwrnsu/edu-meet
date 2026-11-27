@@ -3,7 +3,9 @@ package com.block_a.edu_meet.controllers;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -66,15 +68,31 @@ public class ConversationController {
     }
 
     public List<ConversationSummary> getMyConversations(String userId) {
-        return conversationRepository.findByParticipantIdsContaining(userId).stream()
+        List<Conversation> conversations = conversationRepository.findByParticipantIdsContaining(userId);
+        var latestByConversation = new HashMap<String, Message>();
+        for (Conversation conversation : conversations) {
+            Message latest = messageRepository.findFirstByConversationIdOrderByTimestampDescIdDesc(conversation.getId());
+            if (latest != null) latestByConversation.put(conversation.getId(), latest);
+        }
+        List<String> senderIds = latestByConversation.values().stream()
+                .map(Message::getSenderId).filter(Objects::nonNull).distinct().toList();
+        var senderNames = new HashMap<String, String>();
+        if (!senderIds.isEmpty()) {
+            memberLookup.findMembers(senderIds).forEach(member -> senderNames.put(member.id(), member.fullName()));
+        }
+
+        return conversations.stream()
                 .map(c -> {
-                    Message last = messageRepository
-                            .findFirstByConversationIdOrderByTimestampDescIdDesc(c.getId());
+                    Message last = latestByConversation.get(c.getId());
                     return new ConversationSummary(
                             c.getId(), c.getType(), c.getName(), c.getAvatarUrl(),
                             c.getParticipantIds(),
                             last == null ? null : preview(last),
-                            last == null ? null : last.getTimestamp());
+                            last == null ? null : last.getTimestamp(),
+                            last == null ? null : last.getId(),
+                            last == null ? null : last.getSenderId(),
+                            last == null ? null : senderNames.get(last.getSenderId()),
+                            last == null || last.getAttachment() == null ? null : last.getAttachment().contentType());
                 })
                 .sorted(Comparator.comparing(ConversationSummary::lastMessageTime,
                         Comparator.nullsLast(Comparator.reverseOrder())))

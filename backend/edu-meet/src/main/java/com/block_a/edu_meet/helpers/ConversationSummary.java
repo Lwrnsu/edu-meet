@@ -11,5 +11,9 @@ public record ConversationSummary(
         String avatarUrl,
         List<String> participantIds,
         String lastMessageText,
-        Instant lastMessageTime) {
+        Instant lastMessageTime,
+        String lastMessageId,
+        String lastMessageSenderId,
+        String lastMessageSenderName,
+        String lastMessageAttachmentContentType) {
 }

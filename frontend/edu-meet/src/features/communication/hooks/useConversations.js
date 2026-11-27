@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { adaptConversations } from "../utils/communicationAdapters.js";
+import { isNewerPreview } from "../utils/conversationPreview.js";
 
 export default function useConversations({
   initialConversations,
@@ -28,7 +29,25 @@ export default function useConversations({
       .then((payload) => {
         if (signal.aborted) return;
         const next = adaptConversations(payload, { numericTimestampUnit: "seconds" });
-        setLoadedConversations(next);
+        setLoadedConversations((current) => {
+          const previousById = new Map(current.map((conversation) => [conversation.id, conversation]));
+          return next.map((conversation) => {
+            const previous = previousById.get(conversation.id);
+            if (!previous || !isNewerPreview(previous.lastMessageTime, previous.lastMessageId, conversation)) {
+              return conversation;
+            }
+            return {
+              ...conversation,
+              preview: previous.preview,
+              lastMessageTime: previous.lastMessageTime,
+              lastMessageText: previous.lastMessageText,
+              lastMessageId: previous.lastMessageId,
+              lastMessageSenderId: previous.lastMessageSenderId,
+              lastMessageSenderName: previous.lastMessageSenderName,
+              lastMessageAttachmentContentType: previous.lastMessageAttachmentContentType,
+            };
+          });
+        });
         if (refreshCount === 0) setSelectedConversationId(next[0]?.id ?? null);
       })
       .catch((error) => {

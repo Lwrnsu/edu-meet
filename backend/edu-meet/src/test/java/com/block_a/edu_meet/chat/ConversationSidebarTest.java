@@ -3,6 +3,7 @@ package com.block_a.edu_meet.chat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import org.springframework.data.mongodb.core.MongoOperations;
 
 import com.block_a.edu_meet.controllers.ConversationController;
 import com.block_a.edu_meet.dao.ConversationAccess;
+import com.block_a.edu_meet.dtos.MemberDto;
 import com.block_a.edu_meet.helpers.ConversationSummary;
 import com.block_a.edu_meet.helpers.MemberLookup;
 import com.block_a.edu_meet.models.Conversation;
@@ -24,6 +26,37 @@ import com.block_a.edu_meet.repositories.MessageRepository;
 import com.block_a.edu_meet.services.ConversationCreationService;
 
 class ConversationSidebarTest {
+
+    @Test
+    void looksUpDistinctSendersOnceAndKeepsLegacyAttachmentPreviewText() {
+        ConversationRepository conversations = mock(ConversationRepository.class);
+        MessageRepository messages = mock(MessageRepository.class);
+        MemberLookup members = mock(MemberLookup.class);
+        ConversationController controller = new ConversationController(
+                conversations, members, messages, mock(ConversationAccess.class),
+                new ConversationCreationService(conversations), mock(MongoOperations.class));
+        when(conversations.findByParticipantIdsContaining("member"))
+                .thenReturn(List.of(conversation("one"), conversation("two"), conversation("empty")));
+        Message attachment = new Message("one", "php:42", "", Instant.parse("2026-11-15T12:00:00Z"));
+        attachment.setId("message-id");
+        attachment.setAttachment(new Message.Attachment("animation.gif", "image/gif", 4));
+        when(messages.findFirstByConversationIdOrderByTimestampDescIdDesc("one")).thenReturn(attachment);
+        when(messages.findFirstByConversationIdOrderByTimestampDescIdDesc("two"))
+                .thenReturn(new Message("two", "php:42", "Hello", Instant.parse("2026-11-14T12:00:00Z")));
+        when(members.findMembers(List.of("php:42")))
+                .thenReturn(List.of(new MemberDto("php:42", "Alex Rivera", null, null)));
+
+        List<ConversationSummary> sidebar = controller.getMyConversations("member");
+
+        verify(members).findMembers(List.of("php:42"));
+        ConversationSummary latest = sidebar.getFirst();
+        assertEquals("animation.gif", latest.lastMessageText());
+        assertEquals("message-id", latest.lastMessageId());
+        assertEquals("php:42", latest.lastMessageSenderId());
+        assertEquals("Alex Rivera", latest.lastMessageSenderName());
+        assertEquals("image/gif", latest.lastMessageAttachmentContentType());
+        assertNull(sidebar.getLast().lastMessageSenderId());
+    }
 
     @Test
     void sortsByNewestMessageWithEmptyChatsLast() {

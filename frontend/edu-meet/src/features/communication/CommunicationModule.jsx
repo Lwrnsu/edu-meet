@@ -14,6 +14,7 @@ import usePinnedMessages from "./hooks/usePinnedMessages.js";
 import useChat from "./hooks/useChat.js";
 import { createCommunicationApi } from "./services/communicationApi.js";
 import { adaptMembers } from "./utils/communicationAdapters.js";
+import { reconcileConversationPreview } from "./utils/conversationPreview.js";
 import "./styles/communication.css";
 
 export default function CommunicationModule({ currentUserId, accessToken }) {
@@ -64,7 +65,7 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
   function withSender(message) {
     if (!live) return message;
     const sender = selectedMembers.find((member) => member.id === message.senderId);
-    const senderName = message.direction === "outgoing" ? "You" : sender?.name ?? "Chat member";
+    const senderName = message.direction === "outgoing" ? "You" : sender?.name ?? message.senderName ?? "Chat member";
     const attachment = message.attachment;
     return {
       ...message,
@@ -84,7 +85,12 @@ export default function CommunicationModule({ currentUserId, accessToken }) {
   const conversations = conversationState.conversations.map((conversation) => {
     const messages = chatState.messagesByConversationId[conversation.id];
     const latest = messages?.at(-1);
-    if (!latest || (live && latest.createdAt < conversation.lastMessageTime)) {
+    if (live) {
+      return reconcileConversationPreview(
+        conversation, latest, currentUserId, membersByConversationId[conversation.id],
+      );
+    }
+    if (!latest) {
       return { ...conversation, preview: conversation.preview ?? "No messages yet." };
     }
     const member = membersByConversationId[conversation.id]?.find(({ id }) => id === latest.senderId);
