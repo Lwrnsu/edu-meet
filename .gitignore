@@ -1,4 +1,7 @@
 frontend/edu-meet/node_modules/
+frontend/edu-meet/.env
+frontend/edu-meet/.env.*
+!frontend/edu-meet/.env.example
 
 backend/edu-meet/php/vendor/
 backend/edu-meet/php/composer.phar
@@ -38,3 +41,6 @@ frontend/edu-meet/dist-ssr
 *.sln
 *.sw?*.class
 dump.rdb
+*.sw?
+
+.env
