@@ -58,6 +58,14 @@ public class ChatController {
         return respond(sessionId, message, false);
     }
 
+    // Signing out should erase the conversation, not leave it in RAM until the
+    // TTL expires. The client calls this when the assistant unmounts.
+    @DeleteMapping("/session/{sessionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearSession(@PathVariable String sessionId) {
+        sessions.remove(sessionId);
+    }
+
     // Accepts one or more PDFs together with the question in a single multipart
     // request: the chat UI sends the files and the message as parts, the backend
     // stores them temporarily and hands them to the extraction tool for this
