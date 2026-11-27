@@ -49,10 +49,17 @@
         </dependency>
 
 		<dependency>
+    		<groupId>org.springframework.boot</groupId>
+    		<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>   
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
+			<artifactId>spring-boot-webmvc</artifactId>
 		</dependency>
-
+		<dependency>
+    		<groupId>com.fasterxml.jackson.core</groupId>
+    		<artifactId>jackson-annotations</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -61,6 +68,9 @@
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+<<<<<<< HEAD
+			<artifactId>spring-boot-starter</artifactId>
+=======
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
@@ -82,6 +92,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-websocket</artifactId>
+>>>>>>> 6408fa1d670783b79ee2b1709040fa865026c2c1
 		</dependency>
 	</dependencies>
 
