@@ -1,4 +1,4 @@
-services: 
+services:
   frontend:
     build: ./frontend/edu-meet/
     ports:
@@ -11,6 +11,48 @@ services:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      
+
+  php:
+    build: ./php/
+    ports:
+      - "8000:8000"
+    depends_on: [mysql]
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: EduMeet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:8.10.3-alpine3.23
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --dir /data --protected-mode no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redisdata:/data
 
   proxy:
     image: caddy:alpine
@@ -24,3 +66,5 @@ services:
 
 volumes:
     caddy_data:
+    mysql_data:
+    redisdata:

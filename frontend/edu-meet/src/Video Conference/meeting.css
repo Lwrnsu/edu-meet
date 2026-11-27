@@ -1,0 +1,169 @@
+/* 
+  Supervise by: Sam Gabriel Dayrit (Front End Lead)
+  andrew - prototype lang na css, for VideoRoom layout na rin to nilagyan ko neto just
+  separately or just for video conference lang.
+*/
+
+html,
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.meeting-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+.meeting-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.meeting-grid {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.meeting-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.meeting-tools-toggle {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border: 1px solid var(--lk-border-color, #555);
+  border-radius: 6px;
+  background: var(--lk-bg2, #222);
+  color: var(--lk-fg, #fff);
+  cursor: pointer;
+}
+.meeting-tools-toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.meeting-tools-panel {
+  display: flex;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  border-left: 1px solid #333;
+  background: var(--lk-bg, #111);
+  color: var(--lk-fg, #f5f5f5);
+}
+.meeting-tools-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--lk-border-color, #333);
+}
+.meeting-tools-header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+.meeting-tools-header button,
+.meeting-tools-menu button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.meeting-tools-header button {
+  padding: 8px;
+}
+.meeting-tools-header button:hover,
+.meeting-tools-menu button:hover {
+  background: var(--lk-bg2, #222);
+}
+.meeting-tools-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+}
+.meeting-tools-menu button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  text-align: left;
+}
+.meeting-tools-menu button span {
+  color: var(--lk-fg2, #aaa);
+  font-size: 12px;
+}
+.meeting-tool-placeholder {
+  padding: 20px;
+  color: var(--lk-fg2, #ccc);
+}
+.meeting-tools-panel .lk-chat {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.meeting-tools-panel .lk-chat * {
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+[data-lk-quality="poor"] {
+  background-color: red;
+}
+[data-lk-quality="unknown"] {
+  background-color: rgb(255, 0, 255);
+}
+[data-lk-quality="good"] {
+  background-color: rgb(58, 114, 62);
+}
+[data-lk-quality="excellent"] {
+  background-color: rgb(21, 255, 0);
+}
+.lk-participant-tile {
+  border-radius: 10px;
+  overflow: hidden;
+  --lk-border-color: #ffffff;
+}
+/*.lk-participant-tile[data-lk-speaking="true"] {
+  outline: 1px solid #5f00f7;
+}*/
+.lk-participant-tile[data-lk-speaking="false"] {
+  outline: 1px solid #696969;
+}
+
+@media (max-width: 768px) {
+  .meeting-tools-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    flex: none;
+    z-index: 10;
+    background: var(--lk-bg, #111);
+  }
+}

@@ -1,0 +1,438 @@
+.signup {
+  --bg: #d9d0de;
+  --panel-start: #210046;
+  --panel-end: #a57ad4;
+  --title: #a57ad4;
+  --subtitle: #b79fd0;
+  --input-border: #c9b6d9;
+  --button: #111827;
+  --text: #000000;
+  --card: #ffffff;
+
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Poppins', sans-serif;
+  color: var(--text);
+}
+
+.signup__art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.signup__art-bottom {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(48vw, 38rem);
+  height: min(62vh, 37rem);
+  transform: scaleX(-1);
+}
+
+.signup__art-side {
+  position: absolute;
+  right: 0;
+  top: 18%;
+  width: min(22vw, 17rem);
+  height: min(62vh, 37rem);
+  transform: scaleX(-1);
+}
+
+.signup__art-vector2,
+.signup__art-vector5,
+.signup__art-vector6 {
+  position: absolute;
+  display: block;
+  max-width: none;
+  mix-blend-mode: lighten;
+}
+
+.signup__art-vector2 {
+  left: 0;
+  bottom: 0;
+  width: 82%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.signup__art-vector5 {
+  left: 38%;
+  bottom: 0;
+  width: 62%;
+  height: 82%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.signup__art-vector6 {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.signup__card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.9fr) minmax(0, 1.7fr);
+  width: min(100%, 58rem);
+  min-height: 28rem;
+  background: var(--card);
+  border-radius: 1.15rem;
+  box-shadow: 0 18px 40px rgba(33, 0, 70, 0.16);
+  overflow: hidden;
+}
+
+.signup__welcome {
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.5rem;
+  background: linear-gradient(180deg, var(--panel-start) 0%, var(--panel-end) 69%, var(--panel-end) 100%);
+}
+
+.signup__welcome-title {
+  margin: 0;
+  max-width: 10ch;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1.75rem, 3.5vw, 3rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.signup__content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.75rem 2.5rem 1.5rem;
+}
+
+.signup__title {
+  margin: 0;
+  color: var(--title);
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.signup__subtitle {
+  margin: 0.35rem 0 1rem;
+  color: var(--subtitle);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.signup__form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.signup__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem 1rem;
+}
+
+.signup__input--wide {
+  grid-column: 1 / -1;
+}
+
+.signup__input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--input-border);
+  border-radius: 0.55rem;
+  background: #fff;
+  color: #333;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.signup__input::placeholder {
+  color: #6b7280;
+}
+
+.signup__input:focus {
+  outline: none;
+  border-color: var(--panel-end);
+  box-shadow: 0 0 0 3px rgba(165, 122, 212, 0.2);
+}
+
+.signup__terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+  color: #000000;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.signup__terms input {
+  margin-top: 0.15rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  accent-color: #210046;
+  cursor: pointer;
+}
+
+.signup__legal {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #000000;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup__legal:hover {
+  text-decoration: underline;
+}
+
+.signup__message {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.signup__message--error {
+  color: #9b2c2c;
+}
+
+.signup__message--info {
+  color: #4b5563;
+}
+
+.signup__submit {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 0.55rem;
+  background: var(--button);
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.signup__submit:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.signup__submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.signup__submit:disabled,
+.signup__input:disabled,
+.signup__terms input:disabled,
+.signup__link:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.signup__footer {
+  margin: 1rem 0 0;
+  text-align: center;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.signup__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.signup__link:hover {
+  text-decoration: underline;
+}
+
+.signup-legal-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(33, 0, 70, 0.45);
+}
+
+.signup-legal-modal__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 36rem);
+  max-height: min(85vh, 40rem);
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(33, 0, 70, 0.22);
+}
+
+.signup-legal-modal__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: #6b7280;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.signup-legal-modal__close:hover {
+  color: var(--panel-start);
+  background: rgba(165, 122, 212, 0.12);
+}
+
+.signup-legal-modal__title {
+  margin: 0 2rem 0.75rem 0;
+  color: var(--title);
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.signup-legal-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  color: #374151;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.signup-legal-modal__body h4 {
+  margin: 1rem 0 0.35rem;
+  color: var(--panel-start);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.signup-legal-modal__body p,
+.signup-legal-modal__body ul {
+  margin: 0 0 0.65rem;
+}
+
+.signup-legal-modal__body ul {
+  padding-left: 1.2rem;
+}
+
+.signup-legal-modal__body li {
+  margin-bottom: 0.3rem;
+}
+
+.signup-legal-modal__updated {
+  margin-bottom: 0.85rem !important;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.signup-legal-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(201, 182, 217, 0.7);
+}
+
+.signup-legal-modal__btn {
+  padding: 0.55rem 1.15rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--button);
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.signup-legal-modal__btn:hover {
+  opacity: 0.92;
+}
+
+@media (max-width: 800px) {
+  .signup__card {
+    grid-template-columns: 1fr;
+    width: min(100%, 28rem);
+  }
+
+  .signup__welcome {
+    min-height: 8rem;
+    padding: 1.5rem;
+  }
+
+  .signup__welcome-title {
+    max-width: none;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+  }
+
+  .signup__content {
+    padding: 1.5rem 1.25rem 1.35rem;
+  }
+
+  .signup__art-bottom {
+    width: min(70vw, 22rem);
+    height: min(38vh, 16rem);
+    opacity: 0.85;
+  }
+
+  .signup__art-side {
+    width: min(28vw, 9rem);
+    height: min(42vh, 18rem);
+    opacity: 0.7;
+  }
+
+  .signup__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-legal-modal {
+    padding: 1rem;
+  }
+
+  .signup-legal-modal__panel {
+    padding: 1.25rem 1.1rem 1.1rem;
+    max-height: 88vh;
+  }
+}
