@@ -12,7 +12,6 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/validate")
-@CrossOrigin(origins = "*")
 public class StudentController {
 
     @Autowired

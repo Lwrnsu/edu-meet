@@ -1,8 +1,12 @@
 package com.block_a.edu_meet.controller;
 
-import com.block_a.edu_meet.Meeting;
-import com.block_a.edu_meet.dtos.MemberDto;
-import com.block_a.edu_meet.helpers.MemberLookup;
+import com.block_a.edu_meet.room.AuthorizedRoom;
+import com.block_a.edu_meet.room.MeetingAdmissionRequest;
+import com.block_a.edu_meet.room.MeetingRole;
+import com.block_a.edu_meet.room.RoomTarget;
+import com.block_a.edu_meet.service.CanonicalClassAccessService;
+import com.block_a.edu_meet.service.MeetingAdmissionService;
+import com.block_a.edu_meet.security.AuthenticatedUser;
 import io.livekit.server.AccessToken;
 import io.livekit.server.CanPublish;
 import io.livekit.server.CanSubscribe;
@@ -13,106 +17,142 @@ import io.livekit.server.RoomName;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/room")
-@CrossOrigin(origins = "*")
 public class RoomController {
 
     private final String apiKey;
     private final String apiSecret;
     private final String livekitUrl;
-    private final Meeting meeting;
-    private final MemberLookup memberLookup;
+    private final CanonicalClassAccessService classAccess;
+    private final MeetingAdmissionService admissionService;
 
     public RoomController(
             @Value("${livekit.api-key}") String apiKey,
             @Value("${livekit.api-secret}") String apiSecret,
             @Value("${livekit.url:}") String livekitUrl,
-            Meeting meeting,
-            MemberLookup memberLookup) {
+            CanonicalClassAccessService classAccess,
+            MeetingAdmissionService admissionService) {
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.livekitUrl = livekitUrl;
-        this.meeting = meeting;
-        this.memberLookup = memberLookup;
+        this.classAccess = classAccess;
+        this.admissionService = admissionService;
+    }
+
+    @GetMapping("/classes")
+    public ResponseEntity<?> getClasses(Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        return ResponseEntity.ok(classAccess.listRoomTargets(user));
+    }
+
+    @PostMapping("/admission-requests")
+    public ResponseEntity<MeetingAdmissionRequest> requestAdmission(
+            @RequestBody(required = false) RoomTokenRequest request,
+            Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        if (request == null || request.classId() == null || request.blockId() == null
+                || request.classId() <= 0 || request.blockId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Positive classId and blockId are required");
+        }
+        return ResponseEntity.accepted().body(
+                admissionService.createRequest(user, request.classId(), request.blockId()));
+    }
+
+    @GetMapping("/admission-requests")
+    public ResponseEntity<?> getPendingAdmissionRequests(Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        return ResponseEntity.ok(admissionService.pendingRequestsForFaculty(user));
+    }
+
+    @GetMapping("/admission-requests/{requestId}")
+    public ResponseEntity<MeetingAdmissionRequest> getAdmissionRequest(
+            @PathVariable String requestId,
+            Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        return ResponseEntity.ok(admissionService.getRequestForRequester(user, requestId));
+    }
+
+    @PostMapping("/admission-requests/{requestId}/decision")
+    public ResponseEntity<MeetingAdmissionRequest> decideAdmissionRequest(
+            @PathVariable String requestId,
+            @RequestBody(required = false) AdmissionDecisionRequest decision,
+            Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        if (decision == null || decision.approved() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "approved is required");
+        }
+        return ResponseEntity.ok(admissionService.decide(user, requestId, decision.approved()));
     }
 
     @PostMapping("/token")
     public ResponseEntity<?> getToken(
-            @RequestHeader(value = "X-Account-Id", required = false) String headerAccountId,
-            @RequestBody Map<String, String> params) {
+            @RequestBody(required = false) RoomTokenRequest params,
+            Authentication authentication) {
 
-        String roomName = params.get("roomName");
-        String identifier = firstNonBlank(
-                headerAccountId,
-                params.get("accountId"),
-                params.get("email"),
-                params.get("participantName")
-        );
-        String requestedRole = params.getOrDefault("role", "").trim().toUpperCase();
-
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
         Map<String, Object> response = new HashMap<>();
 
-        if (roomName == null || roomName.isBlank() || identifier == null) {
-            response.put("error", "roomName and accountId/email are required");
+        if (params == null || params.classId() == null || params.blockId() == null
+                || params.classId() <= 0 || params.blockId() <= 0) {
+            response.put("error", "Positive classId and blockId are required");
             return ResponseEntity.badRequest().body(response);
         }
 
-        // Resolve display name via MemberLookup (works with DefaultMemberLookup now, real Auth later)
-        List<MemberDto> members = memberLookup.findMembers(List.of(identifier));
-        String displayName = (!members.isEmpty() && members.get(0).fullName() != null)
-                ? members.get(0).fullName()
-                : identifier;
-
-        // Role-specific classroom membership validation
-        boolean isFaculty;
-        if ("FACULTY".equals(requestedRole)) {
-            if (!meeting.facultyValidationByIdentifier(roomName, identifier)) {
-                response.put("error", "Access denied: faculty not assigned to classroom " + roomName);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-            }
-            isFaculty = true;
-        } else if ("STUDENT".equals(requestedRole)) {
-            if (!meeting.studentValidationByIdentifier(roomName, identifier)) {
-                response.put("error", "Access denied: student not enrolled in classroom " + roomName);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-            }
-            isFaculty = false;
+        Optional<AuthorizedRoom> authorizedRoom = classAccess.authorize(user, params.classId(), params.blockId());
+        RoomTarget target;
+        MeetingRole role;
+        if (authorizedRoom.isPresent()) {
+            target = authorizedRoom.get().target();
+            role = authorizedRoom.get().role();
+        } else if (admissionService.isApprovedFor(
+                user, params.admissionRequestId(), params.classId(), params.blockId())) {
+            target = classAccess.findRoomTarget(params.classId(), params.blockId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Class section not found"));
+            role = MeetingRole.GUEST;
         } else {
-            // Auto-detect role from database assignment/enrollment when role is omitted
-            if (meeting.facultyValidationByIdentifier(roomName, identifier)) {
-                isFaculty = true;
-            } else if (meeting.studentValidationByIdentifier(roomName, identifier)) {
-                isFaculty = false;
-            } else {
-                response.put("error", "Access denied: user is neither assigned faculty nor enrolled in " + roomName);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-            }
+            response.put("error", "Access denied: authenticated user is not authorized for this class section");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         }
 
+        String roomName = target.roomName();
+        String identity = Integer.toString(user.id());
+
+        String displayName = user.displayName() == null || user.displayName().isBlank()
+                ? identity
+                : user.displayName();
+
         AccessToken token = new AccessToken(apiKey, apiSecret);
-        token.setIdentity(identifier);
+        token.setIdentity(identity);
         token.setName(displayName);
         token.addGrants(
                 new RoomJoin(true),
                 new RoomName(roomName),
-                new RoomAdmin(isFaculty),
-                new RoomCreate(isFaculty),
+                new RoomAdmin(role == MeetingRole.FACULTY || role == MeetingRole.DEAN),
+                new RoomCreate(true),
                 new CanPublish(true),
                 new CanSubscribe(true)
         );
 
         response.put("token", token.toJwt());
         response.put("roomName", roomName);
-        response.put("identity", identifier);
+        response.put("classId", target.classId());
+        response.put("blockId", target.blockId());
+        response.put("subject", target.subject());
+        response.put("section", target.section());
+        response.put("identity", identity);
         response.put("name", displayName);
-        response.put("role", isFaculty ? "FACULTY" : "STUDENT");
+        response.put("role", role.name());
         if (livekitUrl != null && !livekitUrl.isBlank()) {
             response.put("url", livekitUrl);
         }
@@ -120,10 +160,21 @@ public class RoomController {
         return ResponseEntity.ok(response);
     }
 
-    private static String firstNonBlank(String... values) {
-        for (String v : values) {
-            if (v != null && !v.isBlank()) return v.trim();
+    private static AuthenticatedUser requireAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "A verified authenticated user is required.");
         }
-        return null;
+        return user;
+    }
+
+    public record RoomTokenRequest(Integer classId, Integer blockId, String admissionRequestId) {
+        public RoomTokenRequest(Integer classId, Integer blockId) {
+            this(classId, blockId, null);
+        }
+    }
+
+    public record AdmissionDecisionRequest(Boolean approved) {
     }
 }

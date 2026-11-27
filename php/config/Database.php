@@ -1,19 +1,19 @@
 <?php
 class Database {
-    private static string $host = "localhost";
-    private static string $database = "EduMeet";
-    private static string $username = "root";
-    private static string $password = "secret";
     private static ?PDO $connection = null;
 
     public static function connect(): PDO {
         if (self::$connection === null) {
             try {
-                $dsn = "mysql:host=" . self::$host . ";dbname=" . self::$database . ";charset=utf8mb4";
+                $host = self::environmentValue("PHP_DB_HOST", "localhost");
+                $database = self::environmentValue("PHP_DB_NAME", "EduMeet");
+                $username = self::environmentValue("PHP_DB_USER", "root");
+                $password = self::environmentValue("PHP_DB_PASSWORD", "secret");
+                $dsn = "mysql:host=" . $host . ";dbname=" . $database . ";charset=utf8mb4";
                 self::$connection = new PDO(
                     $dsn,
-                    self::$username,
-                    self::$password,
+                    $username,
+                    $password,
                     [
                         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -28,5 +28,10 @@ class Database {
             }
         }
         return self::$connection;
+    }
+
+    private static function environmentValue(string $name, string $default): string {
+        $value = getenv($name);
+        return $value === false || $value === '' ? $default : $value;
     }
 }

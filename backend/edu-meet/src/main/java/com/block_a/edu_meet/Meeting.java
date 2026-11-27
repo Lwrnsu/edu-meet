@@ -1,5 +1,6 @@
 package com.block_a.edu_meet;
 
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.block_a.edu_meet.repository.ClassroomEnrollmentRepository;
@@ -30,6 +31,11 @@ public class Meeting {
                 || classroomRepository.existsByRoomNameAndFacultyInCharge(roomName, identifier);
     }
 
+    public boolean facultyValidationByIdentifiers(String roomName, List<String> identifiers) {
+        return identifiers != null
+                && identifiers.stream().anyMatch(identifier -> facultyValidationByIdentifier(roomName, identifier));
+    }
+
     public boolean studentValidation(String roomName, String studentUsername) {
         return hasText(roomName)
                 && hasText(studentUsername)
@@ -41,6 +47,11 @@ public class Meeting {
         return enrollmentRepository.existsByClassroom_RoomNameAndStudent_AccountId(roomName, identifier)
                 || enrollmentRepository.existsByClassroom_RoomNameAndStudent_Email(roomName, identifier)
                 || enrollmentRepository.existsByClassroom_RoomNameAndStudent_Username(roomName, identifier);
+    }
+
+    public boolean studentValidationByIdentifiers(String roomName, List<String> identifiers) {
+        return identifiers != null
+                && identifiers.stream().anyMatch(identifier -> studentValidationByIdentifier(roomName, identifier));
     }
 
     public boolean participantValidation(String roomName, String identifier) {
