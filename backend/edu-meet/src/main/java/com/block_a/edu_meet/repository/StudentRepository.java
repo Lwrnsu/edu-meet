@@ -1,12 +1,13 @@
 package com.block_a.edu_meet.repository;
 
-import com.block_a.edu_meet.Student;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.Optional;
-import java.util.UUID;
+
+import com.block_a.edu_meet.Student;
 
 @Repository
-public interface StudentRepository extends JpaRepository<Student, UUID> {
+public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByUsername(String username);
 }
