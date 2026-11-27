@@ -37,37 +37,15 @@ public class SecurityConfig {
 
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
+                        http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(Customizer.withDefaults())
                                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                HttpMethod.POST,
-                                                                "/api/auth/login",
-                                                                "/api/auth/php-login",
-                                                                "/api/auth/php-system-admin-login",
-                                                                "/api/auth/php-school-login",
-                                                                "/api/auth/php-college-admin-login",
-                                                                "/api/auth/php-signup",
-                                                                "/api/auth/php-request-password-otp",
-                                                                "/api/auth/php-verify-password-otp",
-                                                                "/api/auth/php-change-password",
-                                                                "/api/auth/php-forgot-request-password-otp",
-                                                                "/api/auth/php-forgot-verify-password-otp",
-                                                                "/api/auth/php-forgot-reset-password",
-                                                                "/api/auth/logOut")
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/", "/api/health", "/api/auth/logIn/cached").permitAll()
-                                                .requestMatchers("/api/php/**").permitAll()
-                                                .requestMatchers(PhpChatAuthFilter.CHAT_PATH, PhpChatAuthFilter.CONVERSATION_PATH)
-                                                .hasAuthority(PhpChatAuthFilter.AUTHORITY)
-                                                .requestMatchers("/api/**").authenticated()
-                                                .anyRequest().permitAll())
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                                .addFilterBefore(new PhpChatAuthFilter(), JwtAuthFilter.class);
+                                .anyRequest().permitAll()
+                );
 
-                return http.build();
+        return http.build();
         }
 
         @Bean
