@@ -1,0 +1,9 @@
+.sw2{position:relative;display:inline-block}
+.sw2 .logo{background:none;border:0;padding:0;color:inherit;cursor:pointer;font-family:inherit}
+.sw2 .chv{width:1.4rem;height:1rem;margin-left:.2rem;flex:none}
+.sw2 .menu{position:absolute;left:0;top:calc(100% - .6rem);z-index:30;margin:0;padding:.6rem;list-style:none;min-width:18rem;background:#fff;border:1px solid #555566;border-radius:1.2rem;box-shadow:0 .6rem 1.4rem rgba(30,20,80,.3)}
+.sw2 .menu button{display:flex;justify-content:space-between;align-items:center;gap:1rem;width:100%;min-height:44px;padding:0 1.2rem;border:0;border-radius:.8rem;background:none;font:600 1.5rem Poppins,system-ui,sans-serif;color:#1C1C2E;cursor:pointer;text-align:left}
+.sw2 .menu button:hover{background:#ECEEFF}
+.sw2 .menu .cur{background:#E4DCFB;color:#5B2FC9}
+.sw2 .menu svg{width:1.6rem;height:1.6rem}
+.sw2 :focus-visible{outline:2px solid #4B30B8;outline-offset:2px}
