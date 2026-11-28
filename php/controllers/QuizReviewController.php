@@ -32,19 +32,19 @@ class QuizReviewController
         $input = $this->readInput();
 
         switch ($path) {
-            case '/api/start/quiz':
+            case '/api/php/start/quiz':
                 $response = $this->startQuiz($input);
                 break;
-            case '/api/submit/quiz-answer':
+            case '/api/php/submit/quiz-answer':
                 $response = $this->submitAnswer($input);
                 break;
-            case '/api/finish/quiz':
+            case '/api/php/finish/quiz':
                 $response = $this->finishQuiz($input);
                 break;
-            case '/api/get/quiz':
+            case '/api/php/get/quiz':
                 $response = $this->getQuizSession($input);
                 break;
-            case '/api/get/quiz-answers':
+            case '/api/php/get/quiz-answers':
                 $response = $this->getQuizAnswers($input);
                 break;
             default:
