@@ -44,3 +44,16 @@ dump.rdb
 *.sw?
 
 .env
+*.sw?
+
+# Java / Maven generated files
+**/target/
+
+# Frontend generated files
+**/node_modules/
+**/dist/
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
