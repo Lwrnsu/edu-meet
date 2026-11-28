@@ -8,7 +8,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.block_a.edu_meet.models.Conversation;
 import com.block_a.edu_meet.repositories.ConversationRepository;
 
-@Profile("chat")
 @Component
 public class ConversationAccess {
 
