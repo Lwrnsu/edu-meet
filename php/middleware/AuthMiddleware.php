@@ -11,28 +11,45 @@ class AuthMiddleware
     /*
         Same checks as requireAuth(), but returns null instead of ending the request.
         Used by pages that answer with their own "Please log in first." message.
+        Besides the usual cookie / Bearer header it also reads the cookies the
+        React app sets at login (edu_meet_auth = Spring token, edu_meet_access =
+        PHP JWT), so file links opened in a new tab or <iframe> work too.
     */
     public static function tryAuth(): ?array
     {
         $cookies = require __DIR__ . '/../config/cookies.php';
-        $token = CookieHelper::get($cookies['access_name']) ?? self::getBearerToken();
-        if ($token === null) {
+        $candidates = array_unique(array_filter([
+            CookieHelper::get($cookies['access_name']),
+            self::getBearerToken(),
+            self::stripBearer($_COOKIE['edu_meet_auth'] ?? null),
+            self::stripBearer($_COOKIE['edu_meet_access'] ?? null),
+        ]));
+        $config = require __DIR__ . '/../config/jwt.php';
+
+        foreach ($candidates as $token) {
+            try {
+                $payload = JwtHelper::decode($token, $config['secret']);
+                if (isset($payload['sub'])) {
+                    return $payload;
+                }
+            } catch (Throwable $e) {
+                // not a PHP JWT; maybe a Spring session token
+            }
+            $springClaims = self::verifyWithSpringBoot($token);
+            if ($springClaims !== null) {
+                return $springClaims;
+            }
+        }
+        return null;
+    }
+
+    private static function stripBearer(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
             return null;
         }
-
-        $springClaims = self::verifyWithSpringBoot($token);
-        if ($springClaims !== null) {
-            return $springClaims;
-        }
-
-        try {
-            $config = require __DIR__ . '/../config/jwt.php';
-            $payload = JwtHelper::decode($token, $config['secret']);
-        } catch (Throwable $e) {
-            return null;
-        }
-
-        return isset($payload['sub']) ? $payload : null;
+        return preg_match('/^Bearer\s+(\S+)$/i', $value, $m) ? $m[1] : $value;
     }
 
     // Spring Boot's "who is this token" endpoint. SPRING_API_URL lets Docker use http://spring:8080.

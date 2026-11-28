@@ -6,12 +6,21 @@
 
   Where the PHP server is: VITE_PHP_API_URL (default "/php").
   In development vite.config.js forwards /php to the PHP container.
-  The PHP side knows who is logged in from its session cookie, so every
-  request sends cookies (credentials: 'include').
+
+  Who is logged in: the same token the rest of EduMeet uses after login
+  (sent as "Authorization: Bearer …"; the login cookies are sent too, which
+  is what lets file links open in a new tab).
 */
+import { getAccessBearerToken, getAuthBearerToken } from '../../../api/auth'
+
 export const PHP_BASE = (import.meta.env.VITE_PHP_API_URL || '/php').replace(/\/+$/, '')
 
 const OFFLINE = { response: false, code: 0, message: 'Could not reach the server.', body: {} }
+
+function authHeaders() {
+  const token = getAccessBearerToken() || getAuthBearerToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 function buildUrl(path, query) {
   const url = `${PHP_BASE}/${path.replace(/^\/+/, '')}`
@@ -36,7 +45,7 @@ export function fileUrl(relative) {
   phpApi('api/resources.php', { method: 'POST', query: {...}, json: { name } })
 */
 export async function phpApi(path, { method = 'GET', query, body, json } = {}) {
-  const options = { method, credentials: 'include', headers: {} }
+  const options = { method, credentials: 'include', headers: authHeaders() }
   if (json !== undefined) {
     options.headers['Content-Type'] = 'application/json'
     options.body = JSON.stringify(json)
@@ -60,6 +69,7 @@ export function uploadWithProgress(path, formData, onProgress, query) {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', buildUrl(path, query))
     xhr.withCredentials = true
+    Object.entries(authHeaders()).forEach(([k, v]) => xhr.setRequestHeader(k, v))
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
     }
@@ -138,4 +148,41 @@ export const notificationsApi = {
   list: () => phpApi('api/notifications.php'),
   read: (id) => phpApi('api/notifications.php', { method: 'POST', query: { id, action: 'read' } }),
   readAll: () => phpApi('api/notifications.php', { method: 'POST', query: { action: 'read_all' } }),
+}
+
+export const classesApi = {
+  mine: () => phpApi('api/my_classes.php'),
+  show: (id) => phpApi('api/my_classes.php', { query: { id } }),
+}
+
+export const tasksApi = {
+  list: (classId, search) => phpApi('api/tasks.php', { query: { class_id: classId, search } }),
+  show: (id) => phpApi('api/tasks.php', { query: { id } }),
+  // fields: { title, instructions, max_score, deadline, is_closed?, file?, removeAttachment? }
+  save: (classId, id, fields) => {
+    const data = new FormData()
+    ;['title', 'instructions', 'max_score', 'deadline'].forEach((k) => data.append(k, fields[k] ?? ''))
+    if (fields.is_closed !== undefined) data.append('is_closed', fields.is_closed ? '1' : '0')
+    if (fields.file) data.append('file', fields.file)
+    if (id) {
+      if (fields.removeAttachment) data.append('remove_attachment', '1')
+      return phpApi('api/tasks.php', { method: 'POST', query: { id, action: 'update' }, body: data })
+    }
+    data.append('class_id', classId)
+    return phpApi('api/tasks.php', { method: 'POST', body: data })
+  },
+  setClosed: (id, closed) => {
+    const data = new FormData()
+    data.append('is_closed', closed ? '1' : '0')
+    return phpApi('api/tasks.php', { method: 'POST', query: { id, action: 'update' }, body: data })
+  },
+  remove: (id) => phpApi('api/tasks.php', { method: 'DELETE', query: { id } }),
+  submit: (id, file, onProgress) => {
+    const data = new FormData()
+    data.append('file', file)
+    return uploadWithProgress('api/tasks.php', data, onProgress, { id, action: 'submit' })
+  },
+  unsubmit: (id) => phpApi('api/tasks.php', { method: 'POST', query: { id, action: 'unsubmit' } }),
+  grade: (submissionId, score, feedback) =>
+    phpApi('api/tasks.php', { method: 'POST', query: { action: 'grade', submission_id: submissionId }, json: { score, feedback } }),
 }

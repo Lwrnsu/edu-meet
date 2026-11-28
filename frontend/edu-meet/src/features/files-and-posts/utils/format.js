@@ -79,6 +79,7 @@ export function timeAgo(value) {
   Notification links from PHP are page names; map them to React routes.
   resources.php?class_id=100 -> /classes/100/resources
   feed.php?class_id=100      -> /classes/100/feed
+  tasks.php?class_id=100&task_id=7 -> /classes/100/activities/7
   announcements.php?id=5     -> /announcements?id=5
 */
 export function notificationRoute(link) {
@@ -87,6 +88,34 @@ export function notificationRoute(link) {
   const classId = params.get('class_id')
   if (page.endsWith('resources.php') && classId) return `/classes/${classId}/resources`
   if (page.endsWith('feed.php') && classId) return `/classes/${classId}/feed`
+  if (page.endsWith('tasks.php') && classId) {
+    const taskId = params.get('task_id')
+    return taskId ? `/classes/${classId}/activities/${taskId}` : `/classes/${classId}/tasks`
+  }
   if (page.endsWith('announcements.php')) return params.get('id') ? `/announcements?id=${params.get('id')}` : '/announcements'
   return null
+}
+
+// "2026-11-20 23:59:00" -> "2026-11-20T23:59" for <input type="datetime-local">
+export function toInputDateTime(value) {
+  return value ? String(value).replace(' ', 'T').slice(0, 16) : ''
+}
+
+// One week from today at 11:59 PM, the default deadline for a new task.
+export function defaultDeadline() {
+  const d = new Date(Date.now() + 7 * 864e5)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59`
+}
+
+const ROLE_LABELS = {
+  student: 'Student',
+  faculty: 'Faculty',
+  program_chair: 'Program Chair',
+  college_dean: 'College Dean',
+  college_admin: 'College Admin',
+  system_admin: 'System Admin',
+}
+export function roleLabel(role) {
+  return ROLE_LABELS[role] || role || ''
 }

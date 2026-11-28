@@ -65,6 +65,13 @@ class Notification {
         return $stmt->rowCount() > 0;
     }
 
+    // MARK AS READ BY LINK (e.g. the user opened that announcement directly)
+    public function markReadByLink(string $link, int $userId): int {
+        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND link = :link AND is_read = 0");
+        $stmt->execute([':user_id' => $userId, ':link' => $link]);
+        return $stmt->rowCount();
+    }
+
     // MARK ALL AS READ
     public function markAllRead(int $userId): int {
         $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND is_read = 0");

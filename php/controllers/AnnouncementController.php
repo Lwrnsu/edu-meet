@@ -75,6 +75,8 @@ class AnnouncementController {
         if ($row === null || !$this->canView($row)) {
             return new ApiResponse(false, 404, "Announcement not found.", []);
         }
+        // Reading it clears its bell notification.
+        (new Notification($this->pdo))->markReadByLink("announcements.php?id=$id", $this->user->id);
         return new ApiResponse(true, 200, "Announcement loaded.", [
             'announcement' => $this->format($row, $this->access->userNames([$row['author_id']])),
         ]);
