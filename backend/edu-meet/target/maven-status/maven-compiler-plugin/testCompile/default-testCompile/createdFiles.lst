@@ -1,1 +1,13 @@
-com\block_a\edu_meet\EduMeetApplicationTests.class
+com\block_a\edu_meet\service\LiveKitPresenceServiceTest.class
+com\block_a\edu_meet\service\MeetingAdmissionServiceTest.class
+com\block_a\edu_meet\security\JwtAuthFilterTest.class
+com\block_a\edu_meet\controller\RoomControllerTest.class
+com\block_a\edu_meet\fixtures\DummyClassFixture$BlockData.class
+com\block_a\edu_meet\client\PhpLoginClientTest.class
+com\block_a\edu_meet\controller\ClassroomControllerTest.class
+com\block_a\edu_meet\fixtures\DummyClassFixture.class
+com\block_a\edu_meet\fixtures\DummyClassFixture$ClassData.class
+com\block_a\edu_meet\service\MeetingSchedulePolicyTest.class
+com\block_a\edu_meet\AuthorizationFlowHttpTest.class
+com\block_a\edu_meet\fixtures\DummyClassFixture$ScheduleData.class
+com\block_a\edu_meet\service\CanonicalClassAccessServiceTest.class

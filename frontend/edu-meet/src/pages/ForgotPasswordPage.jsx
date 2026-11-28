@@ -39,7 +39,27 @@ export default function ForgotPasswordPage({ onBackToLogin, onSwitchToSignUp, on
 
   return (
     <main className="forgot">
-      <div className="forgot__blob" aria-hidden="true" />
+      <svg
+        className="forgot__waves"
+        viewBox="0 0 600 900"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        preserveAspectRatio="none"
+      >
+        {/* Back/upper organic lavender wave */}
+        <path
+          d="M520 155C455 180 420 250 455 315C485 370 505 425 445 485C380 550 325 650 355 765C375 840 420 880 450 900H600V165C572 150 545 146 520 155Z"
+          fill="#b39ddb"
+          fillOpacity="0.62"
+        />
+        {/* Front/lower vibrant violet wave */}
+        <path
+          d="M565 375C505 370 465 415 478 475C492 535 450 585 395 625C325 675 290 775 315 900H600V395C588 383 577 377 565 375Z"
+          fill="#8c67e6"
+          fillOpacity="0.72"
+        />
+      </svg>
 
       <section className="forgot__card">
         <div className="forgot__banner" aria-hidden="true" />
