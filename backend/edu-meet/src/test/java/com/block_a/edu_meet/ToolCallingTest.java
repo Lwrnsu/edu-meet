@@ -61,6 +61,13 @@ class ToolCallingTest {
     }
 
     @Test
+    void promptUsesEarlierPdfTextForFollowUps() {
+        assertTrue(ChatPrompt.SYSTEM.contains(
+                "For a follow-up question about a PDF already read"));
+        assertTrue(ChatPrompt.SYSTEM.contains("Do not call extractPdfText again"));
+    }
+
+    @Test
     void knowledgeBaseFindsRelevantArticles() {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
 

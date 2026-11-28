@@ -30,8 +30,9 @@ public class ExtractPdfTextTool implements Tool {
     @Override
     public String description() {
         return "Extract the text of the PDFs attached to the current message. Takes no arguments. "
-                + "Use this before answering questions about the documents or before creating a "
-                + "reviewer from them. This is the only way to read a file.";
+                + "Use this when a new PDF is attached, before answering questions about it or "
+                + "creating a reviewer. For follow-up questions about a PDF already read in this "
+                + "conversation, use the text already present instead.";
     }
 
     // No parameters on purpose: the model must not be able to choose what to read.
@@ -45,7 +46,10 @@ public class ExtractPdfTextTool implements Tool {
         List<Path> files = attachment.get();
 
         if (files.isEmpty()) {
-            return Map.of("error", "No PDF is attached to this message. Ask the user to attach one.");
+            return Map.of("error",
+                    "No new PDF is attached to this message. If you already read this PDF earlier "
+                            + "in the conversation, use that text to answer. Otherwise, ask the user "
+                            + "to attach the PDF.");
         }
 
         StringBuilder text = new StringBuilder();

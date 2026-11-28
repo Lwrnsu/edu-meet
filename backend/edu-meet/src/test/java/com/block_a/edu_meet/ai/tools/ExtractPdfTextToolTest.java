@@ -47,6 +47,15 @@ class ExtractPdfTextToolTest {
     }
 
     @Test
+    void noAttachmentPointsToEarlierConversationText() {
+        Map<String, Object> result = tool(40, 60_000).execute(Map.of());
+
+        String error = String.valueOf(result.get("error"));
+        assertTrue(error.contains("already read"));
+        assertTrue(error.contains("attach the PDF"));
+    }
+
+    @Test
     void toolDeclaresNoParameters() {
         assertTrue(tool(40, 60_000).parameters().isEmpty());
     }
