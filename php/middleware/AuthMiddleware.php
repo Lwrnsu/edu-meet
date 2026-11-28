@@ -7,7 +7,40 @@ require_once __DIR__ . '/../helpers/CookieHelper.php';
 
 class AuthMiddleware
 {
-    private const SPRING_CACHED_LOGIN_URL = 'http://127.0.0.1:8080/api/auth/logIn/cached';
+
+    /*
+        Same checks as requireAuth(), but returns null instead of ending the request.
+        Used by pages that answer with their own "Please log in first." message.
+    */
+    public static function tryAuth(): ?array
+    {
+        $cookies = require __DIR__ . '/../config/cookies.php';
+        $token = CookieHelper::get($cookies['access_name']) ?? self::getBearerToken();
+        if ($token === null) {
+            return null;
+        }
+
+        $springClaims = self::verifyWithSpringBoot($token);
+        if ($springClaims !== null) {
+            return $springClaims;
+        }
+
+        try {
+            $config = require __DIR__ . '/../config/jwt.php';
+            $payload = JwtHelper::decode($token, $config['secret']);
+        } catch (Throwable $e) {
+            return null;
+        }
+
+        return isset($payload['sub']) ? $payload : null;
+    }
+
+    // Spring Boot's "who is this token" endpoint. SPRING_API_URL lets Docker use http://spring:8080.
+    private static function springCachedLoginUrl(): string
+    {
+        $base = getenv('SPRING_API_URL') ?: 'http://127.0.0.1:8080';
+        return rtrim($base, '/') . '/api/auth/logIn/cached';
+    }
 
     public static function requireAuth(): array
     {
@@ -85,7 +118,7 @@ class AuthMiddleware
         ];
 
         if (function_exists('curl_init')) {
-            $ch = curl_init(self::SPRING_CACHED_LOGIN_URL);
+            $ch = curl_init(self::springCachedLoginUrl());
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => $headers,
@@ -109,7 +142,7 @@ class AuthMiddleware
             ],
         ]);
 
-        $raw = @file_get_contents(self::SPRING_CACHED_LOGIN_URL, false, $context);
+        $raw = @file_get_contents(self::springCachedLoginUrl(), false, $context);
 
         $responseHeaders = function_exists('http_get_last_response_headers')
             ? (http_get_last_response_headers() ?? [])

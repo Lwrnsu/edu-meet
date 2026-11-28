@@ -1,18 +1,11 @@
 -- ============================================================
 --  EduMeet · Group 7 · School announcements (dashboard)
---  MySQL. Ported from MANGALINDAN's PostgreSQL version.
 --
---  Reads tables owned by other groups (see services/ClassAccess.php):
---    users (id, first_name, last_name, role)
---    departments (id, code, name)
---    programs (id, department_id, code, name)
---    blocks (id, program_id, year_level, section, name)   -- "sections"
---    enrollments (student_id, class_id, block_id)
---    classes (id, faculty_id)
---    deans (id, department_id)            -- deans.id = users.id
---    program_chairs (id, program_id)      -- program_chairs.id = users.id
---  Notifications go to the notifications table in files_blogs.sql,
---  so import that file first.
+--  These tables are already in the team schema (db.sql, PART 5).
+--  This file is only for a database built without db.sql.
+--  Column names match db.sql; see services/ClassAccess.php for the
+--  other groups' tables the announcements read (users, school_memberships,
+--  departments, programs, blocks, block_students, program_chair_assignments).
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS announcements (
@@ -24,11 +17,11 @@ CREATE TABLE IF NOT EXISTS announcements (
     is_pinned          BOOLEAN      NOT NULL DEFAULT FALSE,
     status             ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'published',
     -- one optional attachment, saved by services/FileStorage.php
-    attachment_name    VARCHAR(255) NULL,
-    attachment_stored  CHAR(32)     NULL UNIQUE,
-    attachment_ext     VARCHAR(10)  NULL,
-    attachment_mime    VARCHAR(100) NULL,
-    attachment_size    BIGINT       NULL,
+    attachment_original_name    VARCHAR(255) NULL,
+    attachment_stored_name  CHAR(32)     NULL UNIQUE,
+    attachment_extension     VARCHAR(10)  NULL,
+    attachment_mime_type    VARCHAR(100) NULL,
+    attachment_size_bytes    BIGINT       NULL,
     published_at       TIMESTAMP    NULL,               -- set the first time it is published
     created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

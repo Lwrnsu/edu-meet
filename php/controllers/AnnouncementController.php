@@ -27,6 +27,7 @@ require_once __DIR__ . "/../services/AnnouncementScope.php";
 require_once __DIR__ . "/../services/FileStorage.php";
 require_once __DIR__ . "/../services/Notifier.php";
 require_once __DIR__ . "/../helpers/CurrentUser.php";
+require_once __DIR__ . "/../helpers/RichText.php";
 
 class AnnouncementController {
     public const PAGE_SIZE = 10;
@@ -109,7 +110,7 @@ class AnnouncementController {
                 'author_id'   => $this->user->id,
                 'author_role' => $this->user->role,
                 'title'       => trim($title),
-                'body'        => trim($body),
+                'body'        => self::storedBody($body),
                 'is_pinned'   => $isPinned,
                 'status'      => $status,
                 'attachment'  => $file,
@@ -157,7 +158,7 @@ class AnnouncementController {
             return new ApiResponse(false, 400, $errors[0], ['errors' => $errors]);
         }
 
-        $changes = ['title' => trim($title), 'body' => trim($body), 'status' => $status];
+        $changes = ['title' => trim($title), 'body' => self::storedBody($body), 'status' => $status];
         if (array_key_exists('is_pinned', $fields)) {
             $changes['is_pinned'] = (bool) $fields['is_pinned'];
         }
@@ -169,8 +170,8 @@ class AnnouncementController {
         }
 
         $this->announcements->update($id, $changes, $targets, $attachment);
-        if ($attachment !== false && $row['attachment_stored'] !== null) {
-            $this->storage->delete($row['attachment_stored']);
+        if ($attachment !== false && $row['attachment_stored_name'] !== null) {
+            $this->storage->delete($row['attachment_stored_name']);
         }
 
         // First time it goes live → tell the students.
@@ -190,8 +191,8 @@ class AnnouncementController {
             return new ApiResponse(false, 403, "Only the author or an admin can delete this announcement.", []);
         }
         $this->announcements->delete($id);
-        if ($row['attachment_stored'] !== null) {
-            $this->storage->delete($row['attachment_stored']);
+        if ($row['attachment_stored_name'] !== null) {
+            $this->storage->delete($row['attachment_stored_name']);
         }
         return new ApiResponse(true, 200, "Announcement deleted.", ['id' => $id]);
     }
@@ -202,16 +203,16 @@ class AnnouncementController {
     */
     public function attachment(int $id, bool $inline): array|ApiResponse {
         $row = $this->announcements->find($id);
-        if ($row === null || !$this->canView($row) || $row['attachment_stored'] === null) {
+        if ($row === null || !$this->canView($row) || $row['attachment_stored_name'] === null) {
             return new ApiResponse(false, 404, "Attachment not found.", []);
         }
-        if ($inline && !in_array($row['attachment_ext'], FileStorage::VIEWABLE, true)) {
+        if ($inline && !in_array($row['attachment_extension'], FileStorage::VIEWABLE, true)) {
             return new ApiResponse(false, 415, "This file type can't be previewed. Download it instead.", []);
         }
         return [
-            'path' => $this->storage->path($row['attachment_stored']),
-            'name' => $row['attachment_name'],
-            'mime' => $row['attachment_mime'],
+            'path' => $this->storage->path($row['attachment_stored_name']),
+            'name' => $row['attachment_original_name'],
+            'mime' => $row['attachment_mime_type'],
         ];
     }
 
@@ -238,7 +239,7 @@ class AnnouncementController {
         } elseif (mb_strlen(trim($title)) > self::TITLE_MAX) {
             $errors[] = "Title can be at most " . self::TITLE_MAX . " characters.";
         }
-        if (trim($body) === '') {
+        if (RichText::plain($body) === '') {
             $errors[] = "Message is required.";
         }
         if (!in_array($status, $statuses, true)) {
@@ -250,6 +251,11 @@ class AnnouncementController {
             $errors[] = $fileError;
         }
         return $errors;
+    }
+
+    // Editor HTML is cleaned before saving; plain text is kept as typed.
+    private static function storedBody(string $body): string {
+        return RichText::isHtml($body) ? RichText::clean($body) : trim($body);
     }
 
     private function notify(int $id, string $title, array $targets): int {
@@ -264,6 +270,8 @@ class AnnouncementController {
             'id'           => $id,
             'title'        => $r['title'],
             'body'         => $r['body'],
+            'body_html'    => RichText::html((string) $r['body']),
+            'excerpt'      => RichText::plain((string) $r['body'], 160),
             'is_pinned'    => (bool) $r['is_pinned'],
             'status'       => $r['status'],
             'author'       => [
@@ -281,11 +289,11 @@ class AnnouncementController {
                 'label'         => $this->scope->label($t),
             ], $targets),
             'target_label' => $this->scope->labels($targets),
-            'attachment'   => $r['attachment_stored'] === null ? null : [
-                'name'         => $r['attachment_name'],
-                'extension'    => $r['attachment_ext'],
-                'size_label'   => FileStorage::sizeLabel((int) $r['attachment_size']),
-                'viewable'     => in_array($r['attachment_ext'], FileStorage::VIEWABLE, true),
+            'attachment'   => $r['attachment_stored_name'] === null ? null : [
+                'name'         => $r['attachment_original_name'],
+                'extension'    => $r['attachment_extension'],
+                'size_label'   => FileStorage::sizeLabel((int) $r['attachment_size_bytes']),
+                'viewable'     => in_array($r['attachment_extension'], FileStorage::VIEWABLE, true),
                 'view_url'     => "api/announcements.php?id=$id&action=view",
                 'download_url' => "api/announcements.php?id=$id&action=download",
             ],

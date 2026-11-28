@@ -68,7 +68,7 @@ class PostController {
         $rows = $this->posts->feed($classId, $onlyBlock, self::PAGE_SIZE + 1, ($page - 1) * self::PAGE_SIZE, $type);
         $hasMore = count($rows) > self::PAGE_SIZE;
         return new ApiResponse(true, 200, $rows === [] ? "No posts yet." : "Posts loaded.", [
-            'class'    => ['id' => $classId, 'name' => $this->access->classNames([$classId])[$classId] ?? ''],
+            'class'    => $this->access->classDetails($classId),
             'can_post' => $canManage,
             'page'     => $page,
             'has_more' => $hasMore,
@@ -253,7 +253,7 @@ class PostController {
         if (!$this->access->canManage($this->user, $classId)) {
             return false;
         }
-        return $this->user->is('dean') || (int) $post['author_id'] === $this->user->id;
+        return $this->user->is('college_dean') || (int) $post['author_id'] === $this->user->id;
     }
 
     private function canSee(array $post): bool {
