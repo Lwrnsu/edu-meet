@@ -81,6 +81,12 @@ public class ChatSessionStore {
         return sessions.size();
     }
 
+    // Used when a user logs out: forget the conversation immediately instead of
+    // waiting for the TTL.
+    public void remove(String sessionId) {
+        sessions.remove(sessionId);
+    }
+
     private static List<Integer> userTurnStarts(List<Map<String, Object>> history) {
         List<Integer> starts = new ArrayList<>();
         for (int i = 0; i < history.size(); i++) {

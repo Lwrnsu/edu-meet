@@ -73,6 +73,16 @@ class ChatSessionStoreTest {
         assertEquals(1, store.history("a").size());
     }
 
+    @Test
+    void removingASessionDropsItsHistory() {
+        ChatSessionStore store = new ChatSessionStore(10, 12, 60);
+        store.history("a").add(Map.of("role", "user", "parts", List.of(Map.of("text", "hi"))));
+
+        store.remove("a");
+
+        assertEquals(0, store.sessionCount());
+    }
+
     private static Map<String, Object> user(String text) {
         return Map.of("role", "user", "parts", List.of(Map.of("text", text)));
     }
