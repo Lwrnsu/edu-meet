@@ -1,20 +1,19 @@
 <?php
+// Write an API that when called, run the intended function to use.
+// Example, the user wants to create a Deck. Then there's an API here that
+// create an Object Deck then call the function of Create. After that, returns
+// an Object to Front-End (status, code, message, data(if there's any, optional unless
+// giving front-end a data like lists of decks, flashcards, etc.)).
 
-require_once __DIR__ . '/../../shared/ApiResponse.php';
-require_once __DIR__ . '/../../../classes/Flashcard.php';
-require_once __DIR__ . '/JsonImportController.php';
+// NOTE: I created a class ApiResponse for you to send response to the user
+//       after calling the API.
+
+require_once __DIR__ . '/../models/ApiResponse.php';
+require_once __DIR__ . '/../models/Flashcard.php';
 
 class FlashcardController
 {
-    private Flashcard $flashcard;
-    private JsonImportController $jsonImportController;
-
-    public function __construct(PDO $pdo)
-    {
-        $this->flashcard = new Flashcard($pdo);
-        $this->jsonImportController = new JsonImportController($pdo);
-    }
-
+    // Routing lives here: maps the request path to the matching function.
     public function handle(): void
     {
         header('Content-Type: application/json; charset=UTF-8');
@@ -27,91 +26,64 @@ class FlashcardController
             return;
         }
 
-        // Read route from the URL query parameter.
-        $path = '/' . trim($_GET['route'] ?? '', '/');
-
+        $path  = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
         $input = $this->readInput();
 
         switch ($path) {
-            case '/get/flashcards':
-                $this->getFlashcardsByDeck($input);
+            case '/api/php/get/flashcards':
+                $response = $this->getFlashcardsByDeck($input);
                 break;
-
-            case '/get/flashcard':
-                $this->getFlashcardById($input);
+            case '/api/php/get/flashcard':
+                $response = $this->getFlashcardById($input);
                 break;
-
-            case '/add/flashcards':
-                $this->createFlashcard($input);
+            case '/api/php/add/flashcards':
+                $response = $this->createFlashcard($input);
                 break;
-
-            case '/update/flashcards':
-                $this->updateFlashcard($input);
+            case '/api/php/update/flashcards':
+                $response = $this->updateFlashcard($input);
                 break;
-
-            case '/delete/flashcards':
-                $this->deleteFlashcard($input);
+            case '/api/php/delete/flashcards':
+                $response = $this->deleteFlashcard($input);
                 break;
-
-            case '/reorder/flashcards':
-                $this->reorderFlashcards($input);
+            case '/api/php/reorder/flashcards':
+                $response = $this->reorderFlashcards($input);
                 break;
-
-            case '/import/json':
-                $this->jsonImportController->import();
-                break;
-
             default:
-                $this->send(new ApiResponse(false, 404, 'Endpoint not found', []));
-                break;
+                $response = new ApiResponse(false, 404, 'Endpoint not found', []);
         }
+
+        $this->send($response);
     }
 
-    private function send(ApiResponse $res): void
-    {
-        http_response_code($res->code);
-        echo json_encode($res);
-    }
-
+    // GET reads the query string, POST also reads the JSON body.
     private function readInput(): array
     {
         $input = $_GET;
-
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $rawBody = file_get_contents('php://input');
-            $json = is_string($rawBody) && $rawBody !== ''
-                ? json_decode($rawBody, true)
-                : [];
-
-            $input = array_merge(
-                $input,
-                $_POST,
-                is_array($json) ? $json : []
-            );
+            $json = json_decode(file_get_contents('php://input'), true);
+            $input = array_merge($input, $_POST, is_array($json) ? $json : []);
         }
-
         return $input;
     }
 
-    // CREATE FLASHCARD
-    public function createFlashcard(array $input): void
+    // Outputs the ApiResponse as JSON.
+    private function send(ApiResponse $response): void
     {
-        if (
-            empty($input['deck_id']) ||
-            empty(trim($input['question'] ?? '')) ||
-            empty(trim($input['answer'] ?? ''))
-        ) {
-            $this->send(new ApiResponse(
-                false,
-                400,
-                'deck_id, question and answer are required',
-                []
-            ));
-            return;
+        http_response_code($response->code);
+        echo json_encode($response);
+    }
+
+    // CREATE FLASHCARD
+    // $input: deck_id, question, answer, explanation (optional), difficulty (optional)
+    public function createFlashcard(array $input): ApiResponse
+    {
+        if (empty($input['deck_id']) || empty(trim($input['question'] ?? '')) || empty(trim($input['answer'] ?? ''))) {
+            return new ApiResponse(false, 400, "deck_id, question and answer are required", []);
         }
 
         try {
-            $newId = $this->flashcard->create(
+            $flashcard = new Flashcard();
+            $newId = $flashcard->create(
                 (int) $input['deck_id'],
                 $input['question'],
                 $input['answer'],
@@ -119,84 +91,69 @@ class FlashcardController
                 $input['difficulty'] ?? 'medium'
             );
 
-            $this->send(new ApiResponse(
-                true,
-                201,
-                'Flashcard created successfully',
-                ['id' => $newId]
-            ));
+            return new ApiResponse(true, 201, "Flashcard created successfully", ['id' => $newId]);
         } catch (InvalidArgumentException $e) {
-            $this->send(new ApiResponse(false, 400, $e->getMessage(), []));
+            return new ApiResponse(false, 400, $e->getMessage(), []);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to create flashcard', []));
+            return new ApiResponse(false, 500, "Failed to create flashcard", []);
         }
     }
 
-    // GET ALL FLASHCARDS OF A DECK
-    public function getFlashcardsByDeck(array $input): void
+    // GET ALL FLASHCARDS OF A DECK (used by the reviewer)
+    // $input: deck_id
+    public function getFlashcardsByDeck(array $input): ApiResponse
     {
         if (empty($input['deck_id'])) {
-            $this->send(new ApiResponse(false, 400, 'deck_id is required', []));
-            return;
+            return new ApiResponse(false, 400, "deck_id is required", []);
         }
 
         try {
-            $cards = $this->flashcard->getByDeck(
-                (int) $input['deck_id']
-            );
+            $flashcard = new Flashcard();
+            $cards = $flashcard->getByDeck((int) $input['deck_id']);
 
-            $this->send(new ApiResponse(true, 200, 'Flashcards retrieved', $cards));
+            return new ApiResponse(true, 200, "Flashcards retrieved", $cards);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to retrieve flashcards', []));
+            return new ApiResponse(false, 500, "Failed to retrieve flashcards", []);
         }
     }
 
     // GET ONE FLASHCARD
-    public function getFlashcardById(array $input): void
+    // $input: id
+    public function getFlashcardById(array $input): ApiResponse
     {
         if (empty($input['id'])) {
-            $this->send(new ApiResponse(false, 400, 'id is required', []));
-            return;
+            return new ApiResponse(false, 400, "id is required", []);
         }
 
         try {
-            $card = $this->flashcard->getById((int) $input['id']);
+            $flashcard = new Flashcard();
+            $card = $flashcard->getById((int) $input['id']);
 
             if ($card === null) {
-                $this->send(new ApiResponse(false, 404, 'Flashcard not found', []));
-                return;
+                return new ApiResponse(false, 404, "Flashcard not found", []);
             }
-
-            $this->send(new ApiResponse(true, 200, 'Flashcard retrieved', $card));
+            return new ApiResponse(true, 200, "Flashcard retrieved", $card);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to retrieve flashcard', []));
+            return new ApiResponse(false, 500, "Failed to retrieve flashcard", []);
         }
     }
 
     // UPDATE FLASHCARD
-    public function updateFlashcard(array $input): void
+    // $input: id, question, answer, explanation (optional), difficulty (optional)
+    public function updateFlashcard(array $input): ApiResponse
     {
-        if (
-            empty($input['id']) ||
-            empty(trim($input['question'] ?? '')) ||
-            empty(trim($input['answer'] ?? ''))
-        ) {
-            $this->send(new ApiResponse(
-                false,
-                400,
-                'id, question and answer are required',
-                []
-            ));
-            return;
+        if (empty($input['id']) || empty(trim($input['question'] ?? '')) || empty(trim($input['answer'] ?? ''))) {
+            return new ApiResponse(false, 400, "id, question and answer are required", []);
         }
 
         try {
-            if ($this->flashcard->getById((int) $input['id']) === null) {
-                $this->send(new ApiResponse(false, 404, 'Flashcard not found', []));
-                return;
+            $flashcard = new Flashcard();
+
+            if ($flashcard->getById((int) $input['id']) === null) {
+                return new ApiResponse(false, 404, "Flashcard not found", []);
             }
 
-            $this->flashcard->update(
+            $flashcard->update(
                 (int) $input['id'],
                 $input['question'],
                 $input['answer'],
@@ -204,62 +161,52 @@ class FlashcardController
                 $input['difficulty'] ?? 'medium'
             );
 
-            $this->send(new ApiResponse(true, 200, 'Flashcard updated successfully', []));
+            return new ApiResponse(true, 200, "Flashcard updated successfully", []);
         } catch (InvalidArgumentException $e) {
-            $this->send(new ApiResponse(false, 400, $e->getMessage(), []));
+            return new ApiResponse(false, 400, $e->getMessage(), []);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to update flashcard', []));
+            return new ApiResponse(false, 500, "Failed to update flashcard", []);
         }
     }
 
     // DELETE FLASHCARD
-    public function deleteFlashcard(array $input): void
+    // $input: id
+    public function deleteFlashcard(array $input): ApiResponse
     {
         if (empty($input['id'])) {
-            $this->send(new ApiResponse(false, 400, 'id is required', []));
-            return;
+            return new ApiResponse(false, 400, "id is required", []);
         }
 
         try {
-            if ($this->flashcard->getById((int) $input['id']) === null) {
-                $this->send(new ApiResponse(false, 404, 'Flashcard not found', []));
-                return;
+            $flashcard = new Flashcard();
+
+            if ($flashcard->getById((int) $input['id']) === null) {
+                return new ApiResponse(false, 404, "Flashcard not found", []);
             }
 
-            $this->flashcard->delete((int) $input['id']);
+            $flashcard->delete((int) $input['id']);
 
-            $this->send(new ApiResponse(true, 200, 'Flashcard deleted successfully', []));
+            return new ApiResponse(true, 200, "Flashcard deleted successfully", []);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to delete flashcard', []));
+            return new ApiResponse(false, 500, "Failed to delete flashcard", []);
         }
     }
 
-    // REORDER FLASHCARDS
-    public function reorderFlashcards(array $input): void
+    // REORDER FLASHCARDS IN A DECK
+    // $input: deck_id, card_ids (array of flashcard ids in the new order)
+    public function reorderFlashcards(array $input): ApiResponse
     {
-        if (
-            empty($input['deck_id']) ||
-            empty($input['card_ids']) ||
-            !is_array($input['card_ids'])
-        ) {
-            $this->send(new ApiResponse(
-                false,
-                400,
-                'deck_id and card_ids (array) are required',
-                []
-            ));
-            return;
+        if (empty($input['deck_id']) || empty($input['card_ids']) || !is_array($input['card_ids'])) {
+            return new ApiResponse(false, 400, "deck_id and card_ids (array) are required", []);
         }
 
         try {
-            $this->flashcard->reorder(
-                $input['card_ids'],
-                (int) $input['deck_id']
-            );
+            $flashcard = new Flashcard();
+            $flashcard->reorder($input['card_ids'], (int) $input['deck_id']);
 
-            $this->send(new ApiResponse(true, 200, 'Flashcards reordered successfully', []));
+            return new ApiResponse(true, 200, "Flashcards reordered successfully", []);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(false, 500, 'Failed to reorder flashcards', []));
+            return new ApiResponse(false, 500, "Failed to reorder flashcards", []);
         }
     }
 }
