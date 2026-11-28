@@ -23,12 +23,21 @@ import org.springframework.web.client.RestClient;
 
 class PhpLoginClientTest {
 
+<<<<<<< HEAD
 	private static final String LOGIN_URL = "http://localhost/edu-meet/backend/edu-meet/php/api/auth/login.php";
 	private static final String SYSTEM_ADMIN_LOGIN_URL =
 			"http://localhost/edu-meet/backend/edu-meet/php/api/auth/system_admin_login.php";
 	private static final String SCHOOL_LOGIN_URL =
 			"http://localhost/edu-meet/backend/edu-meet/php/api/auth/school_login.php";
 	private static final String SIGNUP_URL = "http://localhost/edu-meet/backend/edu-meet/php/api/auth/signup.php";
+=======
+	private static final String LOGIN_URL = "http://localhost/edu-meet/php/api/auth/login.php";
+	private static final String SYSTEM_ADMIN_LOGIN_URL =
+			"http://localhost/edu-meet/php/api/auth/system_admin_login.php";
+	private static final String SCHOOL_LOGIN_URL =
+			"http://localhost/edu-meet/php/api/auth/school_login.php";
+	private static final String SIGNUP_URL = "http://localhost/edu-meet/php/api/auth/signup.php";
+>>>>>>> parent of 460f86c (Delete backend/edu-meet/src/test directory)
 
 	private MockRestServiceServer server;
 	private PhpLoginClient client;
