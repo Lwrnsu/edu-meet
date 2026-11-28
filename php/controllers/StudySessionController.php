@@ -30,22 +30,22 @@ class StudySessionController
         $input = $this->readInput();
 
         switch ($path) {
-            case '/api/start/session':
+            case '/api/php/start/session':
                 $response = $this->startSession($input);
                 break;
-            case '/api/record/session-answer':
+            case '/api/php/record/session-answer':
                 $response = $this->recordAnswer($input);
                 break;
-            case '/api/complete/session':
+            case '/api/php/complete/session':
                 $response = $this->completeSession($input);
                 break;
-            case '/api/abandon/session':
+            case '/api/php/abandon/session':
                 $response = $this->abandonSession($input);
                 break;
-            case '/api/get/session':
+            case '/api/php/get/session':
                 $response = $this->getSession($input);
                 break;
-            case '/api/get/session-answers':
+            case '/api/php/get/session-answers':
                 $response = $this->getSessionAnswers($input);
                 break;
             default:

@@ -30,22 +30,22 @@ class FlashcardController
         $input = $this->readInput();
 
         switch ($path) {
-            case '/api/get/flashcards':
+            case '/api/php/get/flashcards':
                 $response = $this->getFlashcardsByDeck($input);
                 break;
-            case '/api/get/flashcard':
+            case '/api/php/get/flashcard':
                 $response = $this->getFlashcardById($input);
                 break;
-            case '/api/add/flashcards':
+            case '/api/php/add/flashcards':
                 $response = $this->createFlashcard($input);
                 break;
-            case '/api/update/flashcards':
+            case '/api/php/update/flashcards':
                 $response = $this->updateFlashcard($input);
                 break;
-            case '/api/delete/flashcards':
+            case '/api/php/delete/flashcards':
                 $response = $this->deleteFlashcard($input);
                 break;
-            case '/api/reorder/flashcards':
+            case '/api/php/reorder/flashcards':
                 $response = $this->reorderFlashcards($input);
                 break;
             default:
