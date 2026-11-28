@@ -585,7 +585,7 @@ export default function ManageSchoolsSection() {
 
       <div className="admin-schools__table-wrap">
         <div className="admin-schools__table-head" role="row">
-          <span className="admin-schools__header-filter" ref={nameFilterRef}>
+          <span className="admin-schools__col-name admin-schools__header-filter" ref={nameFilterRef}>
             <button
               ref={nameButtonRef}
               type="button"
@@ -601,7 +601,10 @@ export default function ManageSchoolsSection() {
               <IconCaret />
             </button>
           </span>
-          <span className="admin-schools__header-filter" ref={statusFilterRef}>
+          <span
+            className="admin-schools__col-status admin-schools__header-filter"
+            ref={statusFilterRef}
+          >
             <button
               ref={statusButtonRef}
               type="button"
@@ -619,17 +622,17 @@ export default function ManageSchoolsSection() {
               <IconCaret />
             </button>
           </span>
-          <span>Action</span>
+          <span className="admin-schools__col-actions">Action</span>
         </div>
 
         <ul className="admin-schools__table-body">
           {filteredSchools.map((school) => (
             <li key={school.id} className="admin-schools__row">
-              <span className="admin-schools__name">{school.name}</span>
-              <span className="admin-schools__status">
+              <span className="admin-schools__col-name admin-schools__name">{school.name}</span>
+              <span className="admin-schools__col-status admin-schools__status">
                 {school.status === 'pending' ? 'Pending' : 'Approved'}
               </span>
-              <span className="admin-schools__actions">
+              <span className="admin-schools__col-actions admin-schools__actions">
                 {school.status === 'pending' ? (
                   <button
                     type="button"

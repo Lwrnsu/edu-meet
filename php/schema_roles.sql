@@ -18,3 +18,40 @@ CREATE TABLE IF NOT EXISTS roles (
 --   ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status,
 --   ADD COLUMN updated_at DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP AFTER created_at,
 --   ADD COLUMN deleted_at DATETIME DEFAULT NULL AFTER updated_at;
+
+-- Idempotent role seeds required by Auth / Signup
+INSERT INTO roles (name, description, status)
+SELECT 'SystemAdmin', 'Platform system administrator', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'SystemAdmin' AND deleted_at IS NULL
+);
+
+INSERT INTO roles (name, description, status)
+SELECT 'SchoolAdmin', 'College / school administrator', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'SchoolAdmin' AND deleted_at IS NULL
+);
+
+INSERT INTO roles (name, description, status)
+SELECT 'CollegeDean', 'College dean', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'CollegeDean' AND deleted_at IS NULL
+);
+
+INSERT INTO roles (name, description, status)
+SELECT 'ProgramChair', 'Program chair', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'ProgramChair' AND deleted_at IS NULL
+);
+
+INSERT INTO roles (name, description, status)
+SELECT 'Faculty', 'Faculty member', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'Faculty' AND deleted_at IS NULL
+);
+
+INSERT INTO roles (name, description, status)
+SELECT 'Student', 'Student', 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM roles WHERE name = 'Student' AND deleted_at IS NULL
+);

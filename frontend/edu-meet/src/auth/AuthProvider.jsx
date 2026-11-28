@@ -6,7 +6,7 @@ export const ADMIN_LOGIN_PATH = '/login/system_admin'
 export const ADMIN_APP_PATH = '/system_admin'
 export const USER_LOGIN_PATH = '/login'
 export const USER_PORTAL_PATH = '/portal'
-export const SIGNUP_PATH = '/'
+export const SIGNUP_PATH = '/signup'
 export const FORGOT_PATH = '/forgot'
 export const RESET_PATH = '/reset'
 
@@ -32,6 +32,7 @@ function isAdminAppPath(pathname) {
 function isPublicAuthPath(pathname) {
   const path = normalizePath(pathname)
   return (
+    path === '/' ||
     path === SIGNUP_PATH ||
     path === USER_LOGIN_PATH ||
     path === ADMIN_LOGIN_PATH ||
@@ -138,7 +139,7 @@ export function AuthProvider({ children }) {
     const path = normalizePath(location.pathname)
     if (path === ADMIN_LOGIN_PATH) {
       setForgotReturnView('admin-login')
-    } else if (path === USER_LOGIN_PATH) {
+    } else if (path === USER_LOGIN_PATH || path === '/') {
       setForgotReturnView('login')
     }
   }, [location.pathname])

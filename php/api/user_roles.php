@@ -8,7 +8,12 @@ require_once __DIR__ . '/../controllers/UserRoleController.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
-AuthMiddleware::requireAuth();
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+if ($method === 'GET') {
+    AuthMiddleware::requireAnyRole(['system_admin', 'college_admin']);
+} else {
+    AuthMiddleware::requireAnyRole(['system_admin']);
+}
 
 $id = null;
 if (isset($_GET['id']) && $_GET['id'] !== '') {
@@ -27,4 +32,4 @@ if (isset($_GET['user_id']) && $_GET['user_id'] !== '') {
 }
 
 $controller = new UserRoleController();
-$controller->handle($_SERVER['REQUEST_METHOD'] ?? 'GET', $id, $userId);
+$controller->handle($method, $id, $userId);

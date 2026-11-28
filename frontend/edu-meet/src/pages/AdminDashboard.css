@@ -670,6 +670,7 @@
 }
 
 .admin-schools__table-wrap {
+  --admin-schools-cols: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   display: grid;
   gap: 0;
   border-top: 1px solid var(--stroke);
@@ -678,9 +679,11 @@
 .admin-schools__table-head,
 .admin-schools__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 7.5rem 6.75rem;
+  grid-template-columns: var(--admin-schools-cols);
   align-items: center;
-  gap: 1rem;
+  justify-items: stretch;
+  column-gap: 1.25rem;
+  row-gap: 0;
   width: 100%;
   padding: 0.85rem 0;
   border-bottom: 1px solid var(--stroke);
@@ -694,9 +697,17 @@
   letter-spacing: 0.02em;
 }
 
+.admin-schools__col-name,
+.admin-schools__col-status,
+.admin-schools__col-actions {
+  min-width: 0;
+  width: 100%;
+}
+
 .admin-schools__header-filter {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  align-items: center;
 }
 
 .admin-schools__sort {
@@ -773,20 +784,26 @@
   color: var(--ink);
 }
 
-.admin-schools__table-head > :nth-child(2),
-.admin-schools__status {
-  text-align: left;
-  justify-self: start;
+.admin-schools__col-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: stretch;
+  text-align: center;
 }
 
-.admin-schools__table-head > :nth-child(3),
-.admin-schools__actions {
-  justify-self: start;
+.admin-schools__col-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: stretch;
+  text-align: center;
 }
 
 .admin-schools__actions {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
 }
 
@@ -1642,8 +1659,19 @@
 
   .admin-schools__table-head,
   .admin-schools__row {
-    grid-template-columns: 1fr;
+    --admin-schools-cols: 1fr;
+    grid-template-columns: var(--admin-schools-cols);
     gap: 0.35rem;
+  }
+
+  .admin-schools__col-status,
+  .admin-schools__col-actions {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .admin-schools__actions {
+    justify-content: flex-start;
   }
 
   .admin-schools-modal__stats {

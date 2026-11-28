@@ -5,7 +5,6 @@ import {
   createCollegeUser,
   loadCollegeUsers,
   removeCollegeUser,
-  roleRequiresDepartment,
   updateCollegeUser,
 } from '../api/collegeUsersAdmin'
 import { isLettersOnlyName } from '../api/nameValidation'
@@ -521,19 +520,12 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     if (!roleName) {
       return { ok: false, message: 'Role is required.' }
     }
-    if (
-      roleRequiresDepartment(roleName) &&
-      departments.length > 0 &&
-      (departmentId === '' || departmentId == null)
-    ) {
-      return { ok: false, message: 'Department is required for this role.' }
-    }
 
     return {
       ok: true,
       value: {
         roleName,
-        departmentId: departmentId === '' ? null : departmentId,
+        departmentId: departmentId === '' || departmentId == null ? null : departmentId,
       },
     }
   }

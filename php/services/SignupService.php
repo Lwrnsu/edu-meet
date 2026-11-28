@@ -1,11 +1,11 @@
 <?php
 
 require_once __DIR__ . '/../config/Database.php';
-require_once __DIR__ . '/../repository/UserRepository.php';
-require_once __DIR__ . '/../repository/SchoolRepository.php';
-require_once __DIR__ . '/../repository/SchoolMembershipRepository.php';
-require_once __DIR__ . '/../repository/RoleRepository.php';
-require_once __DIR__ . '/../repository/UserRoleRepository.php';
+require_once __DIR__ . '/../repositories/UserRepository.php';
+require_once __DIR__ . '/../repositories/SchoolRepository.php';
+require_once __DIR__ . '/../repositories/SchoolMembershipRepository.php';
+require_once __DIR__ . '/../repositories/RoleRepository.php';
+require_once __DIR__ . '/../repositories/UserRoleRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 
 class SignupService

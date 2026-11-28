@@ -149,15 +149,29 @@ class AuthController
     {
         $fromCookie = CookieHelper::get($this->cookies['access_name']);
         if ($fromCookie !== null) {
-            return $fromCookie;
+            return $this->stripBearer($fromCookie);
+        }
+
+        $fromAlias = CookieHelper::get('edu_meet_access');
+        if ($fromAlias !== null) {
+            return $this->stripBearer($fromAlias);
         }
 
         $fromBody = $payload['access_token'] ?? null;
         if (is_string($fromBody) && $fromBody !== '') {
-            return $fromBody;
+            return $this->stripBearer($fromBody);
         }
 
         return $this->getBearerToken();
+    }
+
+    private function stripBearer(string $value): string
+    {
+        if (preg_match('/^Bearer\s+(\S+)$/i', trim($value), $matches) === 1) {
+            return $matches[1];
+        }
+
+        return trim($value);
     }
 
     private function getBearerToken(): ?string
@@ -191,11 +205,23 @@ class AuthController
         }
 
         // Include tokens in JSON so Java proxy / token-based admin clients can persist the session.
-        return [
+        $response = [
             'user' => $session['user'],
             'access_token' => $session['access_token'],
             'refresh_token' => $session['refresh_token'],
         ];
+
+        if (isset($session['role'])) {
+            $response['role'] = $session['role'];
+        }
+        if (isset($session['role_label'])) {
+            $response['role_label'] = $session['role_label'];
+        }
+        if (isset($session['school'])) {
+            $response['school'] = $session['school'];
+        }
+
+        return $response;
     }
 
     private function clearCookies(): void

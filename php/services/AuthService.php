@@ -1,11 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../repository/UserRepository.php';
-require_once __DIR__ . '/../repository/UserRoleRepository.php';
-require_once __DIR__ . '/../repository/SchoolMembershipRepository.php';
-require_once __DIR__ . '/../repository/SchoolRepository.php';
+require_once __DIR__ . '/../repositories/UserRepository.php';
+require_once __DIR__ . '/../repositories/UserRoleRepository.php';
+require_once __DIR__ . '/../repositories/SchoolMembershipRepository.php';
+require_once __DIR__ . '/../repositories/SchoolRepository.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/JwtHelper.php';
+require_once __DIR__ . '/../helpers/AuthRoles.php';
 
 class AuthService
 {
@@ -14,16 +15,6 @@ class AuthService
     private SchoolMembershipRepository $membershipRepository;
     private SchoolRepository $schoolRepository;
     private array $jwtConfig;
-
-    /** @var array<string, array{priority:int, key:string, label:string}> */
-    private const SCHOOL_ROLE_MAP = [
-        'schooladmin' => ['priority' => 1, 'key' => 'college_admin', 'label' => 'College Admin'],
-        'collegeadmin' => ['priority' => 1, 'key' => 'college_admin', 'label' => 'College Admin'],
-        'collegedean' => ['priority' => 2, 'key' => 'college_dean', 'label' => 'College Dean'],
-        'programchair' => ['priority' => 3, 'key' => 'program_chair', 'label' => 'Program Chair'],
-        'faculty' => ['priority' => 4, 'key' => 'faculty', 'label' => 'Faculty'],
-        'student' => ['priority' => 5, 'key' => 'student', 'label' => 'Student'],
-    ];
 
     public function __construct(
         ?UserRepository $repository = null,
@@ -61,7 +52,11 @@ class AuthService
             throw new ApiException('Not authorized as system admin', 403);
         }
 
-        return $this->startSession($user);
+        return $this->startSession($user, [
+            'role' => 'system_admin',
+            'role_label' => 'System Admin',
+            'school' => null,
+        ]);
     }
 
     public function loginSchoolPortal(array $payload): array
@@ -117,8 +112,7 @@ class AuthService
     private function hasSystemAdminRole(int $userId): bool
     {
         foreach ($this->userRoleRepository->findByUserId($userId) as $row) {
-            $normalized = strtolower(preg_replace('/[\s_-]+/', '', (string) ($row['role_name'] ?? '')));
-            if ($normalized === 'systemadmin') {
+            if (AuthRoles::normalize((string) ($row['role_name'] ?? '')) === 'systemadmin') {
                 return true;
             }
         }
@@ -127,7 +121,7 @@ class AuthService
     }
 
     /**
-     * @return array{role:string, role_label:string, school:array{school_id:int, name:string}}|null
+     * @return array{role:string, role_label:string, school:?array{school_id:int, name:string}}|null
      */
     private function resolveSchoolPortalContext(int $userId): ?array
     {
@@ -138,8 +132,8 @@ class AuthService
                 continue;
             }
 
-            $normalized = strtolower(preg_replace('/[\s_-]+/', '', (string) ($row['role_name'] ?? '')));
-            if (!isset(self::SCHOOL_ROLE_MAP[$normalized])) {
+            $normalized = AuthRoles::normalize((string) ($row['role_name'] ?? ''));
+            if (!isset(AuthRoles::SCHOOL_ROLE_MAP[$normalized])) {
                 continue;
             }
 
@@ -153,7 +147,7 @@ class AuthService
                 continue;
             }
 
-            $mapped = self::SCHOOL_ROLE_MAP[$normalized];
+            $mapped = AuthRoles::SCHOOL_ROLE_MAP[$normalized];
             $candidate = [
                 'priority' => $mapped['priority'],
                 'role' => $mapped['key'],
@@ -180,6 +174,24 @@ class AuthService
         ];
     }
 
+    /**
+     * Resolve portal role context for ACL / identity when JWT omits role.
+     *
+     * @return array{role:string, role_label:string, school:?array{school_id:int, name:string}}|null
+     */
+    public function resolveContextForUser(int $userId): ?array
+    {
+        if ($this->hasSystemAdminRole($userId)) {
+            return [
+                'role' => 'system_admin',
+                'role_label' => 'System Admin',
+                'school' => null,
+            ];
+        }
+
+        return $this->resolveSchoolPortalContext($userId);
+    }
+
     public function refresh(?string $refreshToken, ?string $oldAccessToken): array
     {
         throw new ApiException('Session refresh is handled by Spring Boot', 401);
@@ -192,22 +204,35 @@ class AuthService
 
     private function startSession(array $user, ?array $context = null): array
     {
-        $accessToken = $this->createAccessToken($user);
+        $accessToken = $this->createAccessToken($user, $context);
         $refreshToken = bin2hex(random_bytes(32));
 
         return $this->sessionResult($accessToken, $refreshToken, $user, $context);
     }
 
-    private function createAccessToken(array $user): string
+    private function createAccessToken(array $user, ?array $context = null): string
     {
         $now = time();
-
-        return JwtHelper::encode([
+        $payload = [
             'sub' => (int) $user['user_id'],
             'email' => $user['email'],
             'iat' => $now,
             'exp' => $now + (int) $this->jwtConfig['expiration_seconds'],
-        ], $this->jwtConfig['secret']);
+        ];
+
+        if ($context !== null && isset($context['role'])) {
+            $appRole = AuthRoles::toAppRole((string) $context['role']);
+            if ($appRole !== null) {
+                $payload['role'] = $appRole;
+            }
+
+            $schoolId = (int) ($context['school']['school_id'] ?? 0);
+            if ($schoolId > 0) {
+                $payload['school_id'] = $schoolId;
+            }
+        }
+
+        return JwtHelper::encode($payload, $this->jwtConfig['secret']);
     }
 
     private function sessionResult(
@@ -235,10 +260,13 @@ class AuthService
         if ($context !== null) {
             $result['role'] = $context['role'];
             $result['role_label'] = $context['role_label'];
-            $result['school'] = $context['school'];
             $result['user']['role'] = $context['role'];
             $result['user']['role_label'] = $context['role_label'];
-            $result['user']['school'] = $context['school'];
+
+            if ($context['school'] !== null) {
+                $result['school'] = $context['school'];
+                $result['user']['school'] = $context['school'];
+            }
         }
 
         return $result;

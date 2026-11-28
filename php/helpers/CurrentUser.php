@@ -1,10 +1,12 @@
 <?php
 /*
-    The logged-in user making the request, read from the PHP session.
+    The logged-in user making the request.
 
-    The Authentication module must put user_id and role in the session
-    after login. Until it does, every request gets 401 "Please log in first."
+    Prefer PHP session values set by Authentication. If missing (SPA Bearer flow),
+    resolve identity via AuthIdentity without changing Group 7 controllers.
 */
+require_once __DIR__ . '/AuthIdentity.php';
+
 class CurrentUser {
     public const ROLES = ['student', 'faculty', 'program_chair', 'dean', 'college_admin', 'system_admin'];
     public const ADMINS = ['college_admin', 'system_admin'];
@@ -24,10 +26,23 @@ class CurrentUser {
         }
         $id = $_SESSION['user_id'] ?? null;
         $role = $_SESSION['role'] ?? null;
-        if (!is_numeric($id) || !in_array($role, self::ROLES, true)) {
+        if (is_numeric($id) && in_array($role, self::ROLES, true)) {
+            return new self((int) $id, (string) $role);
+        }
+
+        $identity = AuthIdentity::resolve();
+        if ($identity === null || $identity['app_role'] === null) {
             return null;
         }
-        return new self((int) $id, (string) $role);
+
+        if (!in_array($identity['app_role'], self::ROLES, true)) {
+            return null;
+        }
+
+        $_SESSION['user_id'] = $identity['user_id'];
+        $_SESSION['role'] = $identity['app_role'];
+
+        return new self($identity['user_id'], $identity['app_role']);
     }
 
     public function isAdmin(): bool {
