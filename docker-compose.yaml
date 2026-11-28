@@ -11,6 +11,10 @@ services:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: chat
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SPRING_DATA_MONGODB_AUTO_INDEX_CREATION: "false"
     depends_on:
       mysql:
         condition: service_healthy

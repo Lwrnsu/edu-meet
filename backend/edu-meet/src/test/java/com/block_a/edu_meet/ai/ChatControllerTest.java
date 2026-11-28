@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
@@ -151,6 +152,21 @@ class ChatControllerTest {
                 controller(gemini).chat(new ChatController.ChatRequest("s-none", "hi")).sources());
     }
 
+    @Test
+    void rejectsMoreThanFiveFiles() {
+        List<MultipartFile> files = java.util.stream.IntStream.rangeClosed(1, 6)
+                .mapToObj(i -> (MultipartFile) new MockMultipartFile(
+                        "file", "f" + i + ".pdf", "application/pdf",
+                        "%PDF-1.4".getBytes(StandardCharsets.UTF_8)))
+                .toList();
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> controller(mock(GeminiChatService.class)).chat("mp-6", "summarize", files));
+
+        assertEquals(413, e.getStatusCode().value());
+        assertTrue(e.getReason().contains("5"));
+    }
+
     @SuppressWarnings("unchecked")
     private static String textOf(Map<String, Object> turn) {
         List<Map<String, Object>> parts = (List<Map<String, Object>>) turn.get("parts");
@@ -166,6 +182,7 @@ class ChatControllerTest {
                 sources,
                 new ObjectMapper(),
                 50,
-                1024);
+                1024,
+                5);
     }
 }

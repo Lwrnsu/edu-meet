@@ -1,6 +1,8 @@
 package com.block_a.edu_meet.security;
 
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,9 +53,13 @@ public class SecurityConfig {
         }
 
         @Bean
-        CorsConfigurationSource corsConfigurationSource() {
+        CorsConfigurationSource corsConfigurationSource(
+                        @Value("${app.frontend.allowed-origins}") String allowedOrigins) {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOriginPatterns(List.of("*"));
+                config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isEmpty())
+                                .toList());
                 config.setAllowedMethods(List.of("*"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setExposedHeaders(List.of("*"));

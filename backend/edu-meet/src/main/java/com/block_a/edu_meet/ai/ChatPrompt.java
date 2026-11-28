@@ -84,12 +84,6 @@ public class ChatPrompt {
             - If the tool returns an error, tell the user in one short sentence what went wrong
               and what to do instead. "No selectable text" almost always means a scanned PDF:
               ask them to upload a text-based PDF or the original document instead.
-            - Then answer with a JSON array of reviewer items:
-              [{"answer": "<term>", "question": "<definition>"}]
-            - "answer" is the term being defined; it usually comes before "is", "are", "-",
-              or ":".
-            - "question" is the definition of that term. Keep it to one sentence.
-            - If part of the PDF was left out, put one short sentence saying so before the array.
-              Otherwise give the array on its own. Never wrap it in markdown fences.
+            - After submitReviewer succeeds, reply with one short sentence; do not repeat the items.
             """;
 }

@@ -31,6 +31,7 @@ public class ChatController {
     private final ObjectMapper json;
     private final int maxMessageChars;
     private final long maxPdfBytes;
+    private final int maxFiles;
 
     public ChatController(GeminiChatService gemini,
                           ChatSessionStore sessions,
@@ -39,7 +40,8 @@ public class ChatController {
                           SourceCollector sources,
                           ObjectMapper json,
                           @Value("${edu-meet.chat.max-message-chars:4000}") int maxMessageChars,
-                          @Value("${edu-meet.chat.max-pdf-bytes:8388608}") long maxPdfBytes) {
+                          @Value("${edu-meet.chat.max-pdf-bytes:8388608}") long maxPdfBytes,
+                          @Value("${edu-meet.chat.max-files:5}") int maxFiles) {
         this.gemini = gemini;
         this.sessions = sessions;
         this.attachment = attachment;
@@ -48,6 +50,7 @@ public class ChatController {
         this.json = json;
         this.maxMessageChars = maxMessageChars;
         this.maxPdfBytes = maxPdfBytes;
+        this.maxFiles = maxFiles;
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -55,7 +58,7 @@ public class ChatController {
         String sessionId = requireSessionId(req.sessionId());
         String message = requireMessage(req.message());
 
-        return respond(sessionId, message, false);
+        return respond(sessionId, message, 0);
     }
 
     // Signing out should erase the conversation, not leave it in RAM until the
@@ -83,7 +86,7 @@ public class ChatController {
             if (!uploaded.isEmpty()) {
                 attachment.set(uploaded);
             }
-            return respond(session, text, !uploaded.isEmpty());
+            return respond(session, text, uploaded.size());
         } finally {
             // Always release the files, whether the model answered or not.
             attachment.clear();
@@ -93,7 +96,7 @@ public class ChatController {
 
     // One user turn: shorten the history, append, ask the model, and roll the
     // turn back if the model fails so a broken exchange cannot poison the session.
-    private ChatResponse respond(String sessionId, String message, boolean withPdf) {
+    private ChatResponse respond(String sessionId, String message, int pdfCount) {
         List<Map<String, Object>> history = sessions.history(sessionId);
 
         synchronized (history) {
@@ -101,9 +104,9 @@ public class ChatController {
             int start = history.size();
 
             // The attachment itself is exposed through the tool, never as a path.
-            String userText = withPdf
-                    ? message + "\n\n[The user attached one PDF to this message.]"
-                    : message;
+            String userText = pdfCount == 0
+                    ? message
+                    : message + "\n\n" + attachmentNote(pdfCount);
 
             try {
                 history.add(Map.of(
@@ -146,6 +149,12 @@ public class ChatController {
         return note == null || note.isBlank() ? items : note + "\n" + items;
     }
 
+    private static String attachmentNote(int count) {
+        return count == 1
+                ? "[The user attached one PDF to this message.]"
+                : "[The user attached " + count + " PDFs to this message.]";
+    }
+
     private String requireSessionId(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionId is required");
@@ -170,6 +179,24 @@ public class ChatController {
     private List<Path> saveTempFiles(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             return List.of();
+        }
+
+        if (files.size() > maxFiles) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "Attach at most " + maxFiles + " PDFs.");
+        }
+
+        long totalBytes = 0;
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                totalBytes += file.getSize();
+            }
+        }
+        long maxTotalBytes = (long) maxFiles * maxPdfBytes;
+        if (totalBytes > maxTotalBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "The PDFs total more than " + (maxTotalBytes / (1024 * 1024))
+                            + " MB. Attach fewer or smaller files.");
         }
 
         List<Path> saved = new ArrayList<>(files.size());

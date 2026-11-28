@@ -22,10 +22,13 @@ public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    private final String maxUploadSize;
+    private final int maxFiles;
+    private final long maxPdfBytes;
 
-    public ApiExceptionHandler(@Value("${spring.servlet.multipart.max-file-size:8MB}") String maxUploadSize) {
-        this.maxUploadSize = maxUploadSize;
+    public ApiExceptionHandler(@Value("${edu-meet.chat.max-files:5}") int maxFiles,
+                               @Value("${edu-meet.chat.max-pdf-bytes:8388608}") long maxPdfBytes) {
+        this.maxFiles = maxFiles;
+        this.maxPdfBytes = maxPdfBytes;
     }
 
     // Validation problems keep their own status and message.
@@ -38,8 +41,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public Map<String, String> uploadTooLarge(MaxUploadSizeExceededException e) {
-        log.warn("Rejected an upload larger than {}", maxUploadSize);
-        return Map.of("error", "The file is too large. Please attach a PDF of " + maxUploadSize + " or less.");
+        long mb = maxPdfBytes / (1024 * 1024);
+        log.warn("Rejected an upload above {} files / {} MB each", maxFiles, mb);
+        return Map.of("error", "Up to " + maxFiles + " PDFs, " + mb
+                + " MB each (" + (maxFiles * mb) + " MB total). "
+                + "Please attach fewer or smaller files.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
