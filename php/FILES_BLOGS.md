@@ -100,6 +100,6 @@ The screens are in `frontend/edu-meet/src/features/files-and-posts/` (routes add
 The notification bell (`NotificationBell`) sits in the top bar of these pages and can be reused in other headers.
 
 React calls PHP at `/php/...` (change with `VITE_PHP_API_URL`). In development `vite.config.js`
-forwards `/php` to `PHP_API_TARGET` (default `http://localhost:8000`, the `php` service);
+forwards `/php` to `VITE_PHP_TARGET` (default `http://php:8000`, the `php` service);
 in production the `Caddyfile` does the same. The PHP session cookie identifies the user,
 so the PHP login session must be set (see Setup step 3).
