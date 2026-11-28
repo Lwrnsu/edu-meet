@@ -32,7 +32,7 @@ class AnnouncementScope {
     private const ROLE_SCOPES = [
         'system_admin'  => self::SCOPES,
         'college_admin' => self::SCOPES,
-        'dean'          => ['department', 'program', 'program_year', 'section'],
+        'college_dean'  => ['department', 'program', 'program_year', 'section'],
         'program_chair' => ['program', 'program_year', 'section'],
         'faculty'       => ['section'],
         'student'       => [],
@@ -185,7 +185,7 @@ class AnnouncementScope {
             $departments = array_keys($this->departments());
             $programs = array_keys($this->programs());
             $sections = array_keys($this->sections());
-        } elseif ($user->is('dean')) {
+        } elseif ($user->is('college_dean')) {
             $deptId = $this->access->deanDepartmentId($user->id);
             $departments = $deptId ? [$deptId] : [];
             $programs = array_keys(array_filter($this->programs(), fn($p) => $p['department_id'] === $deptId));
@@ -244,7 +244,7 @@ class AnnouncementScope {
             ?? ($t['block_id'] !== null ? $this->sections()[$t['block_id']]['program']['id'] : null);
 
         $ok = match ($user->role) {
-            'dean'          => $deptOf($t) !== null && $deptOf($t) === $this->access->deanDepartmentId($user->id),
+            'college_dean'  => $deptOf($t) !== null && $deptOf($t) === $this->access->deanDepartmentId($user->id),
             'program_chair' => $progOf($t) !== null && $progOf($t) === $this->access->chairProgramId($user->id),
             'faculty'       => in_array($t['block_id'], $this->access->facultyBlockIds($user->id), true),
             default         => false,

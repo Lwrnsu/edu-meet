@@ -8,6 +8,9 @@
     Announcement posted           students in the chosen sections
     Blog posted                   students in the chosen sections
     School announcement published students its targets reach (dashboard)
+    Task posted                   every student of the class
+    Task graded                   that student
+    Work handed in                the faculty who posted the task
     (The person posting is never notified about their own post.)
 
     Other modules (e.g. Activities in the Classes module) can call
@@ -58,6 +61,28 @@ class Notifier {
             'New announcement', $title . ' · ' . $audience,
             "announcements.php?id=$announcementId", $this->senderId
         );
+    }
+
+    // New task: every student of the class.
+    public function taskPosted(int $classId, int $taskId, string $title, string $deadline): int {
+        $due = date('M j, g:i A', strtotime($deadline));
+        return $this->notifyClass($classId, [], 'task', 'New task',
+            "$title · due $due · " . $this->className($classId),
+            "tasks.php?class_id=$classId&task_id=$taskId");
+    }
+
+    // A student's work was graded: only that student.
+    public function taskGraded(int $classId, int $taskId, int $studentId, string $title, string $score): int {
+        return $this->notifications->send([$studentId], 'grade', 'Task graded',
+            "$title · $score · " . $this->className($classId),
+            "tasks.php?class_id=$classId&task_id=$taskId", $this->senderId);
+    }
+
+    // A student handed in work: the faculty who posted the task.
+    public function taskSubmitted(int $classId, int $taskId, int $facultyId, string $studentName, string $title): int {
+        return $this->notifications->send([$facultyId], 'submission', 'New submission',
+            "$studentName handed in $title · " . $this->className($classId),
+            "tasks.php?class_id=$classId&task_id=$taskId", $this->senderId);
     }
 
     private function className(int $classId): string {

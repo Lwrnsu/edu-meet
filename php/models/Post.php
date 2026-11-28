@@ -141,7 +141,7 @@ class Post {
         $stmt = $this->pdo->prepare("
             SELECT a.post_id, " . ClassAccess::SECTION_SELECT . "
             FROM post_audience a
-            INNER JOIN blocks b ON b.id = a.block_id
+            INNER JOIN blocks b ON b.block_id = a.block_id
             " . ClassAccess::SECTION_JOIN . "
             WHERE a.post_id IN ($marks)
             ORDER BY " . ClassAccess::SECTION_ORDER

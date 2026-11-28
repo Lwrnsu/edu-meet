@@ -1,12 +1,12 @@
 <?php
 /*
     notifications table: the bell in the header (N1–N3).
-    See database/files_blogs.sql.
+    Table is in db.sql (PART 5).
 */
 require_once __DIR__ . "/../config/Database.php";
 
 class Notification {
-    public const TYPES = ['announcement', 'blog', 'resource'];
+    public const TYPES = ['announcement', 'blog', 'resource', 'task', 'grade', 'submission'];
 
     private PDO $pdo;
 
@@ -60,14 +60,21 @@ class Notification {
 
     // MARK ONE AS READ (only the owner's own notification)
     public function markRead(int $id, int $userId): bool {
-        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1 WHERE id = :id AND user_id = :user_id");
+        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE id = :id AND user_id = :user_id");
         $stmt->execute([':id' => $id, ':user_id' => $userId]);
         return $stmt->rowCount() > 0;
     }
 
+    // MARK AS READ BY LINK (e.g. the user opened that announcement directly)
+    public function markReadByLink(string $link, int $userId): int {
+        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND link = :link AND is_read = 0");
+        $stmt->execute([':user_id' => $userId, ':link' => $link]);
+        return $stmt->rowCount();
+    }
+
     // MARK ALL AS READ
     public function markAllRead(int $userId): int {
-        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = :user_id AND is_read = 0");
+        $stmt = $this->pdo->prepare("UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE user_id = :user_id AND is_read = 0");
         $stmt->execute([':user_id' => $userId]);
         return $stmt->rowCount();
     }

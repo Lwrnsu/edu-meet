@@ -67,7 +67,7 @@ class ResourceController {
             return new ApiResponse(false, 400, $e->getMessage(), []);
         }
         return new ApiResponse(true, 200, "Resources loaded.", [
-            'class'      => ['id' => $classId, 'name' => $this->access->classNames([$classId])[$classId] ?? ''],
+            'class'      => $this->access->classDetails($classId),
             'can_manage' => $canManage,
             'resources'  => $this->format($rows),
         ]);

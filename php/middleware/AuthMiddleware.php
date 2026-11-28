@@ -7,7 +7,57 @@ require_once __DIR__ . '/../helpers/CookieHelper.php';
 
 class AuthMiddleware
 {
-    private const SPRING_CACHED_LOGIN_URL = 'http://127.0.0.1:8080/api/auth/logIn/cached';
+
+    /*
+        Same checks as requireAuth(), but returns null instead of ending the request.
+        Used by pages that answer with their own "Please log in first." message.
+        Besides the usual cookie / Bearer header it also reads the cookies the
+        React app sets at login (edu_meet_auth = Spring token, edu_meet_access =
+        PHP JWT), so file links opened in a new tab or <iframe> work too.
+    */
+    public static function tryAuth(): ?array
+    {
+        $cookies = require __DIR__ . '/../config/cookies.php';
+        $candidates = array_unique(array_filter([
+            CookieHelper::get($cookies['access_name']),
+            self::getBearerToken(),
+            self::stripBearer($_COOKIE['edu_meet_auth'] ?? null),
+            self::stripBearer($_COOKIE['edu_meet_access'] ?? null),
+        ]));
+        $config = require __DIR__ . '/../config/jwt.php';
+
+        foreach ($candidates as $token) {
+            try {
+                $payload = JwtHelper::decode($token, $config['secret']);
+                if (isset($payload['sub'])) {
+                    return $payload;
+                }
+            } catch (Throwable $e) {
+                // not a PHP JWT; maybe a Spring session token
+            }
+            $springClaims = self::verifyWithSpringBoot($token);
+            if ($springClaims !== null) {
+                return $springClaims;
+            }
+        }
+        return null;
+    }
+
+    private static function stripBearer(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        return preg_match('/^Bearer\s+(\S+)$/i', $value, $m) ? $m[1] : $value;
+    }
+
+    // Spring Boot's "who is this token" endpoint. SPRING_API_URL lets Docker use http://spring:8080.
+    private static function springCachedLoginUrl(): string
+    {
+        $base = getenv('SPRING_API_URL') ?: 'http://127.0.0.1:8080';
+        return rtrim($base, '/') . '/api/auth/logIn/cached';
+    }
 
     public static function requireAuth(): array
     {
@@ -85,7 +135,7 @@ class AuthMiddleware
         ];
 
         if (function_exists('curl_init')) {
-            $ch = curl_init(self::SPRING_CACHED_LOGIN_URL);
+            $ch = curl_init(self::springCachedLoginUrl());
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER => $headers,
@@ -109,7 +159,7 @@ class AuthMiddleware
             ],
         ]);
 
-        $raw = @file_get_contents(self::SPRING_CACHED_LOGIN_URL, false, $context);
+        $raw = @file_get_contents(self::springCachedLoginUrl(), false, $context);
 
         $responseHeaders = function_exists('http_get_last_response_headers')
             ? (http_get_last_response_headers() ?? [])

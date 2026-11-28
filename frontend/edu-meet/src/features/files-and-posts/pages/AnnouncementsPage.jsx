@@ -1,21 +1,23 @@
 /*
-  SCHOOL ANNOUNCEMENTS — dashboard, not tied to one class   (route /announcements[?id=5])
+  SCHOOL ANNOUNCEMENTS   (route /announcements[?id=5])
 
-  Students: published announcements meant for them, pinned first, 10 at a time.
-  Admins, deans, program chairs, faculty: + Create Announcement → Information
-  Details → Target Audience → Post (or Save as draft). Edit, pin, publish,
-  archive and delete their own. Who may target whom comes from the server
-  (api/announcements.php?action=targets).
+  Purple header with + New Announcement (admins, deans, program chairs, faculty).
+  Left: announcement cards (title · Posted by · Posted date · Read ›), pinned first.
+  Right: the opened announcement — rich text, attachment View / Download,
+         and edit / delete for the author.
+  Opening one marks its bell notification as read.
+  Who may target whom comes from the server (api/announcements.php?action=targets).
 */
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { FbPage } from './FbLayout'
 import Icon from '../components/Icon'
 import FilePicker from '../components/FilePicker'
+import RichTextEditor, { isEmptyHtml } from '../components/RichTextEditor'
 import { ApiProblem, ConfirmDialog, EmptyState, ErrorBox, FileChip, Modal } from '../components/Common'
 import { useToast } from '../hooks/useToast'
 import { announcementsApi, fileUrl } from '../api/phpApi'
-import { fileProblem, fmtDate, initials } from '../utils/format'
+import { fileProblem, fmtDate, roleLabel } from '../utils/format'
 
 const VIEWS = [
   ['', 'All announcements'],
@@ -25,6 +27,7 @@ const VIEWS = [
 ]
 
 const STATUS_LABEL = { draft: 'Draft', published: 'Published', archived: 'Archived' }
+const PREVIEW = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp']
 
 export default function AnnouncementsPage() {
   const [params, setParams] = useSearchParams()
@@ -33,7 +36,7 @@ export default function AnnouncementsPage() {
   const [items, setItems] = useState([])
   const [page, setPage] = useState(1)
   const [state, setState] = useState(null)
-  const [opened, setOpened] = useState(null) // { id, result } for ?id=
+  const [opened, setOpened] = useState(null) // { id, result }
   const [modal, setModal] = useState(null) // { kind: 'form' | 'delete', item }
   const [toast, showToast] = useToast()
 
@@ -48,15 +51,20 @@ export default function AnnouncementsPage() {
 
   useEffect(() => { load(1) }, [load])
 
+  // With no ?id=, open the first one on wide screens.
+  const firstId = items[0]?.id
+  const autoOpen = !openId && firstId && window.matchMedia('(min-width: 900px)').matches ? String(firstId) : null
+  const showId = openId || autoOpen
+
   const reloadOpened = useCallback(async () => {
-    if (!openId) return
-    const result = await announcementsApi.show(openId)
-    setOpened({ id: openId, result })
-  }, [openId])
+    if (!showId) return
+    const result = await announcementsApi.show(showId)
+    setOpened({ id: showId, result })
+    window.dispatchEvent(new Event('fb:notifications'))
+  }, [showId])
 
   useEffect(() => { reloadOpened() }, [reloadOpened])
-  // Only show the result that belongs to the id in the address bar.
-  const single = opened && opened.id === openId ? opened.result : null
+  const single = opened && opened.id === showId ? opened.result : null
 
   const done = (message, ok = true) => {
     setModal(null)
@@ -67,81 +75,84 @@ export default function AnnouncementsPage() {
 
   const canPost = state?.response && state.body.can_post
   const blocked = state && !state.response
-  const actions = {
-    onEdit: (item) => setModal({ kind: 'form', item }),
-    onDelete: (item) => setModal({ kind: 'delete', item }),
-  }
+  const openItem = (id) => setParams({ id: String(id) })
+  const newAnnouncement = () => setModal({ kind: 'form', item: null })
 
   return (
-    <FbPage title="Announcements">
-      <div className="fb-page-title">
-        <h1>Announcements</h1>
-        <p>School-wide news for students, by department, program, year level or section.</p>
-      </div>
+    <FbPage wide>
+      <header className="fb-hero">
+        <div>
+          <h1>Announcements</h1>
+          <p>School news for students, by department, program, year level or section.</p>
+        </div>
+        {canPost ? (
+          <button type="button" className="fb-hero__btn" onClick={newAnnouncement}>
+            <Icon name="plus" />New Announcement
+          </button>
+        ) : null}
+      </header>
 
-      {openId ? (
-        <section className="fb-panel fb-panel--auto">
-          <div className="fb-toolbar">
-            <h2>Announcement</h2>
-            <button type="button" className="fb-btn fb-btn--line fb-btn--sm" onClick={() => setParams({})}>‹ Back to all</button>
-          </div>
-          {!single ? (
-            <div className="fb-loading">Loading…</div>
-          ) : single.response ? (
-            <AnnouncementCard item={single.body.announcement} {...actions} />
-          ) : (
-            <ApiProblem
-              result={single.code === 404 ? { ...single, message: 'It may have been deleted, or it isn’t meant for you.' } : single}
-              notFoundTitle="Announcement not found"
-            />
-          )}
-        </section>
-      ) : null}
-
-      <section className="fb-panel">
-        {state && !blocked ? (
-          <div className="fb-toolbar">
-            <h2>{openId ? 'All announcements' : 'Latest'}</h2>
+      {!state ? (
+        <div className="fb-loading">Loading…</div>
+      ) : blocked ? (
+        <section className="fb-panel"><ApiProblem result={state} /></section>
+      ) : (
+        <div className={`fb-ann${openId ? ' fb-ann--reading' : ''}`}>
+          <section className="fb-ann__list" aria-label="Announcements">
             {canPost ? (
-              <>
-                <select value={view} onChange={(e) => setView(e.target.value)} aria-label="Show">
-                  {VIEWS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-                <button type="button" className="fb-btn" onClick={() => setModal({ kind: 'form', item: null })}>
-                  <Icon name="plus" />Create Announcement
-                </button>
-              </>
+              <select className="fb-ann__view" value={view} onChange={(e) => setView(e.target.value)} aria-label="Show">
+                {VIEWS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             ) : null}
-          </div>
-        ) : null}
+            {items.length === 0 ? (
+              <div className="fb-panel">
+                {view ? (
+                  <EmptyState icon="mega" title="Nothing here" text="You have no announcements in this list." />
+                ) : canPost ? (
+                  <EmptyState icon="mega" title="No announcements yet" text="Announcements you post will appear here for the students you choose.">
+                    <button type="button" className="fb-btn fb-btn--sm" onClick={newAnnouncement}><Icon name="plus" />New Announcement</button>
+                  </EmptyState>
+                ) : (
+                  <EmptyState icon="mega" title="No announcements yet" text="School announcements meant for you will appear here." />
+                )}
+              </div>
+            ) : (
+              items.map((a) => (
+                <AnnouncementItem key={a.id} item={a} active={String(a.id) === showId} showTarget={canPost} onOpen={() => openItem(a.id)} />
+              ))
+            )}
+            {state.body.has_more ? (
+              <div className="fb-more">
+                <button type="button" className="fb-btn fb-btn--line fb-btn--sm" onClick={() => load(page + 1)}>Load more</button>
+              </div>
+            ) : null}
+          </section>
 
-        {!state ? (
-          <div className="fb-loading">Loading…</div>
-        ) : blocked ? (
-          <ApiProblem result={state} />
-        ) : items.length === 0 ? (
-          view ? (
-            <EmptyState icon="mega" title="Nothing here" text="You have no announcements in this list." />
-          ) : canPost ? (
-            <EmptyState icon="mega" title="No announcements yet" text="Announcements you post will appear here for the students you choose.">
-              <button type="button" className="fb-btn fb-btn--sm" onClick={() => setModal({ kind: 'form', item: null })}>
-                <Icon name="plus" />Create Announcement
+          <section className="fb-ann__read" aria-live="polite">
+            {openId ? (
+              <button type="button" className="fb-back fb-ann__back" onClick={() => setParams({})}>
+                <Icon name="back" size={16} />All announcements
               </button>
-            </EmptyState>
-          ) : (
-            <EmptyState icon="mega" title="No announcements yet" text="School announcements meant for you will appear here." />
-          )
-        ) : (
-          <div className="fb-stack">
-            {items.map((item) => <AnnouncementCard key={item.id} item={item} {...actions} />)}
-          </div>
-        )}
-        {state?.response && state.body.has_more ? (
-          <div className="fb-more">
-            <button type="button" className="fb-btn fb-btn--line fb-btn--sm" onClick={() => load(page + 1)}>Load more</button>
-          </div>
-        ) : null}
-      </section>
+            ) : null}
+            {!showId ? (
+              items.length ? <div className="fb-ann__hint">Pick an announcement to read it.</div> : null
+            ) : !single ? (
+              <div className="fb-loading">Loading…</div>
+            ) : single.response ? (
+              <AnnouncementDetail
+                item={single.body.announcement}
+                onEdit={(item) => setModal({ kind: 'form', item })}
+                onDelete={(item) => setModal({ kind: 'delete', item })}
+              />
+            ) : (
+              <ApiProblem
+                result={single.code === 404 ? { ...single, message: 'It may have been deleted, or it isn’t meant for you.' } : single}
+                notFoundTitle="Announcement not found"
+              />
+            )}
+          </section>
+        </div>
+      )}
 
       {modal?.kind === 'form' ? <AnnouncementForm item={modal.item} onClose={() => setModal(null)} onDone={done} /> : null}
       {modal?.kind === 'delete' ? (
@@ -149,7 +160,7 @@ export default function AnnouncementsPage() {
           item={modal.item}
           onClose={() => setModal(null)}
           onDone={(message, ok) => {
-            if (ok && String(modal.item.id) === openId) setParams({})
+            if (ok) setParams({})
             done(message, ok)
           }}
         />
@@ -159,44 +170,197 @@ export default function AnnouncementsPage() {
   )
 }
 
-function AnnouncementCard({ item: a, onEdit, onDelete }) {
+function postedBy(a) {
+  const role = roleLabel(a.author.role)
+  return role ? `${a.author.name} (${role})` : a.author.name
+}
+
+function AnnouncementItem({ item: a, active, showTarget, onOpen }) {
   return (
-    <article className={`fb-post${a.is_pinned ? ' fb-post--pinned' : ''}`}>
-      <div className="fb-post__top">
-        <div className="fb-avatar">{initials(a.author.name)}</div>
-        <div className="fb-post__who">
-          <Link to={`/announcements?id=${a.id}`} className="fb-link-plain">{a.author.name}</Link>
-          <small>{fmtDate(a.published_at || a.created_at, true)} · {a.target_label}</small>
-        </div>
-        {a.is_pinned ? <span className="fb-type fb-type--pinned"><Icon name="pin" size={14} />Pinned</span> : null}
+    <article className={`fb-ann-card${active ? ' is-active' : ''}${a.is_pinned ? ' is-pinned' : ''}`}>
+      <div className="fb-ann-card__tags">
+        {a.is_pinned ? <span className="fb-type fb-type--pinned"><Icon name="pin" size={13} />Pinned</span> : null}
         {a.status !== 'published' ? <span className={`fb-type fb-type--${a.status}`}>{STATUS_LABEL[a.status]}</span> : null}
-        {a.can_edit ? (
-          <>
-            <button type="button" className="fb-ic fb-ic--edit" title="Edit" aria-label={`Edit ${a.title}`} onClick={() => onEdit(a)}><Icon name="edit" /></button>
-            <button type="button" className="fb-ic fb-ic--del" title="Delete" aria-label={`Delete ${a.title}`} onClick={() => onDelete(a)}><Icon name="trash" /></button>
-          </>
-        ) : null}
+        {showTarget ? <span className="fb-target">Target: {a.target_label}</span> : null}
       </div>
-      <h3>{a.title}</h3>
-      <p>{a.body}</p>
-      {a.attachment ? (
-        <div className="fb-atts">
-          <a
-            className="fb-att"
-            href={fileUrl(a.attachment.viewable ? a.attachment.view_url : a.attachment.download_url)}
-            target={a.attachment.viewable ? '_blank' : undefined}
-            rel="noreferrer"
-          >
-            <FileChip type={a.attachment.extension.toUpperCase()} mini />
-            {a.attachment.name} · {a.attachment.size_label}
-          </a>
+      <h2>{a.title}</h2>
+      <p className="fb-ann-card__by">Posted by {a.author.name}</p>
+      <div className="fb-ann-card__foot">
+        <span><Icon name="calendar" size={15} />Posted: {fmtDate(a.published_at || a.created_at)}</span>
+        <button type="button" className="fb-ann-card__read" onClick={onOpen} aria-label={`Read ${a.title}`}>
+          Read <Icon name="chevron" size={15} />
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function AnnouncementDetail({ item: a, onEdit, onDelete }) {
+  const [preview, setPreview] = useState(false)
+  const att = a.attachment
+  const canPreview = att && PREVIEW.includes(att.extension.toLowerCase())
+
+  return (
+    <article className="fb-ann-detail">
+      <div className="fb-ann-detail__top">
+        <div className="fb-ann-card__tags">
+          {a.is_pinned ? <span className="fb-type fb-type--pinned"><Icon name="pin" size={13} />Pinned</span> : null}
+          {a.status !== 'published' ? <span className={`fb-type fb-type--${a.status}`}>{STATUS_LABEL[a.status]}</span> : null}
         </div>
+        <time>{fmtDate(a.published_at || a.created_at, true)}</time>
+      </div>
+      <h2>{a.title}</h2>
+      <p className="fb-ann-detail__by">Posted by {postedBy(a)}</p>
+      {a.can_edit ? (
+        <div className="fb-ann-detail__tools">
+          <span className="fb-target">Target: {a.target_label}</span>
+          <button type="button" className="fb-ic fb-ic--edit" title="Edit" aria-label={`Edit ${a.title}`} onClick={() => onEdit(a)}><Icon name="edit" /></button>
+          <button type="button" className="fb-ic fb-ic--del" title="Delete" aria-label={`Delete ${a.title}`} onClick={() => onDelete(a)}><Icon name="trash" /></button>
+        </div>
+      ) : null}
+      {/* body_html is cleaned by the server (php/helpers/RichText.php) */}
+      <div className="fb-rich" dangerouslySetInnerHTML={{ __html: a.body_html }} />
+
+      {att ? (
+        <>
+          <div className="fb-ann-att">
+            <FileChip type={att.extension.toUpperCase()} mini />
+            <div className="fb-grow">
+              <span className="fb-strong">{att.name}</span>
+              <small>{att.size_label}</small>
+            </div>
+            {att.viewable ? (
+              canPreview ? (
+                <button type="button" className="fb-btn fb-btn--blue fb-btn--sm" onClick={() => setPreview((p) => !p)}>
+                  <Icon name="eye" size={16} />{preview ? 'Hide' : 'View'}
+                </button>
+              ) : (
+                <a className="fb-btn fb-btn--blue fb-btn--sm" href={fileUrl(att.view_url)} target="_blank" rel="noreferrer">
+                  <Icon name="eye" size={16} />View
+                </a>
+              )
+            ) : null}
+            <a className="fb-btn fb-btn--line fb-btn--sm" href={fileUrl(att.download_url)}>
+              <Icon name="download" size={16} />Download
+            </a>
+          </div>
+          {preview ? (
+            att.extension.toLowerCase() === 'pdf' ? (
+              <iframe className="fb-ann-preview" title={att.name} src={fileUrl(att.view_url)} />
+            ) : (
+              <img className="fb-ann-preview fb-ann-preview--img" alt={att.name} src={fileUrl(att.view_url)} />
+            )
+          ) : null}
+        </>
       ) : null}
     </article>
   )
 }
 
-// Create Announcement → Information Details → Target Audience → Post / Save as draft
+// Target Audience: chips of the chosen audiences + a searchable dropdown.
+function AudiencePicker({ options, value, onChange, labelOf, invalid }) {
+  const [open, setOpen] = useState(false)
+  const [find, setFind] = useState('')
+  const wrap = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const close = (e) => { if (wrap.current && !wrap.current.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc, true)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', esc, true)
+    }
+  }, [open])
+
+  const groups = useMemo(() => {
+    const words = find.toLowerCase().split(/\s+/).filter(Boolean)
+    const map = new Map()
+    options.forEach((o) => {
+      const text = `${o.group} ${o.label}`.toLowerCase()
+      if (!words.every((w) => text.includes(w))) return
+      if (!map.has(o.group)) map.set(o.group, [])
+      map.get(o.group).push(o)
+    })
+    return [...map.entries()]
+  }, [options, find])
+
+  const toggle = (token) => onChange(value.includes(token) ? value.filter((t) => t !== token) : value.concat(token))
+
+  return (
+    <div
+      className="fb-aud-pick"
+      ref={wrap}
+      onBlur={(e) => { if (!wrap.current.contains(e.relatedTarget)) { setOpen(false); setFind('') } }}
+    >
+      <div
+        className={`fb-chips${invalid ? ' fb-chips--invalid' : ''}`}
+        onClick={() => setOpen(true)}
+        role="presentation"
+      >
+        {value.map((t) => (
+          <span key={t} className="fb-audchip">
+            {labelOf(t)}
+            <button type="button" aria-label={`Remove ${labelOf(t)}`} onClick={(e) => { e.stopPropagation(); toggle(t) }}>×</button>
+          </span>
+        ))}
+        <input
+          id="fb-ann-aud"
+          type="text"
+          placeholder={value.length ? 'Add more…' : 'Choose who will see it…'}
+          value={find}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => { setFind(e.target.value); setOpen(true) }}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && !find && value.length) toggle(value[value.length - 1])
+            if (e.key === 'Enter') e.preventDefault()
+          }}
+          aria-expanded={open}
+          aria-controls="fb-aud-menu"
+          autoComplete="off"
+        />
+        <Icon name="chevron" size={16} />
+      </div>
+      {open ? (
+        <div className="fb-aud-menu" id="fb-aud-menu" role="listbox" aria-multiselectable="true">
+          {groups.length === 0 ? <div className="fb-aud-menu__none">No audience matches “{find}”.</div> : null}
+          {groups.map(([group, list]) => (
+            <div key={group}>
+              <div className="fb-aud-menu__group">{group}</div>
+              {list.map((o) => {
+                const on = value.includes(o.value)
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={on}
+                    className={`fb-aud-menu__opt${on ? ' is-on' : ''}`}
+                    onClick={() => toggle(o.value)}
+                  >
+                    <span className="fb-aud-menu__box">{on ? '✓' : ''}</span>{o.label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function scopeHint(options) {
+  const groups = new Set(options.map((o) => o.group))
+  if ([...groups].some((g) => /school/i.test(g))) return 'Admin scope: the whole school, a department, program, year level or section.'
+  if ([...groups].some((g) => /department/i.test(g))) return 'Dean scope: your department, its programs, year levels and sections.'
+  if ([...groups].some((g) => /program/i.test(g))) return 'Program chair scope: your program, its year levels and sections.'
+  return 'Faculty scope: select one or more assigned sections.'
+}
+
+// + New Announcement / Edit
 function AnnouncementForm({ item, onClose, onDone }) {
   const [title, setTitle] = useState(item?.title || '')
   const [body, setBody] = useState(item?.body || '')
@@ -206,6 +370,7 @@ function AnnouncementForm({ item, onClose, onDone }) {
   const [files, setFiles] = useState([])
   const [removeAttachment, setRemoveAttachment] = useState(false)
   const [options, setOptions] = useState(null)
+  const [errors, setErrors] = useState({})
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -213,45 +378,37 @@ function AnnouncementForm({ item, onClose, onDone }) {
     announcementsApi.targets().then((r) => setOptions(r.response ? r.body.options : []))
   }, [])
 
-  // Options grouped for display: [[group, [option…]], …], filtered by the search box.
-  const [find, setFind] = useState('')
-  const groups = useMemo(() => {
-    const words = find.toLowerCase().split(/\s+/).filter(Boolean)
-    const map = new Map()
-    ;(options || []).forEach((o) => {
-      const text = `${o.group} ${o.label}`.toLowerCase()
-      if (!words.every((w) => text.includes(w)) && !targets.includes(o.value)) return
-      if (!map.has(o.group)) map.set(o.group, [])
-      map.get(o.group).push(o)
-    })
-    return [...map.entries()]
-  }, [options, find, targets])
-
   const labelOf = (token) => options?.find((o) => o.value === token)?.label
     || item?.targets.find((t) => t.token === token)?.label
     || token
 
-  function toggle(token) {
-    setTargets(targets.includes(token) ? targets.filter((t) => t !== token) : targets.concat(token))
+  function check(nextStatus) {
+    const e = {}
+    if (!title.trim()) e.title = 'Title is required.'
+    if (isEmptyHtml(body)) e.body = 'Write the message.'
+    if (nextStatus === 'published' && !targets.length) e.targets = 'Choose at least one audience.'
+    if (files.length && fileProblem(files[0])) e.file = `${files[0].name}: ${fileProblem(files[0])}`
+    return e
   }
 
   async function submit(nextStatus) {
-    if (files.length && fileProblem(files[0])) {
-      setError({ message: `${files[0].name}: ${fileProblem(files[0])}` })
-      return
-    }
+    const e = check(nextStatus)
+    setErrors(e)
+    if (Object.keys(e).length) return
     setBusy(true)
     const r = await announcementsApi.save(item?.id, {
-      title, body, targets, is_pinned: pinned, status: nextStatus, file: files[0], removeAttachment,
+      title: title.trim(), body, targets, is_pinned: pinned, status: nextStatus, file: files[0], removeAttachment,
     })
     setBusy(false)
     if (!r.response) {
       setError(r)
       return
     }
-    onDone(r.message)
+    const notified = r.body?.notified
+    onDone(nextStatus === 'published' && notified != null ? `${r.message} ${notified} student(s) notified.` : r.message)
   }
 
+  const clear = (key) => { if (errors[key]) setErrors((x) => ({ ...x, [key]: undefined })) }
   const isNew = !item
   return (
     <Modal
@@ -270,59 +427,33 @@ function AnnouncementForm({ item, onClose, onDone }) {
     >
       <ErrorBox result={error} />
       <div className="fb-field">
-        <label htmlFor="fb-ann-title">Title</label>
-        <input id="fb-ann-title" type="text" maxLength={150} placeholder="Enter the title…" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </div>
-      <div className="fb-field">
-        <label htmlFor="fb-ann-body">Message</label>
-        <textarea id="fb-ann-body" placeholder="Type here…" value={body} onChange={(e) => setBody(e.target.value)} />
-      </div>
-      <div className="fb-field">
-        <span className="fb-label">Target Audience <span className="fb-hint">(choose one or more)</span></span>
+        <label htmlFor="fb-ann-aud">Target Audience*</label>
         {options === null ? (
           <span className="fb-hint">Loading choices…</span>
         ) : options.length === 0 ? (
           <span className="fb-hint">You have no audiences you can post to.</span>
         ) : (
           <>
-          {options.length > 12 ? (
-            <label className="fb-search fb-search--block">
-              <Icon name="search" />
-              <input
-                type="search"
-                placeholder="Find an audience, e.g. BSCS 2A or CCS"
-                value={find}
-                onChange={(e) => setFind(e.target.value)}
-                aria-label="Find an audience"
-              />
-            </label>
-          ) : null}
-          <div className="fb-aud">
-            {groups.length === 0 ? <div className="fb-aud__dept fb-hint">No audience matches “{find}”.</div> : null}
-            {groups.map(([group, list]) => (
-              <div className="fb-aud__dept" key={group}>
-                <div className="fb-aud__group">{group}</div>
-                <div className="fb-checks">
-                  {list.map((o) => (
-                    <label key={o.value}>
-                      <input type="checkbox" checked={targets.includes(o.value)} onChange={() => toggle(o.value)} />
-                      <span>{o.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+            <AudiencePicker options={options} value={targets} labelOf={labelOf} invalid={Boolean(errors.targets)} onChange={(t) => { setTargets(t); clear('targets') }} />
+            <span className="fb-hint">{scopeHint(options)} Students in those groups are notified automatically.</span>
           </>
         )}
-        <div className="fb-aud__summary">
-          Visible to: <b>{targets.length ? targets.map(labelOf).join(', ') : 'nobody yet'}</b>
-        </div>
+        {errors.targets ? <div className="fb-field__err">{errors.targets}</div> : null}
+      </div>
+      <div className="fb-field">
+        <label htmlFor="fb-ann-title">Title*</label>
+        <input id="fb-ann-title" type="text" maxLength={150} placeholder="Enter the title…" value={title} aria-invalid={Boolean(errors.title)} onChange={(e) => { setTitle(e.target.value); clear('title') }} />
+        {errors.title ? <div className="fb-field__err">{errors.title}</div> : null}
+      </div>
+      <div className="fb-field">
+        <label htmlFor="fb-ann-body">Content / Message*</label>
+        <RichTextEditor id="fb-ann-body" initial={item?.body || ''} placeholder="Type here…" invalid={Boolean(errors.body)} onChange={(html) => { setBody(html); clear('body') }} />
+        {errors.body ? <div className="fb-field__err">{errors.body}</div> : null}
       </div>
       <div className="fb-field fb-field--row">
-        <label className="fb-toggle">
+        <label className="fb-check">
           <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-          <span>Pin to the top</span>
+          Pin announcement to top
         </label>
         {!isNew ? (
           <label className="fb-inline">
@@ -350,11 +481,12 @@ function AnnouncementForm({ item, onClose, onDone }) {
         <span className="fb-label">{item?.attachment ? 'Replace attachment (optional)' : 'Attachment (optional)'}</span>
         <FilePicker
           files={files}
-          onChange={setFiles}
+          onChange={(f) => { setFiles(f); clear('file') }}
           max={1}
           multiple={false}
           hint="PDF, DOCX, PPTX, XLSX, PNG, JPG, ZIP · max 25 MB · one file"
         />
+        {errors.file ? <div className="fb-field__err">{errors.file}</div> : null}
       </div>
     </Modal>
   )

@@ -23,11 +23,11 @@ class Announcement {
             $stmt = $this->pdo->prepare("
                 INSERT INTO announcements
                     (author_id, author_role, title, body, is_pinned, status, published_at,
-                     attachment_name, attachment_stored, attachment_ext, attachment_mime, attachment_size)
+                     attachment_original_name, attachment_stored_name, attachment_extension, attachment_mime_type, attachment_size_bytes)
                 VALUES
                     (:author_id, :author_role, :title, :body, :is_pinned, :status,
                      " . ($data['status'] === 'published' ? 'CURRENT_TIMESTAMP' : 'NULL') . ",
-                     :attachment_name, :attachment_stored, :attachment_ext, :attachment_mime, :attachment_size)
+                     :attachment_original_name, :attachment_stored_name, :attachment_extension, :attachment_mime_type, :attachment_size_bytes)
             ");
             $stmt->execute([
                 ':author_id'         => $data['author_id'],
@@ -207,11 +207,11 @@ class Announcement {
     // FileStorage::store() result (or null) → the attachment_* columns.
     private static function attachmentParams(?array $file): array {
         return [
-            ':attachment_name'   => $file['original_name'] ?? null,
-            ':attachment_stored' => $file['stored_name'] ?? null,
-            ':attachment_ext'    => $file['extension'] ?? null,
-            ':attachment_mime'   => $file['mime_type'] ?? null,
-            ':attachment_size'   => $file['size_bytes'] ?? null,
+            ':attachment_original_name'   => $file['original_name'] ?? null,
+            ':attachment_stored_name' => $file['stored_name'] ?? null,
+            ':attachment_extension'    => $file['extension'] ?? null,
+            ':attachment_mime_type'   => $file['mime_type'] ?? null,
+            ':attachment_size_bytes'   => $file['size_bytes'] ?? null,
         ];
     }
 }

@@ -19,55 +19,25 @@ function check(string $name, bool $ok, string $detail = ''): void {
     else     { $failed++; echo "  FAIL $name" . ($detail !== '' ? " — $detail" : '') . "\n"; }
 }
 
-// ---------- test database ----------
-// A machine that can't load pdo_sqlite can supply its own SQLite connection
-// through edumeet_test_pdo() (e.g. via php -d auto_prepend_file=...).
-$pdo = function_exists('edumeet_test_pdo')
-    ? edumeet_test_pdo()
-    : new PDO('sqlite::memory:', null, null, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+// ---------- test database (same tables as db.sql) ----------
+require_once __DIR__ . "/fixtures.php";
+$pdo = edumeet_test_db();
 $pdo->exec("
-    -- tables owned by other groups (only the columns this module reads)
-    CREATE TABLE users (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, role TEXT);
-    CREATE TABLE classes (id INTEGER PRIMARY KEY, name TEXT, faculty_id INT, department_id INT);
-    CREATE TABLE departments (id INTEGER PRIMARY KEY, code TEXT, name TEXT);
-    CREATE TABLE programs (id INTEGER PRIMARY KEY, department_id INT, code TEXT, name TEXT, years INT);
-    CREATE TABLE blocks (id INTEGER PRIMARY KEY, program_id INT, year_level INT, section TEXT, name TEXT);
-    CREATE TABLE enrollments (id INTEGER PRIMARY KEY, student_id INT, class_id INT, block_id INT NULL);
-    CREATE TABLE deans (id INTEGER PRIMARY KEY, department_id INT);
-
-    -- this module (SQLite version of database/files_blogs.sql)
-    CREATE TABLE class_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INT NOT NULL, uploaded_by INT NOT NULL,
-        context TEXT NOT NULL DEFAULT 'resource', post_id INT NULL, display_name TEXT NOT NULL,
-        original_name TEXT NOT NULL, stored_name TEXT NOT NULL UNIQUE, extension TEXT NOT NULL,
-        mime_type TEXT NOT NULL, size_bytes INT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INT NOT NULL, author_id INT NOT NULL,
-        type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE post_audience (post_id INT NOT NULL, block_id INT NOT NULL, PRIMARY KEY (post_id, block_id));
-    CREATE TABLE notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL,
-        message TEXT NOT NULL, link TEXT NOT NULL, is_read INT NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-
-    INSERT INTO users VALUES
-        (1, 'Maria', 'Santos', 'faculty'),  (2, 'Jose', 'Reyes', 'faculty'),
-        (10, 'Aiden', 'Esguerra', 'student'), (11, 'Bianca', 'Bautista', 'student'),
-        (12, 'Danica', 'Dela Cruz', 'student'), (13, 'Outside', 'Student', 'student'),
-        (20, 'Dean', 'Cruz', 'dean'), (21, 'Other', 'Dean', 'dean');
-    INSERT INTO classes VALUES (100, 'Graphics and Visual Computing', 1, 5), (101, 'Other Class', 2, 6);
-    INSERT INTO departments VALUES (3, 'CCS', 'College of Computer Studies'), (4, 'CEAS', 'College of Education, Arts, and Sciences');
-    INSERT INTO programs VALUES (8, 3, 'BSCS', 'Bachelor of Science in Computer Science', 4), (10, 3, 'BSIT', 'Bachelor of Science in Information Technology', 4), (16, 4, 'BSEd-Eng', 'Bachelor of Secondary Education major in English', 4);
+    INSERT INTO departments (department_id, name, slug) VALUES (3, 'College of Computer Studies', 'ccs'), (4, 'College of Education, Arts, and Sciences', 'ceas');
+    INSERT INTO programs VALUES (8, 3, 'Bachelor of Science in Computer Science', 'BSCS'), (10, 3, 'Bachelor of Science in Information Technology', 'BSIT'), (16, 4, 'Bachelor of Secondary Education major in English', 'BSEd-Eng');
     -- 1 = BSCS 2A, 2 = BSCS 2B, 3 = BSIT 2B, 4 = BSEd-Eng 1A (all in the class), 9 = BSIT 3A (not in the class)
-    INSERT INTO blocks VALUES (1, 8, 2, 'A', '2A'), (2, 8, 2, 'B', '2B'), (3, 10, 2, 'B', '2B'), (4, 16, 1, 'A', '1A'), (9, 10, 3, 'A', '3A');
-    INSERT INTO enrollments (student_id, class_id, block_id) VALUES (10, 100, 1), (11, 100, 2), (12, 100, NULL), (15, 100, 3), (16, 100, 4);
-    INSERT INTO deans VALUES (20, 5), (21, 6);
+    INSERT INTO blocks VALUES (1, 8, '2A', 2), (2, 8, '2B', 2), (3, 10, '2B', 2), (4, 16, '1A', 1), (9, 10, '3A', 3);
 ");
+foreach ([[1, 'Maria', 'Santos', 'faculty', 3], [2, 'Jose', 'Reyes', 'faculty', 4],
+          [10, 'Aiden', 'Esguerra', 'student', 3], [11, 'Bianca', 'Bautista', 'student', 3],
+          [12, 'Danica', 'Dela Cruz', 'student', 3], [13, 'Outside', 'Student', 'student', 3],
+          [15, 'Ivan', 'Torres', 'student', 3], [16, 'Lea', 'Garcia', 'student', 4],
+          [20, 'Dean', 'Cruz', 'college_dean', 3], [21, 'Other', 'Dean', 'college_dean', 4]] as $p) {
+    add_person($pdo, ...$p);
+}
+put_in_blocks($pdo, [1 => 10, 2 => 11, 3 => 15, 4 => 16, 9 => 13]);
+add_class($pdo, 100, 'Graphics and Visual Computing', 1, 8, [1, 2, 3, 4], [12]);   // 12 = irregular, no block
+add_class($pdo, 101, 'Other Class', 2, 16, []);
 
 $dir = sys_get_temp_dir() . '/edumeet-test-' . bin2hex(random_bytes(4));
 $storage = new FileStorage($dir, fn($from, $to) => copy($from, $to));
@@ -91,8 +61,8 @@ $studentA = u(10, 'student');   // block 2A
 $studentB = u(11, 'student');   // block 2B
 $irregular = u(12, 'student');  // no block
 $outsider = u(13, 'student');   // not enrolled
-$dean     = u(20, 'dean');      // dean of this class's department
-$otherDean = u(21, 'dean');
+$dean     = u(20, 'college_dean');      // dean of this class's department
+$otherDean = u(21, 'college_dean');
 
 echo "\nFILE MANAGEMENT\n";
 
