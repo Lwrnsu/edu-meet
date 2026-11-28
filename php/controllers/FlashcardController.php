@@ -13,6 +13,66 @@ require_once __DIR__ . '/../models/Flashcard.php';
 
 class FlashcardController
 {
+    // Routing lives here: maps the request path to the matching function.
+    public function handle(): void
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            http_response_code(204);
+            return;
+        }
+
+        $path  = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        $input = $this->readInput();
+
+        switch ($path) {
+            case '/api/php/get/flashcards':
+                $response = $this->getFlashcardsByDeck($input);
+                break;
+            case '/api/php/get/flashcard':
+                $response = $this->getFlashcardById($input);
+                break;
+            case '/api/php/add/flashcards':
+                $response = $this->createFlashcard($input);
+                break;
+            case '/api/php/update/flashcards':
+                $response = $this->updateFlashcard($input);
+                break;
+            case '/api/php/delete/flashcards':
+                $response = $this->deleteFlashcard($input);
+                break;
+            case '/api/php/reorder/flashcards':
+                $response = $this->reorderFlashcards($input);
+                break;
+            default:
+                $response = new ApiResponse(false, 404, 'Endpoint not found', []);
+        }
+
+        $this->send($response);
+    }
+
+    // GET reads the query string, POST also reads the JSON body.
+    private function readInput(): array
+    {
+        $input = $_GET;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $json = json_decode(file_get_contents('php://input'), true);
+            $input = array_merge($input, $_POST, is_array($json) ? $json : []);
+        }
+        return $input;
+    }
+
+    // Outputs the ApiResponse as JSON.
+    private function send(ApiResponse $response): void
+    {
+        http_response_code($response->code);
+        echo json_encode($response);
+    }
+
     // CREATE FLASHCARD
     // $input: deck_id, question, answer, explanation (optional), difficulty (optional)
     public function createFlashcard(array $input): ApiResponse

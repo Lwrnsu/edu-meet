@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { systemAdminLogin } from '../api/auth'
+import vector2 from '../assets/auth/vector-2.png'
+import vector5 from '../assets/auth/vector-5.png'
+import vector6 from '../assets/auth/vector-6.png'
 import './LoginPage.css'
 
 const REMEMBER_EMAIL_KEY = 'edu_meet_admin_remember_email'
@@ -43,7 +46,15 @@ export default function AdminLoginPage({ onSuccess, onForgotPassword, onSwitchTo
 
   return (
     <main className="login login--admin">
-      <div className="login__blob" aria-hidden="true" />
+      <div className="login__art" aria-hidden="true">
+        <div className="login__art-bottom">
+          <img className="login__art-vector5" src={vector5} alt="" />
+          <img className="login__art-vector2" src={vector2} alt="" />
+        </div>
+        <div className="login__art-side">
+          <img className="login__art-vector6" src={vector6} alt="" />
+        </div>
+      </div>
 
       <section className="login__card">
         <div className="login__content">

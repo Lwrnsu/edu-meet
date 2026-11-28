@@ -3,8 +3,8 @@ frontend/edu-meet/.env
 frontend/edu-meet/.env.*
 !frontend/edu-meet/.env.example
 
-backend/edu-meet/php/vendor/
-backend/edu-meet/php/composer.phar
+php/vendor/
+php/composer.phar
 backend/edu-meet/target/
 backend/edu-meet/.mvn/wrapper/maven-wrapper.jar
 
@@ -44,3 +44,16 @@ dump.rdb
 *.sw?
 
 .env
+*.sw?
+
+# Java / Maven generated files
+**/target/
+
+# Frontend generated files
+**/node_modules/
+**/dist/
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example

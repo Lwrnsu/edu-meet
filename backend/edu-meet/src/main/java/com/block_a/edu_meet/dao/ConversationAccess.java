@@ -1,5 +1,6 @@
 package com.block_a.edu_meet.dao;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,12 +23,9 @@ public class ConversationAccess {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
 
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!conversation.getParticipantIds().contains(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "you are not a member of this chat");
-        }
-        return conversation;
+        return conversationRepository.findById(conversationId)
+                .filter(conversation -> conversation.getParticipantIds().contains(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation doesn't exist"));
     }
 }
 

@@ -29,6 +29,12 @@ const ROLE_FILTER_OPTIONS = [
   { key: 'student', label: 'Student' },
 ]
 
+const USER_SORT_OPTIONS = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'latest', label: 'Latest to Oldest Added' },
+  { key: 'oldest', label: 'Oldest to Latest Added' },
+]
+
 function IconSearch() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -52,6 +58,20 @@ function IconSort() {
       <path d="M7 10l5-5 5 5H7zm0 4l5 5 5-5H7z" />
     </svg>
   )
+}
+
+function IconCaret() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+      <path d="M6 9l6 6 6-6H6z" />
+    </svg>
+  )
+}
+
+function createdSortValue(row) {
+  const parsed = Date.parse(row.createdAt || '')
+  if (Number.isFinite(parsed)) return parsed
+  return Number(row.userId) || Number(row.membershipId) || 0
 }
 
 function IconMore() {
@@ -93,7 +113,18 @@ function roleOptionValue(options, roleName) {
   return match?.name || ''
 }
 
-function UserFormFields({ form, onChange, roleOptions, departments, idPrefix }) {
+function UserFormFields({
+  form,
+  onChange,
+  roleOptions,
+  departments,
+  idPrefix,
+  hideEmail = false,
+}) {
+  const departmentFieldClass = hideEmail
+    ? 'college-users__field'
+    : 'college-users__field college-users__field--full'
+
   return (
     <div className="college-users__form-grid">
       <label className="college-users__field">
@@ -135,17 +166,19 @@ function UserFormFields({ form, onChange, roleOptions, departments, idPrefix }) 
           aria-label="Extension Name"
         />
       </label>
-      <label className="college-users__field">
-        <span className="college-users__sr-only">Email</span>
-        <input
-          type="email"
-          value={form.email}
-          onChange={onChange('email')}
-          placeholder="Email"
-          autoComplete="email"
-          aria-label="Email"
-        />
-      </label>
+      {hideEmail ? null : (
+        <label className="college-users__field">
+          <span className="college-users__sr-only">Email</span>
+          <input
+            type="email"
+            value={form.email}
+            onChange={onChange('email')}
+            placeholder="Email"
+            autoComplete="email"
+            aria-label="Email"
+          />
+        </label>
+      )}
       <label className="college-users__field">
         <span className="college-users__sr-only">Role</span>
         <select
@@ -162,7 +195,7 @@ function UserFormFields({ form, onChange, roleOptions, departments, idPrefix }) 
           ))}
         </select>
       </label>
-      <label className="college-users__field college-users__field--full">
+      <label className={departmentFieldClass}>
         <span className="college-users__sr-only">Department</span>
         <select
           id={`${idPrefix}-department`}
@@ -173,7 +206,7 @@ function UserFormFields({ form, onChange, roleOptions, departments, idPrefix }) 
           <option value="">Department</option>
           {departments.map((dept) => (
             <option key={dept.department_id} value={dept.department_id}>
-              {dept.slug || dept.name}
+              {dept.name || dept.slug}
             </option>
           ))}
         </select>
@@ -193,9 +226,15 @@ export default function ManageCollegeUsersSection({ schoolId }) {
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [userSortMode, setUserSortMode] = useState(null)
   const [roleFilter, setRoleFilter] = useState('')
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
   const [roleMenuPos, setRoleMenuPos] = useState({ top: 0, left: 0, minWidth: 168 })
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [userMenuPos, setUserMenuPos] = useState({ top: 0, left: 0, minWidth: 200 })
+  const userFilterRef = useRef(null)
+  const userButtonRef = useRef(null)
+  const userMenuRef = useRef(null)
   const roleFilterRef = useRef(null)
   const roleButtonRef = useRef(null)
   const roleMenuRef = useRef(null)
@@ -239,6 +278,17 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     })
   }, [])
 
+  const updateUserMenuPosition = useCallback(() => {
+    const button = userButtonRef.current
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    setUserMenuPos({
+      top: rect.bottom + 6,
+      left: rect.left,
+      minWidth: Math.max(rect.width, 200),
+    })
+  }, [])
+
   useLayoutEffect(() => {
     if (!roleMenuOpen) return undefined
     updateRoleMenuPosition()
@@ -255,21 +305,44 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     }
   }, [roleMenuOpen, updateRoleMenuPosition])
 
+  useLayoutEffect(() => {
+    if (!userMenuOpen) return undefined
+    updateUserMenuPosition()
+
+    function handleReposition() {
+      updateUserMenuPosition()
+    }
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [userMenuOpen, updateUserMenuPosition])
+
   useEffect(() => {
-    if (!roleMenuOpen) return undefined
+    if (!roleMenuOpen && !userMenuOpen) return undefined
 
     function handlePointerDown(event) {
       const target = event.target
-      const inTrigger = roleFilterRef.current?.contains(target)
-      const inMenu = roleMenuRef.current?.contains(target)
-      if (!inTrigger && !inMenu) {
+      const inRoleTrigger = roleFilterRef.current?.contains(target)
+      const inRoleMenu = roleMenuRef.current?.contains(target)
+      const inUserTrigger = userFilterRef.current?.contains(target)
+      const inUserMenu = userMenuRef.current?.contains(target)
+
+      if (roleMenuOpen && !inRoleTrigger && !inRoleMenu) {
         setRoleMenuOpen(false)
+      }
+      if (userMenuOpen && !inUserTrigger && !inUserMenu) {
+        setUserMenuOpen(false)
       }
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setRoleMenuOpen(false)
+        setUserMenuOpen(false)
       }
     }
 
@@ -279,7 +352,7 @@ export default function ManageCollegeUsersSection({ schoolId }) {
       document.removeEventListener('mousedown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [roleMenuOpen])
+  }, [roleMenuOpen, userMenuOpen])
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -297,7 +370,17 @@ export default function ManageCollegeUsersSection({ schoolId }) {
         return key === roleFilter
       })
     }
-    if (sortKey === 'department') {
+    if (userSortMode === 'az') {
+      list = [...list].sort((a, b) =>
+        String(a.name || '')
+          .toLowerCase()
+          .localeCompare(String(b.name || '').toLowerCase())
+      )
+    } else if (userSortMode === 'latest') {
+      list = [...list].sort((a, b) => createdSortValue(b) - createdSortValue(a))
+    } else if (userSortMode === 'oldest') {
+      list = [...list].sort((a, b) => createdSortValue(a) - createdSortValue(b))
+    } else if (sortKey === 'department') {
       const dir = sortDir === 'asc' ? 1 : -1
       list = [...list].sort((a, b) => {
         const left = String(a.department || '').toLowerCase()
@@ -306,15 +389,22 @@ export default function ManageCollegeUsersSection({ schoolId }) {
       })
     }
     return list
-  }, [rows, query, roleFilter, sortKey, sortDir])
+  }, [rows, query, roleFilter, sortKey, sortDir, userSortMode])
 
   function toggleSort(key) {
+    setUserSortMode(null)
     if (sortKey === key) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
       return
     }
     setSortKey(key)
     setSortDir('asc')
+  }
+
+  function selectUserSort(mode) {
+    setUserSortMode(mode)
+    setSortKey(null)
+    setUserMenuOpen(false)
   }
 
   function selectRoleFilter(key) {
@@ -391,17 +481,14 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     }
   }
 
-  function validateForm(data) {
+  function validateNameFields(data) {
     const firstName = data.firstName.trim()
     const middleName = data.middleName.trim()
     const lastName = data.lastName.trim()
     const suffix = data.suffix.trim()
-    const email = data.email.trim().toLowerCase()
-    const roleName = data.roleName.trim()
-    const departmentId = data.departmentId
 
-    if (!firstName || !lastName || !email || !roleName) {
-      return { ok: false, message: 'First name, last name, email, and role are required.' }
+    if (!firstName || !lastName) {
+      return { ok: false, message: 'First name and last name are required.' }
     }
     if (!isLettersOnlyName(firstName)) {
       return { ok: false, message: 'First name must contain letters only.' }
@@ -415,8 +502,24 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     if (suffix && !isLettersOnlyName(suffix)) {
       return { ok: false, message: 'Suffix must contain letters only.' }
     }
-    if (!isValidEmail(email)) {
-      return { ok: false, message: 'Enter a valid email.' }
+
+    return {
+      ok: true,
+      value: {
+        firstName,
+        middleName,
+        lastName,
+        suffix,
+      },
+    }
+  }
+
+  function validateRoleAndDepartment(data) {
+    const roleName = data.roleName.trim()
+    const departmentId = data.departmentId
+
+    if (!roleName) {
+      return { ok: false, message: 'Role is required.' }
     }
     if (
       roleRequiresDepartment(roleName) &&
@@ -429,13 +532,57 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     return {
       ok: true,
       value: {
-        firstName,
-        middleName,
-        lastName,
-        suffix,
-        email,
         roleName,
         departmentId: departmentId === '' ? null : departmentId,
+      },
+    }
+  }
+
+  function validateEditForm(data) {
+    const nameResult = validateNameFields(data)
+    if (!nameResult.ok) return nameResult
+
+    const roleResult = validateRoleAndDepartment(data)
+    if (!roleResult.ok) return roleResult
+
+    return {
+      ok: true,
+      value: {
+        ...nameResult.value,
+        ...roleResult.value,
+      },
+    }
+  }
+
+  function validateForm(data) {
+    const nameResult = validateNameFields(data)
+    if (!nameResult.ok) return nameResult
+
+    const email = data.email.trim().toLowerCase()
+    if (!email) {
+      return { ok: false, message: 'First name, last name, email, and role are required.' }
+    }
+    if (!isValidEmail(email)) {
+      return { ok: false, message: 'Enter a valid email.' }
+    }
+
+    const roleResult = validateRoleAndDepartment(data)
+    if (!roleResult.ok) {
+      return {
+        ok: false,
+        message:
+          roleResult.message === 'Role is required.'
+            ? 'First name, last name, email, and role are required.'
+            : roleResult.message,
+      }
+    }
+
+    return {
+      ok: true,
+      value: {
+        ...nameResult.value,
+        email,
+        ...roleResult.value,
       },
     }
   }
@@ -467,7 +614,7 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     event.preventDefault()
     if (!editRow) return
 
-    const result = validateForm(editForm)
+    const result = validateEditForm(editForm)
     if (!result.ok) {
       setEditError(result.message)
       return
@@ -476,7 +623,10 @@ export default function ManageCollegeUsersSection({ schoolId }) {
     setBusy(true)
     setEditError('')
     try {
-      await updateCollegeUser(editRow, result.value)
+      await updateCollegeUser(editRow, {
+        ...result.value,
+        email: editRow.email || '',
+      })
       await refresh()
       closeEditModal()
     } catch (err) {
@@ -560,7 +710,29 @@ export default function ManageCollegeUsersSection({ schoolId }) {
         <table className="college-users__table">
           <thead>
             <tr>
-              <th scope="col">USER</th>
+              <th scope="col">
+                <div className="college-users__role-filter" ref={userFilterRef}>
+                  <button
+                    ref={userButtonRef}
+                    type="button"
+                    className={
+                      userSortMode
+                        ? 'college-users__sort college-users__sort--active'
+                        : 'college-users__sort'
+                    }
+                    aria-haspopup="listbox"
+                    aria-expanded={userMenuOpen}
+                    aria-label="Sort by user name"
+                    onClick={() => {
+                      setRoleMenuOpen(false)
+                      setUserMenuOpen((open) => !open)
+                    }}
+                  >
+                    USER
+                    <IconCaret />
+                  </button>
+                </div>
+              </th>
               <th scope="col">EMAIL</th>
               <th scope="col">
                 <div className="college-users__role-filter" ref={roleFilterRef}>
@@ -575,7 +747,10 @@ export default function ManageCollegeUsersSection({ schoolId }) {
                     aria-haspopup="listbox"
                     aria-expanded={roleMenuOpen}
                     aria-label="Filter by role"
-                    onClick={() => setRoleMenuOpen((open) => !open)}
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      setRoleMenuOpen((open) => !open)
+                    }}
                   >
                     ROLE
                     <IconSort />
@@ -585,7 +760,11 @@ export default function ManageCollegeUsersSection({ schoolId }) {
               <th scope="col">
                 <button
                   type="button"
-                  className="college-users__sort"
+                  className={
+                    sortKey === 'department'
+                      ? 'college-users__sort college-users__sort--active'
+                      : 'college-users__sort'
+                  }
                   onClick={() => toggleSort('department')}
                 >
                   DEPARTMENT
@@ -656,6 +835,41 @@ export default function ManageCollegeUsersSection({ schoolId }) {
           </tbody>
         </table>
       </div>
+
+      {userMenuOpen
+        ? createPortal(
+            <ul
+              ref={userMenuRef}
+              className="college-users__role-menu college-users__role-menu--portal"
+              role="listbox"
+              aria-label="Sort by user name"
+              style={{
+                top: userMenuPos.top,
+                left: userMenuPos.left,
+                minWidth: userMenuPos.minWidth,
+              }}
+            >
+              {USER_SORT_OPTIONS.map((option) => (
+                <li key={option.key}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={userSortMode === option.key}
+                    className={
+                      userSortMode === option.key
+                        ? 'college-users__role-option is-active'
+                        : 'college-users__role-option'
+                    }
+                    onClick={() => selectUserSort(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body
+          )
+        : null}
 
       {roleMenuOpen
         ? createPortal(
@@ -849,7 +1063,7 @@ export default function ManageCollegeUsersSection({ schoolId }) {
           }}
         >
           <form
-            className="college-dash-modal__panel college-dash-modal__panel--user-form"
+            className="college-dash-modal__panel college-dash-modal__panel--user-form college-dash-modal__panel--user-form-edit"
             role="dialog"
             aria-modal="true"
             aria-labelledby="college-edit-user-title"
@@ -865,6 +1079,7 @@ export default function ManageCollegeUsersSection({ schoolId }) {
               roleOptions={roleOptions}
               departments={departments}
               idPrefix="edit-user"
+              hideEmail
             />
 
             {editError ? (
