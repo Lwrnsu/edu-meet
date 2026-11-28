@@ -3,6 +3,8 @@
 -- Merges: edu_meet_db_1.sql (core/auth) + attendanceDB.sql (academic/attendance)
 --         + edumeet_mysql_schema_fixed.sql (activities / quizzes / grading)
 --         + message.txt (flashcard reviewer)
+--         + edu_meet_db.sql (announcements / notifications)
+--         + EduMeet_integrated_G5_G8_G9.sql (cross-links: activities -> users/classes)
 -- Target: MariaDB 10.4+ / MySQL 8 (XAMPP-compatible)
 -- =====================================================================
 
@@ -240,8 +242,9 @@ CREATE TABLE `attendance` (
 -- =====================================================================
 -- PART 3: ACTIVITIES / QUIZZES / EXAMS & SCORE TRACKER
 -- (from edumeet_mysql_schema_fixed.sql)
--- faculty_id, student_id and class_id are plain application IDs (no FKs);
--- see the OPTIONAL section at the bottom for ways to link them.
+-- faculty_id / student_id / *_faculty_id -> users.user_id
+-- activity_targets.class_id              -> classes.class_id
+-- (foreign keys taken from EduMeet_integrated_G5_G8_G9.sql)
 -- =====================================================================
 
 -- 3.1 ACTIVITIES
@@ -267,7 +270,8 @@ CREATE TABLE `activities` (
     CONSTRAINT `chk_activities_passing_grade`
         CHECK (`passing_grade_percent` >= 0 AND `passing_grade_percent` <= 100),
     CONSTRAINT `chk_activities_question_array`
-        CHECK (JSON_TYPE(`question_and_answer`) = 'ARRAY')
+        CHECK (JSON_TYPE(`question_and_answer`) = 'ARRAY'),
+    CONSTRAINT `fk_g5_activities_g9_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -282,7 +286,8 @@ CREATE TABLE `activity_targets` (
     KEY `idx_activity_targets_class` (`class_id`),
     CONSTRAINT `fk_activity_targets_activity`
         FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_g5_activity_targets_g8_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -321,7 +326,11 @@ CREATE TABLE `activity_sessions` (
             (`status` <> 'in_progress' AND `ended_at` IS NOT NULL)
         ),
     CONSTRAINT `chk_manual_end_faculty`
-        CHECK (`status` <> 'ended_by_faculty' OR `ended_by_faculty_id` IS NOT NULL)
+        CHECK (`status` <> 'ended_by_faculty' OR `ended_by_faculty_id` IS NOT NULL),
+    KEY `fk_g5_sessions_started_by_g9_user` (`started_by_faculty_id`),
+    KEY `fk_g5_sessions_ended_by_g9_user` (`ended_by_faculty_id`),
+    CONSTRAINT `fk_g5_sessions_started_by_g9_user` FOREIGN KEY (`started_by_faculty_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `fk_g5_sessions_ended_by_g9_user` FOREIGN KEY (`ended_by_faculty_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -378,7 +387,8 @@ CREATE TABLE `student_answers` (
                 AND `score` >= 0 AND `max_score` >= `score`)
         ),
     CONSTRAINT `chk_grade_percent`
-        CHECK (`grade_percent` IS NULL OR (`grade_percent` >= 0 AND `grade_percent` <= 100))
+        CHECK (`grade_percent` IS NULL OR (`grade_percent` >= 0 AND `grade_percent` <= 100)),
+    CONSTRAINT `fk_g5_student_answers_g9_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -404,7 +414,9 @@ CREATE TABLE `essay_grades` (
     CONSTRAINT `chk_essay_points_awarded`
         CHECK (`points_awarded` >= 0),
     CONSTRAINT `chk_essay_points_not_over_max`
-        CHECK (`points_awarded` <= `max_points`)
+        CHECK (`points_awarded` <= `max_points`),
+    KEY `idx_g5_essay_grades_graded_by_faculty` (`graded_by_faculty_id`),
+    CONSTRAINT `fk_g5_essay_grades_g9_graded_by` FOREIGN KEY (`graded_by_faculty_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -513,12 +525,75 @@ CREATE TABLE `study_session_answers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================
--- OPTIONAL: tie Part 3 to the rest of the schema once you decide how
--- faculty_id / student_id / class_id map (users vs memberships).
--- Left off because the original dumps never declared these links.
+-- PART 5: ANNOUNCEMENTS & NOTIFICATIONS  (from edu_meet_db.sql)
+-- The other tables in that dump (schools, users, classes, attendance, ...)
+-- were already in Parts 1-2 and are unchanged, so only these three are new.
 -- =====================================================================
--- ALTER TABLE activity_targets ADD CONSTRAINT fk_targets_class   FOREIGN KEY (class_id)   REFERENCES classes(class_id) ON DELETE CASCADE;
--- ALTER TABLE activities       ADD CONSTRAINT fk_activities_user FOREIGN KEY (faculty_id) REFERENCES users(user_id);
--- ALTER TABLE student_answers  ADD CONSTRAINT fk_answers_user    FOREIGN KEY (student_id) REFERENCES users(user_id);
+
+CREATE TABLE `announcements` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `author_id` int NOT NULL,
+  `author_role` varchar(50) NOT NULL,
+  `class_id` int NULL DEFAULT NULL,
+  `title` varchar(150) NOT NULL,
+  `body` text NOT NULL,
+  `is_pinned` tinyint(1) NOT NULL DEFAULT 0,
+  `status` enum('draft','published','archived') NOT NULL DEFAULT 'published',
+  `attachment_original_name` varchar(255) NULL DEFAULT NULL,
+  `attachment_stored_name` varchar(64) NULL DEFAULT NULL,
+  `attachment_extension` varchar(16) NULL DEFAULT NULL,
+  `attachment_mime_type` varchar(120) NULL DEFAULT NULL,
+  `attachment_size_bytes` bigint UNSIGNED NULL DEFAULT NULL,
+  `published_at` datetime NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_announcements_school_wide`(`status`, `is_pinned`, `published_at`, `created_at`, `id`),
+  KEY `idx_announcements_class`(`class_id`, `status`, `is_pinned`, `id`),
+  KEY `idx_announcements_author`(`author_id`, `status`),
+  CONSTRAINT `fk_announcements_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_announcements_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`class_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `announcement_targets` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `announcement_id` int NOT NULL,
+  `scope_type` varchar(24) NOT NULL,
+  `school_id` int NULL DEFAULT NULL,
+  `department_id` int NULL DEFAULT NULL,
+  `program_id` int NULL DEFAULT NULL,
+  `year_level` int NULL DEFAULT NULL,
+  `block_id` int NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_targets_announcement`(`announcement_id`),
+  KEY `idx_targets_scope`(`scope_type`, `school_id`, `department_id`, `program_id`, `year_level`, `block_id`),
+  KEY `fk_targets_department`(`department_id`),
+  KEY `fk_targets_program`(`program_id`),
+  KEY `fk_targets_block`(`block_id`),
+  CONSTRAINT `fk_targets_announcement` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_targets_block` FOREIGN KEY (`block_id`) REFERENCES `blocks` (`block_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_targets_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`department_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_targets_program` FOREIGN KEY (`program_id`) REFERENCES `programs` (`program_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `announcement_id` int NULL DEFAULT NULL,
+  `type` varchar(60) NOT NULL DEFAULT 'announcement',
+  `title` varchar(180) NOT NULL,
+  `message` varchar(500) NOT NULL,
+  `link` varchar(255) NULL DEFAULT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `read_at` datetime NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_notifications_user_type_announcement`(`user_id`, `type`, `announcement_id`),
+  KEY `idx_notifications_user_feed`(`user_id`, `is_read`, `id`),
+  KEY `idx_notifications_announcement_user`(`announcement_id`, `user_id`),
+  CONSTRAINT `fk_notifications_announcement` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
