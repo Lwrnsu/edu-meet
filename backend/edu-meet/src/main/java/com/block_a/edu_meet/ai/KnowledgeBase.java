@@ -42,9 +42,16 @@ public class KnowledgeBase {
                             + "recordings the teacher has shared with the class."),
             new Entry(
                     "Resetting a password",
-                    "Use Forgot password on the sign-in screen. The reset link is valid for 60 minutes "
-                            + "and is sent to the registered school email. If no email arrives, check the "
-                            + "spam folder, then ask a school administrator to resend the invitation."),
+                    "Use Forgot password on the sign-in screen. EduMeet sends a one-time code (OTP) "
+                            + "to the registered school email. Enter the code to set a new password. "
+                            + "If the OTP is entered incorrectly 5 times, wait 10 minutes before trying "
+                            + "again. Requesting too many OTPs within an hour triggers a 1-hour wait "
+                            + "before another request. The reset code is valid for 60 minutes."),
+            new Entry(
+                    "Too many failed sign-in attempts",
+                    "After 5 wrong password attempts, sign-in is locked for 15 minutes. Wait 15 "
+                            + "minutes before trying again, or use Forgot password to reset the "
+                            + "password. A successful sign-in clears the failed-attempt count."),
             new Entry(
                     "Troubleshooting audio and video",
                     "If camera or microphone access is blocked, allow it in the browser address bar and "

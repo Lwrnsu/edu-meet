@@ -63,6 +63,21 @@ class ToolCallingTest {
     }
 
     @Test
+    void knowledgeBaseExplainsPasswordResetAndSignInLimits() {
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+
+        var reset = knowledgeBase.search("wrong OTP 5 times").getFirst();
+        assertEquals("Resetting a password", reset.title());
+        assertTrue(reset.text().contains("10 minutes"));
+        assertTrue(knowledgeBase.search("too many OTP requests in an hour")
+                .getFirst().text().contains("1-hour"));
+
+        var lockout = knowledgeBase.search("wrong password 5 times locked out").getFirst();
+        assertEquals("Too many failed sign-in attempts", lockout.title());
+        assertTrue(lockout.text().contains("15 minutes"));
+    }
+
+    @Test
     void serviceCallsTheToolThenReturnsTheFinalAnswer() {
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta");

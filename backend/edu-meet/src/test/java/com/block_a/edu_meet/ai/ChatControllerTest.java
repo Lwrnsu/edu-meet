@@ -139,7 +139,8 @@ class ChatControllerTest {
         ChatController.ChatResponse response =
                 controller(gemini).chat(new ChatController.ChatRequest("s-src", "how do I reset my password?"));
 
-        assertEquals(List.of("Resetting a password"), response.sources());
+        assertEquals(List.of("Resetting a password", "Too many failed sign-in attempts"),
+                response.sources());
         assertEquals(List.of(), sources.get(), "sources must be cleared after the request");
     }
 
