@@ -85,3 +85,21 @@ Automated checks on a throwaway SQLite database (needs `pdo_sqlite`). From the `
 php tests/files_blogs_test.php      # 83 checks: resources, class posts, notifications
 php tests/announcements_test.php    # 70 checks: school announcements
 ```
+
+## Front end (React)
+
+The screens are in `frontend/edu-meet/src/features/files-and-posts/` (routes added in `App.jsx`):
+
+| Route | Screens |
+|---|---|
+| `/classes/:classId/resources` | F1–F5 Resources tab: list, search, type filter, upload (progress), rename, delete |
+| `/classes/:classId/resources/:fileId` | F6 View File: PDF/image preview, details, download |
+| `/classes/:classId/feed` | B1–B5 Class Feed: posts, Load more, create/edit with Department → Program → Section, delete |
+| `/announcements` | School-wide announcements: feed, create (post or draft), edit/pin/publish/archive, delete |
+
+The notification bell (`NotificationBell`) sits in the top bar of these pages and can be reused in other headers.
+
+React calls PHP at `/php/...` (change with `VITE_PHP_API_URL`). In development `vite.config.js`
+forwards `/php` to `VITE_PHP_TARGET` (default `http://php:8000`, the `php` service);
+in production the `Caddyfile` does the same. The PHP session cookie identifies the user,
+so the PHP login session must be set (see Setup step 3).
