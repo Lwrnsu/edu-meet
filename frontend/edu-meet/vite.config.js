@@ -17,6 +17,12 @@ export default defineConfig(({ mode }) => {
         usePolling: true,
       },
       proxy: {
+        // Group 7 · React calls the PHP module as /php/api/... (prefix removed for php:8000)
+        "/php": {
+          target: phpHttp,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/php/, ""),
+        },
         // 1. Specific PHP endpoints go to php:8000 (add your PHP route prefixes here)
         "^/api/php": {
           target: phpHttp,
