@@ -2,6 +2,10 @@ localhost {
 	handle /api/* {
 		reverse_proxy spring:8080
 	}
+	# PHP modules (php/ folder), e.g. /php/api/resources.php
+	handle_path /php/* {
+		reverse_proxy php:8000
+	}
 	@chatSocket {
 		path /chat
 		header Upgrade websocket

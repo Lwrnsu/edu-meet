@@ -16,6 +16,12 @@ export default defineConfig(({ mode }) => ({
       usePolling: true,
     },
     proxy: {
+      // Group 7 · PHP back end (php/ folder, the "php" service in docker-compose)
+      "/php": {
+        target: process.env.PHP_API_TARGET || "http://localhost:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/php/, ""),
+      },
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,
