@@ -1,6 +1,7 @@
-PHP
 <?php
 
+require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/../models/ApiResponse.php';
 require_once __DIR__ . '/../models/ClassModel.php';
 require_once __DIR__ . '/../models/Deck.php';
 require_once __DIR__ . '/../models/Flashcard.php';
@@ -10,43 +11,69 @@ class JsonImportController
 {
     private JsonManager $jsonManager;
 
-    public function __construct(PDO $pdo)
+    public function __construct()
     {
-        $classModel = new ClassModel($pdo);
-        $deckModel = new Deck($pdo);
-        $flashcardModel = new Flashcard($pdo);
+        $pdo = Database::connect();
 
         $this->jsonManager = new JsonManager(
             $pdo,
-            $classModel,
-            $deckModel,
-            $flashcardModel
+            new ClassModel($pdo),   // adjust if ClassModel no longer takes $pdo
+            new Deck(),
+            new Flashcard()
         );
     }
 
-    private function send(ApiResponse $res): void
+    // Routing lives here: maps the request path to the matching function.
+    public function handle(): void
     {
-        http_response_code($res->code);
-        echo json_encode($res);
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            http_response_code(204);
+            return;
+        }
+
+        $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+
+        switch ($path) {
+            case '/api/php/import/json':
+                $response = $this->import();
+                break;
+            default:
+                $response = new ApiResponse(false, 404, 'Endpoint not found', []);
+        }
+
+        $this->send($response);
     }
 
-    public function import(): void
+    // Outputs the ApiResponse as JSON.
+    private function send(ApiResponse $response): void
+    {
+        http_response_code($response->code);
+        echo json_encode($response);
+    }
+
+    // IMPORT A DECK FROM A JSON FILE OR PASTED JSON
+    // POST: json_file (uploaded file) OR json_text (pasted text), not both
+    public function import(): ApiResponse
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->send(new ApiResponse(
-                false,
-                405,
-                'Only POST requests are allowed.',
-                []
-            ));
-            return;
+            return new ApiResponse(false, 405, 'Only POST requests are allowed.', []);
         }
 
         $tempFile = null;
 
         try {
             $file = $_FILES['json_file'] ?? null;
-            $jsonText = trim($_POST['json_text'] ?? '');
+
+            // json_text can come from a form post or from a JSON body
+            $body = json_decode((string) file_get_contents('php://input'), true);
+            $jsonText = trim((string) (
+                $_POST['json_text'] ?? (is_array($body) ? ($body['json_text'] ?? '') : '')
+            ));
 
             $hasFile = $file !== null &&
                 $file['error'] !== UPLOAD_ERR_NO_FILE;
@@ -128,26 +155,21 @@ class JsonImportController
 
             $result = $this->jsonManager->importDeck($filePath);
 
-            $this->send(new ApiResponse(
+            return new ApiResponse(
                 true,
                 201,
                 'JSON imported successfully.',
                 is_array($result) ? $result : ['data' => $result]
-            ));
+            );
         } catch (InvalidArgumentException $e) {
-            $this->send(new ApiResponse(
-                false,
-                400,
-                $e->getMessage(),
-                []
-            ));
+            return new ApiResponse(false, 400, $e->getMessage(), []);
         } catch (Throwable $e) {
-            $this->send(new ApiResponse(
+            return new ApiResponse(
                 false,
                 500,
                 'Failed to import JSON. Please check your file and try again.',
                 []
-            ));
+            );
         } finally {
             if ($tempFile !== null && file_exists($tempFile)) {
                 unlink($tempFile);
