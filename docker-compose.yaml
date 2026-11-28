@@ -1,4 +1,4 @@
-services: 
+services:
   frontend:
     build: ./frontend/edu-meet/
     ports:
@@ -27,7 +27,7 @@ services:
   mysql:
     image: mysql:latest
     container_name: mysql
-    ports: 
+    ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: secret
@@ -43,7 +43,7 @@ services:
   redis:
     image: redis:8.10.3-alpine3.23
     container_name: redis
-    ports: 
+    ports:
       - "6379:6379"
     command: redis-server --dir /data --protected-mode no
     healthcheck:
@@ -53,7 +53,6 @@ services:
       retries: 5
     volumes:
       - redisdata:/data
-
 
   proxy:
     image: caddy:alpine
@@ -68,4 +67,4 @@ services:
 volumes:
     caddy_data:
     mysql_data:
-    redisdata: 
+    redisdata:
