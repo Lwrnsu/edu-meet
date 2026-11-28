@@ -123,6 +123,26 @@ check("Student downloads their own work", is_array($f) && $f['name'] === 'Esguer
 check("Other student can't download it", tc(11, 'student')->file($subId, 'submission', false) instanceof ApiResponse);
 check("ZIP can't be previewed", tc(1, 'faculty')->file($subId, 'submission', true) instanceof ApiResponse);
 
+echo "\nREAD-ONLY VIEW (admins, program chairs)\n";
+$pdo->exec("INSERT INTO programs VALUES (9, 3, 'Information Technology', 'BSIT')");
+foreach ([[30, 'Chair', 'Ramos', 'program_chair', 3], [31, 'Other', 'Chair', 'program_chair', 3], [90, 'Raya', 'Manalo', 'college_admin', null]] as $p) {
+    add_person($pdo, ...$p);
+}
+$pdo->exec("INSERT INTO program_chair_assignments (membership_id, program_id) VALUES (30, 8), (31, 9)");
+$r = tc(30, 'program_chair')->list(100);
+check("Program chair sees the tasks of a class in their program", $r->code === 200 && $r->body['can_oversee'] === true && $r->body['can_manage'] === false, $r->message);
+check("Program chair gets the faculty overview (submitted counts)", isset($r->body['tasks'][0]['submitted_count']));
+$r = tc(30, 'program_chair')->show($photo);
+check("Program chair sees every student's submission", $r->code === 200 && count($r->body['submissions']) === 3);
+check("Program chair can open a handed-in file", is_array(tc(30, 'program_chair')->file($subId, 'submission', false)));
+check("Program chair can't grade", tc(30, 'program_chair')->grade($subId, 50, null)->code === 403);
+check("Program chair can't add a task", tc(30, 'program_chair')->create(100, ['title' => 'x', 'deadline' => '2026-12-01'], [])->code === 403);
+check("Chair of another program can't see the class", tc(31, 'program_chair')->list(100)->code === 403);
+$r = tc(90, 'college_admin')->list(101);
+check("Admin sees the tasks of any class, read-only", $r->code === 200 && $r->body['can_oversee'] === true && $r->body['can_manage'] === false);
+check("Admin can't delete a task", tc(90, 'college_admin')->delete($photo)->code === 403);
+check("Students and faculty aren't marked read-only", tc(10, 'student')->list(100)->body['can_oversee'] === false && tc(1, 'faculty')->list(100)->body['can_oversee'] === false);
+
 $filesBefore = count(glob("$dir/*"));
 $r = tc(1, 'faculty')->delete($photo);
 check("Deleting a task deletes its submissions and files", $r->code === 200 && (int) $pdo->query("SELECT COUNT(*) FROM task_submissions WHERE task_id = $photo")->fetchColumn() === 0 && count(glob("$dir/*")) === $filesBefore - 1);

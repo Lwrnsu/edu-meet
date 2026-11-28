@@ -34,11 +34,12 @@ try {
             Http::json(new ApiResponse(false, 404, "Class not found.", []));
         }
         $manage = $access->canManage($user, $classId);
-        if (!$manage && !$access->enrollment($user, $classId)['enrolled'] && !$user->isAdmin()) {
+        $oversee = !$manage && $access->canOversee($user, $classId);
+        if (!$manage && !$oversee && !$access->enrollment($user, $classId)['enrolled']) {
             Http::json(new ApiResponse(false, 403, "You don't have access to this class.", []));
         }
         Http::json(new ApiResponse(true, 200, "Class loaded.", [
-            'class' => $access->classDetails($classId), 'can_manage' => $manage, 'me' => $me,
+            'class' => $access->classDetails($classId), 'can_manage' => $manage, 'can_oversee' => $oversee, 'me' => $me,
         ]));
     }
     Http::json(new ApiResponse(true, 200, "Classes loaded.", ['classes' => $access->myClasses($user), 'me' => $me]));

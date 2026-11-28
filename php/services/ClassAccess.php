@@ -183,6 +183,32 @@ class ClassAccess {
     }
 
     /*
+        Read-only staff view: admins (every class) and program chairs (classes of their program).
+        They see what the class's faculty sees but can't post, edit or grade.
+    */
+    public function canOversee(CurrentUser $user, int $classId): bool {
+        if ($user->isAdmin()) {
+            return $this->classExists($classId);
+        }
+        if (!$user->is('program_chair')) {
+            return false;
+        }
+        $members = $this->membershipIds($user->id);
+        if ($members === []) {
+            return false;
+        }
+        $in = self::marks($members);
+        $stmt = $this->pdo->prepare("
+            SELECT 1 FROM classes c
+            INNER JOIN subjects s ON s.subject_id = c.subject_id
+            WHERE c.class_id = ?
+              AND s.program_id IN (SELECT program_id FROM program_chair_assignments WHERE membership_id IN ($in))
+        ");
+        $stmt->execute([$classId, ...$members]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /*
         How a student is in a class:
         - ['enrolled' => false]                       not in the class
         - ['enrolled' => true, 'block_id' => 3]       in the class through block 3

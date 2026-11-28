@@ -57,10 +57,11 @@ class TaskController {
             return $denied;
         }
         $manage = $this->access->canManage($this->user, $classId);
+        $oversee = !$manage && $this->access->canOversee($this->user, $classId);
         $rows = $this->tasks->forClass($classId, $search);
         $ids = array_map(fn($r) => (int) $r['id'], $rows);
 
-        if ($manage) {
+        if ($manage || $oversee) {
             $students = array_keys($this->access->classStudents($classId));
             $counts = $this->tasks->submittedCounts($ids, $students);
             $tasks = array_map(fn($r) => $this->format($r) + [
@@ -75,9 +76,10 @@ class TaskController {
             ], $rows);
         }
         return new ApiResponse(true, 200, "Tasks loaded.", [
-            'class'      => $this->access->classDetails($classId),
-            'can_manage' => $manage,
-            'tasks'      => $tasks,
+            'class'       => $this->access->classDetails($classId),
+            'can_manage'  => $manage,
+            'can_oversee' => $oversee,
+            'tasks'       => $tasks,
         ]);
     }
 
@@ -88,12 +90,14 @@ class TaskController {
         }
         $classId = (int) $task['class_id'];
         $manage = $this->access->canManage($this->user, $classId);
+        $oversee = !$manage && $this->access->canOversee($this->user, $classId);
         $body = [
-            'class'      => $this->access->classDetails($classId),
-            'can_manage' => $manage,
-            'task'       => $this->format($task),
+            'class'       => $this->access->classDetails($classId),
+            'can_manage'  => $manage,
+            'can_oversee' => $oversee,
+            'task'        => $this->format($task),
         ];
-        if ($manage) {
+        if ($manage || $oversee) {
             $students = $this->access->classStudents($classId);
             $sections = [];
             foreach ($this->access->classBlocks($classId) as $s) {
@@ -281,7 +285,7 @@ class TaskController {
             $sub = $this->tasks->findSubmission($id);
             $task = $sub === null ? null : $this->tasks->find((int) $sub['task_id']);
             $ok = $task !== null && $this->denyClass((int) $task['class_id']) === null
-                && ((int) $sub['student_id'] === $this->user->id || $this->access->canManage($this->user, (int) $task['class_id']));
+                && ((int) $sub['student_id'] === $this->user->id || $this->canSeeAll((int) $task['class_id']));
             if (!$ok) {
                 return new ApiResponse(false, 404, "File not found.", []);
             }
@@ -302,12 +306,17 @@ class TaskController {
 
     // ---------- helpers ----------
 
-    // 403/404 unless the user manages the class or is one of its students.
+    // Faculty of the class, or an admin / program chair looking on (read-only).
+    private function canSeeAll(int $classId): bool {
+        return $this->access->canManage($this->user, $classId) || $this->access->canOversee($this->user, $classId);
+    }
+
+    // 403/404 unless the user manages or oversees the class or is one of its students.
     private function denyClass(int $classId): ?ApiResponse {
         if (!$this->access->classExists($classId)) {
             return new ApiResponse(false, 404, "Class not found.", []);
         }
-        if ($this->access->canManage($this->user, $classId) || $this->access->enrollment($this->user, $classId)['enrolled']) {
+        if ($this->canSeeAll($classId) || $this->access->enrollment($this->user, $classId)['enrolled']) {
             return null;
         }
         return new ApiResponse(false, 403, "You don't have access to this class.", []);

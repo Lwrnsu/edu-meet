@@ -45,6 +45,8 @@ export default function TasksPage() {
 
   const blocked = result && !result.response
   const manage = result?.response && result.body.can_manage
+  // admins and program chairs see the faculty table, read-only
+  const staff = manage || (result?.response && result.body.can_oversee)
   const tasks = result?.response ? result.body.tasks : []
   const className = result?.response ? result.body.class.name : ''
 
@@ -82,12 +84,12 @@ export default function TasksPage() {
               <EmptyState
                 icon="task"
                 title={query ? 'No tasks match your search' : 'No tasks yet'}
-                text={query ? 'Try another name.' : manage ? 'Add a task for your students with + Add Task.' : 'Tasks from your teacher will show up here.'}
+                text={query ? 'Try another name.' : manage ? 'Add a task for your students with + Add Task.' : staff ? 'Tasks the teacher adds will show up here.' : 'Tasks from your teacher will show up here.'}
               />
-            ) : manage ? (
+            ) : staff ? (
               <table className="fb-table">
                 <thead>
-                  <tr><th>Task Name</th><th>Deadline</th><th>Submitted</th><th>Status</th><th>Actions</th></tr>
+                  <tr><th>Task Name</th><th>Deadline</th><th>Submitted</th><th>Status</th>{manage ? <th>Actions</th> : null}</tr>
                 </thead>
                 <tbody>
                   {tasks.map((t) => (
@@ -98,12 +100,14 @@ export default function TasksPage() {
                       <td>
                         <StatusPill status={t.status} />
                       </td>
-                      <td>
-                        <div className="fb-actions">
-                          <button type="button" className="fb-ic fb-ic--edit" title="Edit" aria-label={`Edit ${t.title}`} onClick={() => setEditing(t)}><Icon name="edit" /></button>
-                          <button type="button" className="fb-ic fb-ic--del" title="Delete" aria-label={`Delete ${t.title}`} onClick={() => setDeleting(t)}><Icon name="trash" /></button>
-                        </div>
-                      </td>
+                      {manage ? (
+                        <td>
+                          <div className="fb-actions">
+                            <button type="button" className="fb-ic fb-ic--edit" title="Edit" aria-label={`Edit ${t.title}`} onClick={() => setEditing(t)}><Icon name="edit" /></button>
+                            <button type="button" className="fb-ic fb-ic--del" title="Delete" aria-label={`Delete ${t.title}`} onClick={() => setDeleting(t)}><Icon name="trash" /></button>
+                          </div>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

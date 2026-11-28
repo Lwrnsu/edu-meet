@@ -50,6 +50,12 @@ export default function AnnouncementsPage() {
   }, [view])
 
   useEffect(() => { load(1) }, [load])
+  // a new notification arrived (e.g. a new announcement) → refresh the list
+  useEffect(() => {
+    const refresh = () => load(1)
+    window.addEventListener('fb:fresh', refresh)
+    return () => window.removeEventListener('fb:fresh', refresh)
+  }, [load])
 
   // With no ?id=, open the first one on wide screens.
   const firstId = items[0]?.id

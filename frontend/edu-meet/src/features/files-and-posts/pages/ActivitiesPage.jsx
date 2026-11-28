@@ -45,6 +45,7 @@ function ActivityList({ classId }) {
   }, [classId, tick])
 
   const manage = result?.response && result.body.can_manage
+  const staff = manage || (result?.response && result.body.can_oversee)
   const tasks = result?.response ? result.body.tasks : []
   return (
     <ClassFrame classId={classId} className={result?.response ? result.body.class.name : ''}>
@@ -54,7 +55,7 @@ function ActivityList({ classId }) {
         <div className="fb-loading">Loading…</div>
       ) : tasks.length === 0 ? (
         <section className="fb-panel">
-          <EmptyState icon="activity" title="No activities yet" text={manage ? 'Add a task on the Tasks tab and it will show up here.' : 'Tasks from your teacher will show up here.'} />
+          <EmptyState icon="activity" title="No activities yet" text={manage ? 'Add a task on the Tasks tab and it will show up here.' : staff ? 'Tasks the teacher adds will show up here.' : 'Tasks from your teacher will show up here.'} />
         </section>
       ) : (
         <div className="fb-act-grid">
@@ -69,7 +70,7 @@ function ActivityList({ classId }) {
               <div className="fb-act-card__foot">
                 <span><Icon name="calendar" size={15} />Due {fmtDate(t.deadline, true)}</span>
                 <span>{t.max_score} pts</span>
-                {manage ? (
+                {staff ? (
                   <span>{t.submitted_count}/{t.student_count} submitted</span>
                 ) : (
                   <RemarkBadge remark={t.remark} />
@@ -97,17 +98,19 @@ function TaskDetail({ classId, taskId }) {
   if (!result) {
     return <ClassFrame classId={classId}><div className="fb-loading">Loading…</div></ClassFrame>
   }
-  if (!result.response) {
+  // a task opened under another class's address is treated as not found
+  const wrongClass = result.response && String(result.body.class.id) !== String(classId)
+  if (!result.response || wrongClass) {
     return (
       <ClassFrame classId={classId}>
         <section className="fb-panel">
-          <ApiProblem result={result} notFoundTitle="Task not found" backTo={`/classes/${classId}/activities`} backLabel="Back to Activities" />
+          <ApiProblem result={wrongClass ? { response: false, code: 404, message: 'This task is not in this class.' } : result} notFoundTitle="Task not found" backTo={`/classes/${classId}/activities`} backLabel="Back to Activities" />
         </section>
       </ClassFrame>
     )
   }
 
-  const { task, can_manage: manage } = result.body
+  const { task, can_manage: manage, can_oversee: oversee } = result.body
   async function toggleClosed() {
     const r = await tasksApi.setClosed(task.id, task.status === 'active')
     showToast(r.response ? (task.status === 'active' ? 'Task closed.' : 'Task reopened.') : r.message, r.response)
@@ -149,8 +152,8 @@ function TaskDetail({ classId, taskId }) {
           ) : null}
         </section>
 
-        {manage ? (
-          <Submissions data={result.body} onGraded={showToast} reload={load} />
+        {manage || oversee ? (
+          <Submissions data={result.body} readOnly={!manage} onGraded={showToast} reload={load} />
         ) : (
           <MyWork data={result.body} onChange={(r, message) => { setResult(r); showToast(message) }} showToast={showToast} />
         )}
@@ -263,7 +266,7 @@ const FILTERS = [
   ['none', 'Not handed in'],
 ]
 
-function Submissions({ data, onGraded, reload }) {
+function Submissions({ data, readOnly, onGraded, reload }) {
   const [filter, setFilter] = useState('all')
   const rows = data.submissions.filter((r) => {
     if (filter === 'submitted') return r.submission
@@ -295,7 +298,7 @@ function Submissions({ data, onGraded, reload }) {
                   <td><b className="fb-strong">{r.student.name}</b>{r.student.section ? <small className="fb-block fb-muted">{r.student.section}</small> : null}</td>
                   <td>{r.submission ? <SubmittedFile submission={r.submission} /> : <span className="fb-dash">-</span>}</td>
                   <td>{r.submission ? <>{fmtDate(r.submission.submitted_at)}{r.submission.is_late ? <small className="fb-late"> late</small> : null}</> : <span className="fb-dash">-</span>}</td>
-                  <td>{r.submission ? <GradeCell submission={r.submission} max={data.task.max_score} onSaved={(m) => { onGraded(m); reload() }} onError={(m) => onGraded(m, false)} /> : <span className="fb-dash">-</span>}</td>
+                  <td>{r.submission && readOnly ? (r.submission.score_label || <span className="fb-muted">Not graded</span>) : r.submission ? <GradeCell submission={r.submission} max={data.task.max_score} onSaved={(m) => { onGraded(m); reload() }} onError={(m) => onGraded(m, false)} /> : <span className="fb-dash">-</span>}</td>
                   <td><RemarkBadge remark={r.remark} /></td>
                 </tr>
               ))}

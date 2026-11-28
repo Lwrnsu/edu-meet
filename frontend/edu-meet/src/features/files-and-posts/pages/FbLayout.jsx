@@ -213,6 +213,8 @@ export function ClassFrame({ classId, className, children }) {
             </span>
             {info?.body?.can_manage ? (
               <button type="button" className="fb-pill fb-pill--ghost" onClick={() => setNoClass(true)}>No Class</button>
+            ) : info?.body?.can_oversee ? (
+              <span className="fb-pill fb-pill--ghost" title="You can look at this class but not post, edit or grade">View only</span>
             ) : null}
           </div>
         </div>

@@ -202,6 +202,25 @@ $r = posts($faculty)->create(100, '  ', 'announcement', '', [], [fakeUpload('run
 check("B3b all form errors come back together", $r->code === 400
     && isset($r->body['fields']['title'], $r->body['fields']['message']) && count($r->body['errors']) === 1, json_encode($r->body));
 
+echo "\nREAD-ONLY VIEW (admins, program chairs)\n";
+add_person($pdo, 30, 'Chair', 'Ramos', 'program_chair', 3);
+add_person($pdo, 31, 'Other', 'Chair', 'program_chair', 4);
+add_person($pdo, 90, 'Raya', 'Manalo', 'college_admin');
+$pdo->exec("INSERT INTO program_chair_assignments (membership_id, program_id) VALUES (30, 8), (31, 16)");
+$chair = u(30, 'program_chair');       // BSCS: class 100 is a BSCS class
+$otherChair = u(31, 'program_chair');  // BSEd-Eng
+$admin = u(90, 'college_admin');
+$facultyFeed = posts($faculty)->feed(100);
+$r = posts($chair)->feed(100);
+check("Program chair sees every post of a class in their program", $r->code === 200 && names($r, 'posts', 'id') === names($facultyFeed, 'posts', 'id') && $r->body['can_oversee'] === true);
+check("Program chair can't post", $r->body['can_post'] === false && posts($chair)->create(100, 'Hi', 'announcement', 'Hello', [], [])->code === 403);
+check("Chair of another program can't see the feed", posts($otherChair)->feed(100)->code === 403);
+$r = res($admin)->list(100);
+check("Admin sees the resources of any class, read-only", $r->code === 200 && $r->body['can_manage'] === false && $r->body['can_oversee'] === true);
+check("Admin can open a resource", $r->body['resources'] !== [] && is_array(res($admin)->openFile($r->body['resources'][0]['id'], false)));
+check("Admin can't upload", res($admin)->upload(100, [fakeUpload('x.pdf')])->code === 403);
+check("Outside student still can't see the class", res($outsider)->list(100)->code === 403 && posts($outsider)->feed(100)->code === 403);
+
 echo "\nNOTIFICATIONS\n";
 
 $pdo->exec("DELETE FROM notifications");

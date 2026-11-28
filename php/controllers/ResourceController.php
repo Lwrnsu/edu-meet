@@ -58,7 +58,8 @@ class ResourceController {
             return new ApiResponse(false, 404, "Class not found.", []);
         }
         $canManage = $this->access->canManage($this->user, $classId);
-        if (!$canManage && !$this->access->enrollment($this->user, $classId)['enrolled']) {
+        $oversee = !$canManage && $this->access->canOversee($this->user, $classId);
+        if (!$canManage && !$oversee && !$this->access->enrollment($this->user, $classId)['enrolled']) {
             return $this->forbidden();
         }
         try {
@@ -67,9 +68,10 @@ class ResourceController {
             return new ApiResponse(false, 400, $e->getMessage(), []);
         }
         return new ApiResponse(true, 200, "Resources loaded.", [
-            'class'      => $this->access->classDetails($classId),
-            'can_manage' => $canManage,
-            'resources'  => $this->format($rows),
+            'class'       => $this->access->classDetails($classId),
+            'can_manage'  => $canManage,
+            'can_oversee' => $oversee,
+            'resources'   => $this->format($rows),
         ]);
     }
 
@@ -223,7 +225,7 @@ class ResourceController {
     */
     private function canOpen(array $file): bool {
         $classId = (int) $file['class_id'];
-        if ($this->access->canManage($this->user, $classId)) {
+        if ($this->access->canManage($this->user, $classId) || $this->access->canOversee($this->user, $classId)) {
             return true;
         }
         $enrollment = $this->access->enrollment($this->user, $classId);

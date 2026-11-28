@@ -54,7 +54,8 @@ class PostController {
             return new ApiResponse(false, 400, "Post type must be announcement or blog.", []);
         }
         $canManage = $this->access->canManage($this->user, $classId);
-        if ($canManage) {
+        $oversee = !$canManage && $this->access->canOversee($this->user, $classId);
+        if ($canManage || $oversee) {
             $onlyBlock = $section ?: false;
         } else {
             $enrollment = $this->access->enrollment($this->user, $classId);
@@ -68,11 +69,12 @@ class PostController {
         $rows = $this->posts->feed($classId, $onlyBlock, self::PAGE_SIZE + 1, ($page - 1) * self::PAGE_SIZE, $type);
         $hasMore = count($rows) > self::PAGE_SIZE;
         return new ApiResponse(true, 200, $rows === [] ? "No posts yet." : "Posts loaded.", [
-            'class'    => $this->access->classDetails($classId),
-            'can_post' => $canManage,
-            'page'     => $page,
-            'has_more' => $hasMore,
-            'posts'    => $this->format(array_slice($rows, 0, self::PAGE_SIZE)),
+            'class'       => $this->access->classDetails($classId),
+            'can_post'    => $canManage,
+            'can_oversee' => $oversee,
+            'page'        => $page,
+            'has_more'    => $hasMore,
+            'posts'       => $this->format(array_slice($rows, 0, self::PAGE_SIZE)),
         ]);
     }
 
@@ -258,7 +260,7 @@ class PostController {
 
     private function canSee(array $post): bool {
         $classId = (int) $post['class_id'];
-        if ($this->access->canManage($this->user, $classId)) {
+        if ($this->access->canManage($this->user, $classId) || $this->access->canOversee($this->user, $classId)) {
             return true;
         }
         $enrollment = $this->access->enrollment($this->user, $classId);
