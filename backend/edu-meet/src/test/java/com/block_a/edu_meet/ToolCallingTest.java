@@ -1,5 +1,6 @@
 package com.block_a.edu_meet;
 
+import com.block_a.edu_meet.ai.ChatPrompt;
 import com.block_a.edu_meet.ai.GeminiChatService;
 import com.block_a.edu_meet.ai.KnowledgeBase;
 import com.block_a.edu_meet.ai.SourceCollector;
@@ -49,6 +50,14 @@ class ToolCallingTest {
 
         assertEquals("Unknown tool: nope", registry.invoke("nope", Map.of()).get("error"));
         assertTrue(registry.invoke("boom", Map.of()).get("error").toString().contains("kaput"));
+    }
+
+    @Test
+    void promptDescribesEduBotCapabilities() {
+        assertTrue(ChatPrompt.SYSTEM.contains("Your name is EduBOT"));
+        assertTrue(ChatPrompt.SYSTEM.contains("reviewer or flashcards"));
+        assertTrue(ChatPrompt.SYSTEM.contains(
+                "Do not call searchKnowledgeBase for questions about yourself"));
     }
 
     @Test
