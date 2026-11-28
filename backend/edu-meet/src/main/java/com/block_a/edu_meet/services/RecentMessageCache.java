@@ -5,13 +5,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 import com.block_a.edu_meet.models.Message;
-@Profile("chat")
 @Component
 public class RecentMessageCache {
 

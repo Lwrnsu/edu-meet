@@ -31,7 +31,6 @@ import com.block_a.edu_meet.services.ChatSocketTickets;
 import com.block_a.edu_meet.security.PhpChatAccount;
 import com.block_a.edu_meet.exception.ApiException;
 
-@Profile("chat")
 @Component
 public class ChatHandler extends TextWebSocketHandler {
 
