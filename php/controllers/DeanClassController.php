@@ -2,53 +2,72 @@
 
 header('Content-Type: application/json');
 
-class DeanClassController
+require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/ControllerHelper.php';
+require_once __DIR__ . '../services/DeanClassService.php';
+
+class DeanController
 {
-    // "METHOD /path" => function name
+    use ApiRouteHelper;
+
+    private DeanService $service;
+
     private array $routes = [
-        'POST /api/add/classes' => 'addClasses',
-        'DELETE /api/delete/classes' => 'deleteClasses',
-        'PUT /api/update/classes' => 'updateClasses',
+        'GET /api/get/programs'             => 'getPrograms',
+        'POST /api/add/programs'            => 'addProgram',
+        'PUT /api/update/programs'          => 'updateProgram',
+        'DELETE /api/delete/programs'       => 'deleteProgram',
+        'GET /api/get/program-chairs'       => 'getProgramChairs',
+        'POST /api/assign/program-chair'    => 'assignProgramChair',
+        'DELETE /api/remove/program-chair'  => 'removeProgramChair',
     ];
 
-    public function handle()
+    public function __construct(DeanService $service)
     {
-        $method = $_SERVER['REQUEST_METHOD'];
-        $path   = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $key    = "$method $path";
-
-        if (isset($this->routes[$key])) {
-            $this->{$this->routes[$key]}();
-            return;
-        }
-
-        // Same path but wrong HTTP method -> 405, otherwise 404
-        foreach (array_keys($this->routes) as $k) {
-            if (substr($k, strpos($k, ' ') + 1) === $path) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-        }
-
-        http_response_code(404);
-        echo json_encode(['error' => 'Not found']);
+        $this->service = $service;
     }
 
-    private function addClasses()
+    public function handle(): void
     {
-        // add Classes. Param: Class Info, ProgramID
+        $this->dispatch($this->routes);
     }
 
-    private function deleteClass()
+    private function getPrograms(): void
     {
-        // delete class. Param: classID
+        $this->respond($this->service->getPrograms());
     }
 
-    private function updateClass()
+    private function addProgram(): void
     {
-        // update class. Param: classInfo
+        $this->respond($this->service->addProgram($this->getJsonInput()));
+    }
+
+    private function updateProgram(): void
+    {
+        $this->respond($this->service->updateProgram($this->getJsonInput()));
+    }
+
+    private function deleteProgram(): void
+    {
+        $input = $this->getJsonInput();
+        $id    = (int) ($_GET['program_id'] ?? $input['program_id'] ?? 0);
+        $this->respond($this->service->deleteProgram($id));
+    }
+
+    private function getProgramChairs(): void
+    {
+        $this->respond($this->service->getProgramChairs());
+    }
+
+    private function assignProgramChair(): void
+    {
+        $this->respond($this->service->assignProgramChair($this->getJsonInput()));
+    }
+
+    private function removeProgramChair(): void
+    {
+        $input = $this->getJsonInput();
+        $id    = (int) ($_GET['chair_id'] ?? $input['chair_id'] ?? 0);
+        $this->respond($this->service->removeProgramChair($id));
     }
 }
-
-(new DeanClassController())->handle();

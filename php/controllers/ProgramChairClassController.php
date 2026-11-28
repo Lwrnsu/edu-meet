@@ -2,66 +2,86 @@
 
 header('Content-Type: application/json');
 
-class ProgramChairClassController
+require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/ControllerHelper.php';
+require_once __DIR__ . '/ProgramChairService.php';
+
+class ProgramChairController
 {
-    // "METHOD /path" => function name
+    use ApiRouteHelper;
+
+    private ProgramChairService $service;
+
     private array $routes = [
-        'GET /api/get/blocks' => 'getBlocks',
-        'POST /api/add/blocks' => 'addBlocks',
-        'PUT /api/update/blocks' => 'updateBlocks',
-        'DELETE /api/delete/blocks' => 'deleteBlocks',
+        'GET /api/get/blocks'               => 'getBlocks',
+        'POST /api/add/blocks'              => 'addBlock',
+        'POST /api/add/student/block'       => 'addStudentToBlock',
+        'GET /api/get/classes'              => 'getClasses',
+        'POST /api/add/classes'             => 'addClass',
+        'POST /api/assign/block/class'      => 'assignBlockToClass',
+        'POST /api/add/student/class'       => 'addStudentToClass',
+        'DELETE /api/delete/student/class'  => 'removeStudentFromClass',
+        'GET /api/get/class/students'       => 'getClassStudents',
     ];
 
-    public function handle()
+    public function __construct(ProgramChairService $service)
     {
-        $method = $_SERVER['REQUEST_METHOD'];
-        $path   = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $key    = "$method $path";
-
-        if (isset($this->routes[$key])) {
-            $this->{$this->routes[$key]}();
-            return;
-        }
-
-        // Same path but wrong HTTP method -> 405, otherwise 404
-        foreach (array_keys($this->routes) as $k) {
-            if (substr($k, strpos($k, ' ') + 1) === $path) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-        }
-
-        http_response_code(404);
-        echo json_encode(['error' => 'Not found']);
+        $this->service = $service;
     }
 
-    private function getListOfBlocks()
+    public function handle(): void
     {
-        // return lists of blocks. Param: departmentID, programID
+        $this->dispatch($this->routes);
     }
 
-    private function getBlock() {
-        // return the lists of students inside that block. Param: blockID
-    }
-
-    private function addBlocks()
+    private function getBlocks(): void
     {
-        // create a block. Param: Lists of Students to add, name of the block (2-A)
+        $this->respond($this->service->getBlocks());
     }
 
-    private function addStudentInBlock() {
-        // adds student to the block. Param: studentInfo, blockID
-    }
-
-    private function removeStudentInBlock() {
-        // removes student to the block. Param: studentID, blockID
-    }
-
-    private function deleteBlocks()
+    private function addBlock(): void
     {
-        // delete the block. Param: blockID
+        $this->respond($this->service->addBlock($this->getJsonInput()));
+    }
+
+    private function addStudentToBlock(): void
+    {
+        $this->respond($this->service->addStudentToBlock($this->getJsonInput()));
+    }
+
+    private function getClasses(): void
+    {
+        $this->respond($this->service->getClasses());
+    }
+
+    private function addClass(): void
+    {
+        $this->respond($this->service->addClass($this->getJsonInput()));
+    }
+
+    private function assignBlockToClass(): void
+    {
+        $this->respond($this->service->assignBlockToClass($this->getJsonInput()));
+    }
+
+    private function addStudentToClass(): void
+    {
+        $this->respond($this->service->addStudentToClass($this->getJsonInput()));
+    }
+
+    private function removeStudentFromClass(): void
+    {
+        $input = $this->getJsonInput();
+        $payload = [
+            'class_id'   => $_GET['class_id'] ?? $input['class_id'] ?? 0,
+            'student_id' => $_GET['student_id'] ?? $input['student_id'] ?? 0,
+        ];
+        $this->respond($this->service->removeStudentFromClass($payload));
+    }
+
+    private function getClassStudents(): void
+    {
+        $classId = (int) ($_GET['class_id'] ?? 0);
+        $this->respond($this->service->getClassStudents($classId));
     }
 }
-
-(new ProgramChairClassController())->handle();

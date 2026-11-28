@@ -1,5 +1,12 @@
-edu-meet.app {
+localhost {
 	handle /api/* {
+		reverse_proxy spring:8080
+	}
+	@chatSocket {
+		path /chat
+		header Upgrade websocket
+	}
+	handle @chatSocket {
 		reverse_proxy spring:8080
 	}
 	handle {

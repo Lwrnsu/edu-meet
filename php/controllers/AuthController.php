@@ -2,7 +2,6 @@
 
 require_once __DIR__ . '/../services/AuthService.php';
 require_once __DIR__ . '/../services/SignupService.php';
-require_once __DIR__ . '/../services/PasswordChangeService.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/ApiException.php';
 require_once __DIR__ . '/../helpers/CookieHelper.php';
@@ -11,7 +10,7 @@ class AuthController
 {
     private AuthService $service;
     private SignupService $signupService;
-    private PasswordChangeService $passwordChangeService;
+    private ?PasswordChangeService $passwordChangeService;
     private array $cookies;
     private array $jwtConfig;
 
@@ -22,7 +21,7 @@ class AuthController
     ) {
         $this->service = $service ?? new AuthService();
         $this->signupService = $signupService ?? new SignupService();
-        $this->passwordChangeService = $passwordChangeService ?? new PasswordChangeService();
+        $this->passwordChangeService = $passwordChangeService;
         $this->cookies = require __DIR__ . '/../config/cookies.php';
         $this->jwtConfig = require __DIR__ . '/../config/jwt.php';
     }
@@ -53,45 +52,54 @@ class AuthController
         $this->handlePost(fn(array $payload) => $this->signupService->register($payload), 201);
     }
 
+    private function passwordChangeService(): PasswordChangeService
+    {
+        if ($this->passwordChangeService === null) {
+            require_once __DIR__ . '/../services/PasswordChangeService.php';
+            $this->passwordChangeService = new PasswordChangeService();
+        }
+        return $this->passwordChangeService;
+    }
+
     public function requestPasswordOtp(array $claims): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->requestOtp($claims, $payload)
+            fn(array $payload) => $this->passwordChangeService()->requestOtp($claims, $payload)
         );
     }
 
     public function verifyPasswordOtp(array $claims): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->verifyOtp($claims, $payload)
+            fn(array $payload) => $this->passwordChangeService()->verifyOtp($claims, $payload)
         );
     }
 
     public function changePassword(array $claims): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->changePassword($claims, $payload)
+            fn(array $payload) => $this->passwordChangeService()->changePassword($claims, $payload)
         );
     }
 
     public function requestForgotPasswordOtp(): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->requestForgotOtp($payload)
+            fn(array $payload) => $this->passwordChangeService()->requestForgotOtp($payload)
         );
     }
 
     public function verifyForgotPasswordOtp(): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->verifyForgotOtp($payload)
+            fn(array $payload) => $this->passwordChangeService()->verifyForgotOtp($payload)
         );
     }
 
     public function resetForgotPassword(): void
     {
         $this->handlePost(
-            fn(array $payload) => $this->passwordChangeService->resetForgotPassword($payload)
+            fn(array $payload) => $this->passwordChangeService()->resetForgotPassword($payload)
         );
     }
 
