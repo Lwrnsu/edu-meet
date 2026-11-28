@@ -5,8 +5,10 @@ import com.block_a.edu_meet.room.AuthorizedRoom;
 import com.block_a.edu_meet.room.MeetingRole;
 import com.block_a.edu_meet.room.RoomTarget;
 import com.block_a.edu_meet.service.CanonicalClassAccessService;
+import com.block_a.edu_meet.service.LiveKitPresenceService;
 import com.block_a.edu_meet.service.MeetingAdmissionService;
 import com.block_a.edu_meet.security.AuthenticatedUser;
+import livekit.LivekitModels.ParticipantInfo;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,9 @@ class RoomControllerTest {
     @Mock
     private MeetingAdmissionService admissionService;
 
+    @Mock
+    private LiveKitPresenceService liveKitPresence;
+
     private RoomController controller;
 
     @BeforeEach
@@ -62,7 +67,47 @@ class RoomControllerTest {
                 "01234567890123456789012345678901",
                 "wss://livekit.example.test",
                 classAccess,
-                admissionService);
+                admissionService,
+                liveKitPresence);
+    }
+
+    @Test
+    void activeMeetingsContainOnlyAssignedRoomsWithCurrentParticipants() {
+        AuthenticatedUser user = new AuthenticatedUser(
+                DUMMY_STUDENT_ID,
+                "student",
+                "student@example.test",
+                "Trusted Student");
+        when(classAccess.listRoomTargets(user)).thenReturn(List.of(DUMMY_TARGET));
+        when(liveKitPresence.listParticipants(DUMMY_TARGET.roomName())).thenReturn(List.of(
+                ParticipantInfo.newBuilder().setName("Present Student").build()));
+
+        ResponseEntity<List<RoomController.ActiveMeetingResponse>> result =
+                controller.getActiveMeetings(authentication(user));
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals(1, result.getBody().size());
+        RoomController.ActiveMeetingResponse meeting = result.getBody().get(0);
+        assertEquals(DUMMY_CLASS_ID, meeting.classId());
+        assertEquals(DUMMY_BLOCK_ID, meeting.blockId());
+        assertEquals(List.of("Present Student"), meeting.participants());
+    }
+
+    @Test
+    void activeMeetingsOmitAssignedRoomsWithoutCurrentParticipants() {
+        AuthenticatedUser user = new AuthenticatedUser(
+                DUMMY_STUDENT_ID,
+                "student",
+                "student@example.test",
+                "Trusted Student");
+        when(classAccess.listRoomTargets(user)).thenReturn(List.of(DUMMY_TARGET));
+        when(liveKitPresence.listParticipants(DUMMY_TARGET.roomName())).thenReturn(List.of());
+
+        ResponseEntity<List<RoomController.ActiveMeetingResponse>> result =
+                controller.getActiveMeetings(authentication(user));
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertTrue(result.getBody().isEmpty());
     }
 
     @Test

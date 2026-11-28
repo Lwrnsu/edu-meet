@@ -16,6 +16,8 @@ import com.block_a.edu_meet.security.SecurityConfig;
 import com.block_a.edu_meet.service.AuthService;
 import com.block_a.edu_meet.service.CanonicalClassAccessService;
 import com.block_a.edu_meet.service.MeetingAdmissionService;
+import com.block_a.edu_meet.services.LoginAttemptService;
+import com.block_a.edu_meet.services.OtpRateLimitService;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -91,6 +93,12 @@ class AuthorizationFlowHttpTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private OtpRateLimitService otpRateLimitService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

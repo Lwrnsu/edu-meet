@@ -1,27 +1,45 @@
 package com.block_a.edu_meet.controller;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
+import com.block_a.edu_meet.room.AuthorizedRoom;
+import com.block_a.edu_meet.room.MeetingRole;
+import com.block_a.edu_meet.security.AuthenticatedUser;
+import com.block_a.edu_meet.service.CanonicalClassAccessService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class CodingController {
+        private static final int MAX_CODE_LENGTH = 32_768;
+
         @Value("${compiler.api.url}")
         private String apiUrl;
         @Value("${compiler.api.key}")
         private String apiKey;
 
         private final RestTemplate restTemplate = new RestTemplate();
+        private final CanonicalClassAccessService classAccess;
+        private final String phpCompilerUrl;
 
-        private static final String PHP_URL = "http://127.0.0.1:8000/";
         private static final Map<String, String> LANGUAGE_MAP = new HashMap<>();
+
+        public CodingController(
+                        CanonicalClassAccessService classAccess,
+                        @Value("${app.php.compiler-url:http://localhost:8000/php_edumeet/}") String phpCompilerUrl) {
+                this.classAccess = classAccess;
+                this.phpCompilerUrl = phpCompilerUrl.endsWith("/") ? phpCompilerUrl : phpCompilerUrl + "/";
+        }
 
         static {
 
@@ -41,7 +59,7 @@ public class CodingController {
         @GetMapping("/questions")
         public String getQuestions() {
                 return restTemplate.getForObject(
-                                PHP_URL + "get_questions.php",
+                                phpCompilerUrl + "get_questions.php",
                                 String.class);
         }
 
@@ -54,7 +72,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "save_question.php",
+                                phpCompilerUrl + "save_question.php",
                                 request,
                                 String.class);
         }
@@ -68,7 +86,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "edit_question.php",
+                                phpCompilerUrl + "edit_question.php",
                                 request,
                                 String.class);
         }
@@ -82,7 +100,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "delete_question.php",
+                                phpCompilerUrl + "delete_question.php",
                                 request,
                                 String.class);
         }
@@ -97,7 +115,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "assign_question.php",
+                                phpCompilerUrl + "assign_question.php",
                                 request,
                                 String.class);
         }
@@ -106,7 +124,7 @@ public class CodingController {
         public String getAssignedQuestion() {
 
                 return restTemplate.getForObject(
-                                PHP_URL + "get_assigned_question.php",
+                                phpCompilerUrl + "get_assigned_question.php",
                                 String.class);
         }
 
@@ -120,7 +138,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "submit_code.php",
+                                phpCompilerUrl + "submit_code.php",
                                 request,
                                 String.class);
         }
@@ -129,7 +147,7 @@ public class CodingController {
         public String getSubmissions() {
 
                 return restTemplate.getForObject(
-                                PHP_URL + "get_submissions.php",
+                                phpCompilerUrl + "get_submissions.php",
                                 String.class);
         }
 
@@ -143,7 +161,7 @@ public class CodingController {
                 HttpEntity<String> request = new HttpEntity<>(body, headers);
 
                 return restTemplate.postForObject(
-                                PHP_URL + "grade_submission.php",
+                                phpCompilerUrl + "grade_submission.php",
                                 request,
                                 String.class);
         }
@@ -153,9 +171,104 @@ public class CodingController {
                         @PathVariable String studentName) {
 
                 return restTemplate.getForObject(
-                                PHP_URL + "get_student_result.php?studentName="
+                                phpCompilerUrl + "get_student_result.php?studentName="
                                                 + studentName,
                                 String.class);
+        }
+
+        @GetMapping("/meeting-code/assignment")
+        public String getMeetingAssignment(
+                        @RequestParam Integer classId,
+                        @RequestParam Integer blockId,
+                        Authentication authentication) {
+                requireMeetingMember(authentication, classId, blockId);
+                try {
+                        return restTemplate.getForObject(
+                                        phpCompilerUrl + "get_assigned_question.php",
+                                        String.class);
+                } catch (RestClientException exception) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_GATEWAY,
+                                        "The coding assignment service is unavailable",
+                                        exception);
+                }
+        }
+
+        @PostMapping("/meeting-code/run")
+        public Map<String, String> runMeetingCode(
+                        @RequestBody MeetingCodeRunRequest request,
+                        Authentication authentication) {
+                requireMeetingMember(authentication, request.classId(), request.blockId());
+                validateCode(request.code());
+
+                String compiler = LANGUAGE_MAP.get(
+                                request.language() == null ? "" : request.language().trim().toLowerCase(Locale.ROOT));
+                if (compiler == null) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported programming language");
+                }
+                if (apiUrl == null || apiUrl.isBlank() || apiKey == null || apiKey.isBlank()) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.SERVICE_UNAVAILABLE,
+                                        "The code execution service is not configured");
+                }
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(apiKey);
+                Map<String, Object> payload = Map.of("compiler", compiler, "code", request.code());
+                try {
+                        Map<?, ?> response = restTemplate.postForObject(
+                                        apiUrl,
+                                        new HttpEntity<>(payload, headers),
+                                        Map.class);
+                        Object output = response == null ? null : response.get("output");
+                        return Map.of("output", output == null ? "" : output.toString());
+                } catch (HttpClientErrorException exception) {
+                        return Map.of("output", exception.getResponseBodyAsString());
+                } catch (RestClientException exception) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_GATEWAY,
+                                        "The code execution service is unavailable",
+                                        exception);
+                }
+        }
+
+        @PostMapping("/meeting-code/submit")
+        public String submitMeetingCode(
+                        @RequestBody MeetingCodeSubmissionRequest request,
+                        Authentication authentication) {
+                AuthorizedRoom room = requireMeetingMember(authentication, request.classId(), request.blockId());
+                if (room.role() != MeetingRole.STUDENT) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only enrolled students can submit code");
+                }
+                validateCode(request.code());
+                if (request.questionId() == null || request.questionId() <= 0) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid questionId is required");
+                }
+
+                AuthenticatedUser user = currentUser(authentication);
+                String studentName = user.displayName() == null || user.displayName().isBlank()
+                                ? Integer.toString(user.id())
+                                : user.displayName();
+                Map<String, Object> submission = Map.of(
+                                "studentName", studentName,
+                                "questionId", request.questionId(),
+                                "code", request.code());
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                try {
+                        return restTemplate.postForObject(
+                                        phpCompilerUrl + "submit_code.php",
+                                        new HttpEntity<>(submission, headers),
+                                        String.class);
+                } catch (RestClientException exception) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_GATEWAY,
+                                        "The coding submission service is unavailable",
+                                        exception);
+                }
         }
 
         // running the code
@@ -214,5 +327,46 @@ public class CodingController {
 
                         return error;
                 }
+        }
+
+        private AuthorizedRoom requireMeetingMember(
+                        Authentication authentication,
+                        Integer classId,
+                        Integer blockId) {
+                AuthenticatedUser user = currentUser(authentication);
+                if (classId == null || classId <= 0 || blockId == null || blockId <= 0) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Positive classId and blockId are required");
+                }
+                return classAccess.authorize(user, classId, blockId)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.FORBIDDEN,
+                                                "You are not authorized for this class section"));
+        }
+
+        private static AuthenticatedUser currentUser(Authentication authentication) {
+                if (authentication == null
+                                || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "A verified authenticated user is required");
+                }
+                return user;
+        }
+
+        private static void validateCode(String code) {
+                if (code == null || code.isBlank()) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code cannot be empty");
+                }
+                if (code.length() > MAX_CODE_LENGTH) {
+                        throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Code exceeds the size limit");
+                }
+        }
+
+        public record MeetingCodeRunRequest(Integer classId, Integer blockId, String language, String code) {
+        }
+
+        public record MeetingCodeSubmissionRequest(Integer classId, Integer blockId, Integer questionId, String code) {
         }
 }

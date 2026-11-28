@@ -7,17 +7,11 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: mode === "chat-local" ? { entries: ["chat-preview.html"] } : undefined,
   server: {
     host: mode === "chat-local" ? "127.0.0.1" : true,
-    proxy: mode === "chat-local" ? {
-      "/api": "http://127.0.0.1:8080",
-      "^/chat[?]": { target: "ws://127.0.0.1:8080", ws: true },
-    } : undefined,
-    allowedHosts: ["edu-meet.app"],
-    watch: {
-      usePolling: true,
-    },
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: mode === "chat-local"
+          ? "http://127.0.0.1:8080"
+          : process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8080",
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq) => {
@@ -25,6 +19,23 @@ export default defineConfig(({ mode }) => ({
           });
         },
       },
+      ...(mode === "chat-local"
+        ? {
+            "^/chat[?]": {
+              target: "ws://127.0.0.1:8080",
+              ws: true,
+            },
+          }
+        : {}),
     },
+    allowedHosts: ["edu-meet.app"],
+    watch: {
+      usePolling: true,
+    },
+  },
+  preview: {
+    allowedHosts: process.env.VITE_PREVIEW_ALLOWED_HOST
+      ? ["localhost", "127.0.0.1", "edu-meet.app", process.env.VITE_PREVIEW_ALLOWED_HOST]
+      : undefined,
   },
 }));

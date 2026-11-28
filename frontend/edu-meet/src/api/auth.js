@@ -1,5 +1,5 @@
 export const JAVA_API_BASE_URL =
-  import.meta.env.VITE_JAVA_API_BASE_URL || 'http://localhost:8080'
+  import.meta.env.VITE_JAVA_API_BASE_URL || ''
 
 const ADMIN_ACCESS_KEY = 'edu_meet_admin_access_token'
 const ADMIN_REFRESH_KEY = 'edu_meet_admin_refresh_token'

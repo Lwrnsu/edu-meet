@@ -3,20 +3,49 @@ services:
     build: ./frontend/edu-meet/
     ports:
       - "5173:5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://spring:8080
     volumes:
       - ./frontend/edu-meet/:/app
       - /app/node_modules
+    depends_on:
+      - spring
 
   spring:
     build: ./backend/edu-meet/
     ports:
       - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: chat
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      ATTENDANCE_REPORT_KEY: ${ATTENDANCE_REPORT_KEY:-}
+      COMPILER_API_URL: ${COMPILER_API_URL:-https://api.onlinecompiler.io/api/run-code-sync/}
+      ONLINE_COMPILER: ${ONLINE_COMPILER:-}
+      APP_PHP_LOGIN_URL: http://php:8000/api/auth/login.php
+      APP_PHP_SYSTEM_ADMIN_LOGIN_URL: http://php:8000/api/auth/system_admin_login.php
+      APP_PHP_SCHOOL_LOGIN_URL: http://php:8000/api/auth/school_login.php
+      APP_PHP_SIGNUP_URL: http://php:8000/api/auth/signup.php
+      APP_PHP_BASE_URL: http://php:8000/api
+      APP_PHP_COMPILER_URL: http://php:8000/php_edumeet/
+      PHP_CLASS_DATABASE_URL: ${PHP_CLASS_DATABASE_URL:-jdbc:mysql://mysql:3306/edu_meet}
+      PHP_CLASS_DATABASE_USERNAME: ${PHP_CLASS_DATABASE_USERNAME:-root}
+      PHP_CLASS_DATABASE_PASSWORD: ${PHP_CLASS_DATABASE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-secret}}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/edu_meet
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
+      REDIS_HOST: redis
+      MONGODB_URI: mongodb://mongo:27017/edumeet
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-      
+      mongo:
+        condition: service_healthy
+      php:
+        condition: service_started
 
   php:
     build: ./php/
@@ -24,24 +53,21 @@ services:
       - "8000:8000"
     environment:
       PHP_DB_HOST: mysql
-      PHP_DB_NAME: EduMeet
+      PHP_DB_NAME: edu_meet
       PHP_DB_USER: ${PHP_CLASS_DATABASE_USERNAME:-root}
       PHP_DB_PASSWORD: ${PHP_CLASS_DATABASE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-secret}}
-    depends_on: [mysql]
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   mysql:
-    image: mysql:8.4
+    image: mysql:26.10.0
     container_name: mysql
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: EduMeet
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
+      MYSQL_DATABASE: edu_meet
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
@@ -57,11 +83,6 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --dir /data --protected-mode no
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     volumes:
       - redisdata:/data
     healthcheck:

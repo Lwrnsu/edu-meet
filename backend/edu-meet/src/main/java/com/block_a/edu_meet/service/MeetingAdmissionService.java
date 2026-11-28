@@ -76,7 +76,7 @@ public class MeetingAdmissionService {
 
         List<MeetingAdmissionRequest> pending = new ArrayList<>();
         for (RoomTarget target : classAccess.listRoomTargets(faculty)) {
-            if (target.facultyId() != faculty.id()) {
+            if (!classAccess.isAssignedFaculty(faculty, target.classId(), target.blockId())) {
                 continue;
             }
             Set<String> requestIds = redisCall(

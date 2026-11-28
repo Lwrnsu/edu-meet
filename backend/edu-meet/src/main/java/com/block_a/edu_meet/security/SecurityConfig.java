@@ -36,7 +36,7 @@ public class SecurityConfig {
         }
 
         @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
                         http
                                 .csrf(csrf -> csrf.disable())
                                 .cors(Customizer.withDefaults())
@@ -45,7 +45,8 @@ public class SecurityConfig {
                                                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                                 .authorizeHttpRequests(auth -> auth
                                 .anyRequest().permitAll()
-                );
+                )
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
         }

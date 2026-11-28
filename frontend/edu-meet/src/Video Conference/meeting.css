@@ -70,6 +70,15 @@ body {
   background: var(--lk-bg, #111);
   color: var(--lk-fg, #f5f5f5);
 }
+.meeting-tools-panel--code {
+  flex-basis: min(760px, 60vw);
+  width: min(760px, 60vw);
+}
+.meeting-tools-panel > .sc {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .meeting-tools-header {
   display: flex;
   align-items: center;
@@ -165,5 +174,8 @@ body {
     flex: none;
     z-index: 10;
     background: var(--lk-bg, #111);
+  }
+  .meeting-tools-panel--code {
+    width: 100%;
   }
 }

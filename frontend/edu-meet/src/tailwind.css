@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css?family=Poppins:400,600");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-contrast-dark-grays-black: rgba(0, 0, 0, 1);
+  --color-contrast-light-grays-black: rgba(0, 0, 0, 1);
+  --color-scheme-grays-black: var(--color-contrast-light-grays-black);
+  --h5-font-family: "Poppins", Helvetica;
+  --moodboard-1light-gray-ish-blue: rgba(217, 226, 239, 1);
+  --moodboard-2dull-blue: rgba(61, 71, 87, 1);
+  --moodboard-2light-purple: rgba(156, 131, 246, 1);
+  --moodboard-2midnight-blue: rgba(17, 24, 39, 1);
+  --moodboard-2warm-white: rgba(255, 253, 248, 1);
+  --moodboard-3white: rgba(255, 255, 255, 0.5);
+  --poppins-h1-font-family: "Poppins", Helvetica;
+  --poppins-h3-font-family: "Poppins", Helvetica;
+  --small-text-font-family: "Inter", Helvetica;
+  --subtext-font-family: "Poppins", Helvetica;
+  --subtext-semibold-font-family: "Poppins", Helvetica;
+  --variable-collection-moodboard-2-pale-blue: rgba(233, 238, 246, 1);
+}
+
+@layer base {
+  .lobby-page button,
+  .lobby-page input,
+  .lobby-page select,
+  .lobby-page textarea {
+    @apply appearance-none bg-transparent border-0 outline-none;
+  }
+
+  .all-unset {
+    all: unset;
+  }
+}

@@ -5,6 +5,7 @@ import com.block_a.edu_meet.room.MeetingAdmissionRequest;
 import com.block_a.edu_meet.room.MeetingRole;
 import com.block_a.edu_meet.room.RoomTarget;
 import com.block_a.edu_meet.service.CanonicalClassAccessService;
+import com.block_a.edu_meet.service.LiveKitPresenceService;
 import com.block_a.edu_meet.service.MeetingAdmissionService;
 import com.block_a.edu_meet.security.AuthenticatedUser;
 import io.livekit.server.AccessToken;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -35,24 +37,52 @@ public class RoomController {
     private final String livekitUrl;
     private final CanonicalClassAccessService classAccess;
     private final MeetingAdmissionService admissionService;
+    private final LiveKitPresenceService liveKitPresence;
 
     public RoomController(
             @Value("${livekit.api-key}") String apiKey,
             @Value("${livekit.api-secret}") String apiSecret,
             @Value("${livekit.url:}") String livekitUrl,
             CanonicalClassAccessService classAccess,
-            MeetingAdmissionService admissionService) {
+            MeetingAdmissionService admissionService,
+            LiveKitPresenceService liveKitPresence) {
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.livekitUrl = livekitUrl;
         this.classAccess = classAccess;
         this.admissionService = admissionService;
+        this.liveKitPresence = liveKitPresence;
     }
 
     @GetMapping("/classes")
     public ResponseEntity<?> getClasses(Authentication authentication) {
         AuthenticatedUser user = requireAuthenticatedUser(authentication);
         return ResponseEntity.ok(classAccess.listRoomTargets(user));
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<ActiveMeetingResponse>> getActiveMeetings(Authentication authentication) {
+        AuthenticatedUser user = requireAuthenticatedUser(authentication);
+        List<ActiveMeetingResponse> activeMeetings = classAccess.listRoomTargets(user).stream()
+                .map(target -> {
+                    List<String> participants = liveKitPresence.listParticipants(target.roomName()).stream()
+                            .map(participant -> {
+                                String name = participant.getName();
+                                return name == null || name.isBlank() ? "Participant" : name;
+                            })
+                            .toList();
+                    return participants.isEmpty()
+                            ? null
+                            : new ActiveMeetingResponse(
+                                    target.classId(),
+                                    target.blockId(),
+                                    target.subject(),
+                                    target.section(),
+                                    participants);
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        return ResponseEntity.ok(activeMeetings);
     }
 
     @PostMapping("/admission-requests")
@@ -127,7 +157,8 @@ public class RoomController {
         }
 
         String roomName = target.roomName();
-        String identity = Integer.toString(user.id());
+        int classAccountId = classAccess.resolveClassAccountId(user);
+        String identity = Integer.toString(classAccountId > 0 ? classAccountId : user.id());
 
         String displayName = user.displayName() == null || user.displayName().isBlank()
                 ? identity
@@ -174,6 +205,14 @@ public class RoomController {
         public RoomTokenRequest(Integer classId, Integer blockId) {
             this(classId, blockId, null);
         }
+    }
+
+    public record ActiveMeetingResponse(
+            int classId,
+            int blockId,
+            String subject,
+            String section,
+            List<String> participants) {
     }
 
     public record AdmissionDecisionRequest(Boolean approved) {

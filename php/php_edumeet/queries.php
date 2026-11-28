@@ -54,8 +54,22 @@ function getAssignedQuestion(PDO $pdo) {
 
 // submitting
 function submitCode(PDO $pdo, array $d) {
+    $questionId = filter_var($d['questionId'] ?? null, FILTER_VALIDATE_INT);
+    $studentName = trim((string)($d['studentName'] ?? ''));
+    $code = $d['code'] ?? null;
+    if (!$questionId || $studentName === '' || !is_string($code) || trim($code) === '') {
+        http_response_code(400);
+        return ["success" => false, "message" => "Student, question, and code are required."];
+    }
+
+    $assignedQuestionId = $pdo->query("SELECT question_id FROM assigned_question LIMIT 1")->fetchColumn();
+    if ((int)$assignedQuestionId !== $questionId) {
+        http_response_code(409);
+        return ["success" => false, "message" => "This question is no longer assigned."];
+    }
+
     $pdo->prepare("INSERT INTO submissions (student_name, question_id, code) VALUES (?, ?, ?)")
-        ->execute([$d['studentName'], $d['questionId'], $d['code']]);
+        ->execute([$studentName, $questionId, $code]);
     return ["success" => true];
 }
 

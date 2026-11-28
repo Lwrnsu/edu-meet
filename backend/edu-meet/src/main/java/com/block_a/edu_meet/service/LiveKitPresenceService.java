@@ -37,8 +37,16 @@ public class LiveKitPresenceService {
     }
 
     public boolean isParticipantPresent(String roomName, String identity) {
-        if (roomName == null || roomName.isBlank() || identity == null || identity.isBlank()) {
-            throw new IllegalArgumentException("Room name and participant identity are required");
+        if (identity == null || identity.isBlank()) {
+            throw new IllegalArgumentException("Participant identity is required");
+        }
+        return listParticipants(roomName).stream()
+                .anyMatch(participant -> identity.equals(participant.getIdentity()));
+    }
+
+    public List<ParticipantInfo> listParticipants(String roomName) {
+        if (roomName == null || roomName.isBlank()) {
+            throw new IllegalArgumentException("Room name is required");
         }
         if (url.isBlank() || apiKey.isBlank() || apiSecret.isBlank() || client == null) {
             throw new ResponseStatusException(
@@ -56,19 +64,18 @@ public class LiveKitPresenceService {
                 throw presenceUnavailable();
             }
             if (rooms.stream().noneMatch(room -> roomName.equals(room.getName()))) {
-                return false;
+                return List.of();
             }
 
             Response<List<ParticipantInfo>> participantsResponse =
                     client.listParticipants(roomName).execute();
             if (participantsResponse.code() == 404) {
-                return false;
+                return List.of();
             }
             if (!participantsResponse.isSuccessful() || participantsResponse.body() == null) {
                 throw presenceUnavailable();
             }
-            return participantsResponse.body().stream()
-                    .anyMatch(participant -> identity.equals(participant.getIdentity()));
+            return participantsResponse.body();
         } catch (IOException exception) {
             throw presenceUnavailable();
         }

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import "./Student.css";
+import { getAuthBearerToken } from "../api/auth";
 
 const LANGUAGES = ["Java", "PHP", "Python", "C", "C++", "JavaScript", "HTML", "CSS", "C#", "SQL"];
 
@@ -10,14 +11,25 @@ const BACKEND_KEY = {
   JavaScript: "javascript", "C#": "c#", SQL: "sql",
 };
 
-// Relative URLs: the dev server proxies /api to Spring Boot (see vite.config.js).
-async function api(path, body) {
-  const res = await fetch(`/api${path}`, body
-    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-    : undefined);
-  if (!res.ok) throw new Error(`Server returned ${res.status}`);
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+async function api(apiUrl, path, body) {
+  const authToken = getAuthBearerToken();
+  if (!authToken) throw new Error("Your sign-in session has expired. Sign in again.");
+
+  const headers = { Authorization: `Bearer ${authToken}` };
+  const options = { headers };
+  if (body) {
+    headers["Content-Type"] = "application/json";
+    options.method = "POST";
+    options.body = JSON.stringify(body);
+  }
+
+  const baseUrl = apiUrl.replace(/\/$/, "");
+  const res = await fetch(`${baseUrl}/api/meeting-code${path}`, options);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || `Server returned ${res.status}`);
+  }
+  return data;
 }
 
 const norm = (t) => (t ?? "").replace(/\r\n/g, "\n").trim();
@@ -57,11 +69,11 @@ function Modal({ title, children, actions, firstFocusRef, onClose }) {
   );
 }
 
-export default function StudentCompiler() {
+export default function StudentCompiler({ apiUrl, classId, blockId, role, displayName }) {
+  const hasMeetingContext = Number(classId) > 0 && Number(blockId) > 0;
   const [assigned, setAssigned] = useState(undefined); // undefined = loading, null = none
   const [language, setLanguage] = useState("Java");
   const [code, setCode] = useState("");
-  const [name, setName] = useState("");
   const [output, setOutput] = useState(null); // null = not run yet
   const [running, setRunning] = useState(false);
   const [sending, setSending] = useState(false);
@@ -73,21 +85,33 @@ export default function StudentCompiler() {
   const goBackError = useRef(null);
 
   useEffect(() => {
-    api("/assigned-question")
+    if (!Number.isInteger(Number(classId)) || !Number.isInteger(Number(blockId))) return undefined;
+
+    let active = true;
+    const query = new URLSearchParams({ classId: String(classId), blockId: String(blockId) });
+    api(apiUrl, `/assignment?${query}`)
       .then((d) => {
         const q = Array.isArray(d) ? d[0] : d;
-        setAssigned(
-          q && (q.question ?? q.title)
-            ? {
-                id: q.id ?? q.question_id,
-                title: q.question ?? q.title,
-                expected: q.expected_output ?? q.expectedOutput ?? "",
-              }
-            : null
-        );
+        if (!active) return;
+        setAssigned(q && (q.question ?? q.title)
+          ? {
+              id: q.id ?? q.question_id,
+              title: q.question ?? q.title,
+              expected: q.expected_output ?? q.expectedOutput ?? "",
+            }
+          : null);
+        setError("");
       })
-      .catch(() => setAssigned(null));
-  }, []);
+      .catch((loadError) => {
+        if (!active) return;
+        setAssigned(null);
+        setError(loadError.message);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [apiUrl, classId, blockId]);
 
   const expected = assigned?.expected ?? "";
   let result = null;
@@ -104,12 +128,19 @@ export default function StudentCompiler() {
       setOutput(`${language} can't be run by the compiler.`);
       return;
     }
+    setError("");
     setRunning(true);
     try {
-      const d = await api("/run", { language: key, code });
+      const d = await api(apiUrl, "/run", {
+        classId: Number(classId),
+        blockId: Number(blockId),
+        language: key,
+        code,
+      });
       setOutput(d?.output ?? "");
+      setError("");
     } catch (e) {
-      setOutput(`Could not reach the server: ${e.message}`);
+      setError(e.message);
     }
     setRunning(false);
   };
@@ -117,12 +148,11 @@ export default function StudentCompiler() {
   const confirmSubmit = async () => {
     setSending(true);
     try {
-      await api("/submit", {
-        studentName: name.trim(),
+      await api(apiUrl, "/submit", {
+        classId: Number(classId),
+        blockId: Number(blockId),
         questionId: assigned.id,
         code,
-        output: output ?? "",
-        result: result?.text ?? "Not run",
       });
       setSubmitted(true);
       setStep("submitted");
@@ -133,12 +163,14 @@ export default function StudentCompiler() {
     setSending(false);
   };
 
-  const canSubmit = !!assigned && !!name.trim() && !!code.trim() && !submitted;
+  const canSubmit = role === "STUDENT" && !!assigned && !!code.trim() && !submitted;
   const questionText =
-    assigned === undefined ? "Loading…" : assigned ? assigned.title : "None assigned yet";
+    !hasMeetingContext
+      ? "Meeting details unavailable"
+      : assigned === undefined ? "Loading…" : assigned ? assigned.title : "None assigned yet";
 
   return (
-    <div className="sc">
+    <div className="sc sc--meeting">
       <header>
         <div className="brand">
           <svg width="97" height="84" viewBox="0 0 97 84" aria-hidden="true">
@@ -147,12 +179,17 @@ export default function StudentCompiler() {
           </svg>
           <div>
             <h1>Online Compiler</h1>
-            <p>Create and Run Code</p>
+            <p>Class {classId} · Section {blockId}</p>
           </div>
         </div>
       </header>
 
       <main>
+        {(error || !hasMeetingContext) && (
+          <p className="sc-error" role="alert">
+            {error || "Meeting class details are missing. Rejoin the meeting and try again."}
+          </p>
+        )}
         <div className="question">Assigned Question: {questionText}</div>
 
         <div className="grid">
@@ -176,9 +213,12 @@ export default function StudentCompiler() {
 
           <section aria-label="Results">
             <div className="row">
-              <label htmlFor="name" className="sr">Your name</label>
-              <input id="name" type="text" placeholder="Type your name here" readOnly={submitted} value={name} onChange={(e) => setName(e.target.value)} />
-              <button type="button" className="btn" disabled={!canSubmit} onClick={() => setStep("confirm")}>Submit</button>
+              <span className="sc-user">{displayName || "Signed-in participant"}</span>
+              {role === "STUDENT" ? (
+                <button type="button" className="btn" disabled={!canSubmit} onClick={() => setStep("confirm")}>Submit</button>
+              ) : (
+                <span className="sc-hint">Only students can submit.</span>
+              )}
             </div>
             <div className="panel"><h2>Output:</h2><pre aria-live="polite">{output}</pre></div>
             <div className="panel"><h2>Expected output:</h2><pre>{expected}</pre></div>

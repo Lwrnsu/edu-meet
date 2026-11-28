@@ -49,3 +49,22 @@
 .sc .panel pre{min-height:clamp(120px,22vh,250px)}
 .sc .modal .btns{flex-wrap:wrap;justify-content:center}
 .sc .modal h2{font-size:clamp(26px,5vw,40px)}
+.sc--meeting{min-height:0;height:100%;font-size:14px;overflow-y:auto}
+.sc--meeting header{padding:8px 12px}
+.sc--meeting .brand{gap:10px}
+.sc--meeting .brand svg{width:42px;height:36px}
+.sc--meeting h1{font-size:22px}
+.sc--meeting header p{margin-left:0;font-size:12px}
+.sc--meeting main{padding:12px}
+.sc--meeting .question{margin-bottom:12px;padding:8px;font-size:18px}
+.sc--meeting .row{gap:8px;min-height:36px}
+.sc--meeting .lang{flex-wrap:wrap}
+.sc--meeting select{font-size:14px;min-width:0}
+.sc--meeting .btn{font-size:14px;padding:6px 14px}
+.sc--meeting .panel{margin-bottom:10px}
+.sc--meeting .panel h2{padding:8px;font-size:14px}
+.sc--meeting .panel textarea{height:clamp(180px,30vh,360px);padding:10px;font-size:13px}
+.sc--meeting .panel pre{min-height:72px;padding:10px;font-size:13px}
+.sc--meeting .panel.short pre{min-height:0;height:0;padding:0}
+.sc-user,.sc-hint{min-width:0;overflow-wrap:anywhere;font-size:12px}
+.sc-error{margin:0 12px;padding:8px;background:#ffe4e4;color:#8b0000;border-radius:6px;font-size:13px}

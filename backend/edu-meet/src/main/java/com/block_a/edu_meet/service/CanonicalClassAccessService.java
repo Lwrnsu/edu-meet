@@ -27,15 +27,16 @@ public class CanonicalClassAccessService {
         }
 
         RoomTarget roomTarget = target.get();
-        if (user.hasAnyRole("faculty", "professor") && roomTarget.facultyId() == user.id()) {
+        int accountId = resolveClassAccountId(user);
+        if (user.hasAnyRole("faculty", "professor") && roomTarget.facultyId() == accountId) {
             return Optional.of(new AuthorizedRoom(roomTarget, MeetingRole.FACULTY));
         }
         if (user.hasAnyRole("student")
-                && classRepository.isStudentEnrolled(user.id(), classId, blockId)) {
+                && classRepository.isStudentEnrolled(accountId, classId, blockId)) {
             return Optional.of(new AuthorizedRoom(roomTarget, MeetingRole.STUDENT));
         }
         if (user.hasAnyRole("dean", "college_dean")) {
-            OptionalInt departmentId = classRepository.findDeanDepartmentId(user.id());
+            OptionalInt departmentId = classRepository.findDeanDepartmentId(accountId);
             if (departmentId.isPresent() && departmentId.getAsInt() == roomTarget.departmentId()) {
                 return Optional.of(new AuthorizedRoom(roomTarget, MeetingRole.DEAN));
             }
@@ -48,14 +49,15 @@ public class CanonicalClassAccessService {
     }
 
     public List<RoomTarget> listRoomTargets(AuthenticatedUser user) {
+        int accountId = resolveClassAccountId(user);
         if (user.hasAnyRole("faculty", "professor")) {
-            return classRepository.findFacultyRoomTargets(user.id());
+            return classRepository.findFacultyRoomTargets(accountId);
         }
         if (user.hasAnyRole("student")) {
-            return classRepository.findStudentRoomTargets(user.id());
+            return classRepository.findStudentRoomTargets(accountId);
         }
         if (user.hasAnyRole("dean", "college_dean")) {
-            return classRepository.findDeanRoomTargets(user.id());
+            return classRepository.findDeanRoomTargets(accountId);
         }
         return List.of();
     }
@@ -65,5 +67,12 @@ public class CanonicalClassAccessService {
                 && authorize(user, classId, blockId)
                         .map(authorizedRoom -> authorizedRoom.role() == MeetingRole.FACULTY)
                         .orElse(false);
+    }
+
+    public int resolveClassAccountId(AuthenticatedUser user) {
+        OptionalInt accountId = classRepository.findAccountIdByEmail(user.email());
+        return accountId.isPresent() && accountId.getAsInt() > 0
+                ? accountId.getAsInt()
+                : user.id();
     }
 }

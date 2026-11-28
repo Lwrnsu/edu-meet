@@ -10,7 +10,7 @@ require_once __DIR__ . '/../helpers/ApiException.php';
 
 class SignupService
 {
-    private PDO $db;
+    private mysqli $db;
     private UserRepository $users;
     private SchoolRepository $schools;
     private SchoolMembershipRepository $memberships;
@@ -18,14 +18,14 @@ class SignupService
     private UserRoleRepository $userRoles;
 
     public function __construct(
-        ?PDO $db = null,
+        ?mysqli $db = null,
         ?UserRepository $users = null,
         ?SchoolRepository $schools = null,
         ?SchoolMembershipRepository $memberships = null,
         ?RoleRepository $roles = null,
         ?UserRoleRepository $userRoles = null
     ) {
-        $this->db = $db ?? Database::connect();
+        $this->db = $db ?? Database::getConnection();
         $this->users = $users ?? new UserRepository($this->db);
         $this->schools = $schools ?? new SchoolRepository($this->db);
         $this->memberships = $memberships ?? new SchoolMembershipRepository($this->db);
@@ -52,7 +52,7 @@ class SignupService
 
         $slug = $this->uniqueSlug($data['school_name']);
 
-        $this->db->beginTransaction();
+        $this->db->begin_transaction();
 
         try {
             $userId = $this->users->create([
@@ -85,9 +85,7 @@ class SignupService
 
             $this->db->commit();
         } catch (Throwable $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            $this->db->rollback();
             throw $e;
         }
 

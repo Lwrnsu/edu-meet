@@ -44,11 +44,15 @@ class CanonicalClassAccessServiceTest {
     @Test
     void authorizesStudentOnlyForTheirEnrolledClassBlock() {
         int studentId = DummyClassFixture.CLASS.blocks().get(0).studentIds().get(0);
+        int classDatabaseUserId = studentId + 1000;
         AuthenticatedUser student = new AuthenticatedUser(
                 studentId, "student", "dummy-student@example.test", "DUMMY Student");
+        when(classRepository.findAccountIdByEmail(student.email()))
+                .thenReturn(OptionalInt.of(classDatabaseUserId));
         when(classRepository.findRoomTarget(DUMMY_TARGET.classId(), DUMMY_TARGET.blockId()))
                 .thenReturn(Optional.of(DUMMY_TARGET));
-        when(classRepository.isStudentEnrolled(studentId, DUMMY_TARGET.classId(), DUMMY_TARGET.blockId()))
+        when(classRepository.isStudentEnrolled(
+                classDatabaseUserId, DUMMY_TARGET.classId(), DUMMY_TARGET.blockId()))
                 .thenReturn(true);
 
         Optional<AuthorizedRoom> access = service.authorize(
@@ -56,6 +60,8 @@ class CanonicalClassAccessServiceTest {
 
         assertEquals(MeetingRole.STUDENT, access.orElseThrow().role());
         assertEquals(DUMMY_TARGET, access.orElseThrow().target());
+        verify(classRepository).isStudentEnrolled(
+                classDatabaseUserId, DUMMY_TARGET.classId(), DUMMY_TARGET.blockId());
     }
 
     @Test
